@@ -38,7 +38,7 @@ func init() {
 		func(d eval.Dispatch) {
 			d.Param2(TypeObjectInitHash)
 			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
-				return newObjectType3(``, nil, args[0].(eval.OrderedMap)).Resolve(c)
+				return NewParentedObjectType(``, nil, args[0].(eval.OrderedMap)).Resolve(c)
 			})
 		})
 }

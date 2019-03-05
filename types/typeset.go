@@ -55,7 +55,7 @@ func init() {
 	oneArgCtor := func(ctx eval.Context, args []eval.Value) eval.Value {
 		return newTypeSetType2(args[0].(*HashValue), ctx.Loader())
 	}
-	TypeSetMetaType = newObjectType3(`Pcore::TypeSet`, AnyMetaType,
+	TypeSetMetaType = NewParentedObjectType(`Pcore::TypeSet`, AnyMetaType,
 		WrapStringToValueMap(map[string]eval.Value{
 			`attributes`: SingletonHash2(`_pcore_init_hash`, typeTypesetInit)}),
 		// Hash constructor is equal to the positional arguments constructor
@@ -178,7 +178,7 @@ func (t *typeSet) Initialize(c eval.Context, args []eval.Value) {
 	panic(eval.Error(eval.Failure, issue.H{`message`: `internal error when creating an TypeSet data type`}))
 }
 
-func newTypeSetType3(na eval.URI, name string, initHash eval.OrderedMap) *typeSet {
+func NewTypeSet(na eval.URI, name string, initHash eval.OrderedMap) eval.TypeSet {
 	obj := AllocTypeSetType()
 	obj.nameAuthority = na
 	if name == `` {
@@ -193,7 +193,7 @@ func newTypeSetType3(na eval.URI, name string, initHash eval.OrderedMap) *typeSe
 }
 
 func newTypeSetType2(initHash eval.OrderedMap, loader eval.Loader) eval.TypeSet {
-	obj := newTypeSetType3(loader.NameAuthority(), ``, initHash)
+	obj := NewTypeSet(loader.NameAuthority(), ``, initHash).(*typeSet)
 	obj.loader = loader
 	return obj
 }

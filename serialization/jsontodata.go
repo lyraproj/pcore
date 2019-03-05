@@ -21,7 +21,7 @@ const afterKey = 4
 func JsonToData(path string, in io.Reader, consumer eval.ValueConsumer) {
 	defer func() {
 		if r := recover(); r != nil {
-			panic(eval.Error(eval.TaskBadJson, issue.H{`path`: path, `detail`: r}))
+			panic(eval.Error(eval.InvalidJson, issue.H{`path`: path, `detail`: r}))
 		}
 	}()
 	d := json.NewDecoder(in)

@@ -28,7 +28,7 @@ type (
 
 	smartPath struct {
 		relativePath string
-		loader       *fileBasedLoader
+		loader       eval.ModuleLoader
 		namespace    eval.Namespace
 		extension    string
 
@@ -39,6 +39,14 @@ type (
 		indexed            bool
 	}
 )
+
+func NewSmartPath(relativePath, extension string,
+	loader eval.ModuleLoader, namespace eval.Namespace, moduleNameRelative,
+	matchMany bool, instantiator Instantiator) SmartPath {
+	return &smartPath{relativePath: relativePath, extension: extension,
+		loader: loader, namespace: namespace, moduleNameRelative: moduleNameRelative,
+		matchMany: matchMany, instantiator: instantiator, indexed: false}
+}
 
 func (p *smartPath) Indexed() bool {
 	return p.indexed
@@ -55,14 +63,14 @@ func (p *smartPath) Loader() eval.Loader {
 func (p *smartPath) EffectivePath(name eval.TypedName) string {
 	nameParts := name.Parts()
 	if p.moduleNameRelative {
-		if len(nameParts) < 2 || nameParts[0] != p.loader.moduleName {
+		if len(nameParts) < 2 || nameParts[0] != p.loader.ModuleName() {
 			return ``
 		}
 		nameParts = nameParts[1:]
 	}
 
 	parts := make([]string, 0, len(nameParts)+2)
-	parts = append(parts, p.loader.path) // system, environment, or module root
+	parts = append(parts, p.loader.Path()) // system, environment, or module root
 	if p.relativePath != `` {
 		parts = append(parts, p.relativePath)
 	}
@@ -72,7 +80,7 @@ func (p *smartPath) EffectivePath(name eval.TypedName) string {
 
 func (p *smartPath) GenericPath() string {
 	parts := make([]string, 0)
-	parts = append(parts, p.loader.path) // system, environment, or module root
+	parts = append(parts, p.loader.Path()) // system, environment, or module root
 	if p.relativePath != `` {
 		parts = append(parts, p.relativePath)
 	}
@@ -124,7 +132,7 @@ func (p *smartPath) TypedName(nameAuthority eval.URI, relativePath string) eval.
 	parts[l] = s
 
 	if p.moduleNameRelative && !(len(parts) == 1 && (s == `init` || s == `init_typeset`)) {
-		parts = append([]string{p.loader.moduleName}, parts...)
+		parts = append([]string{p.loader.ModuleName()}, parts...)
 	}
 	return eval.NewTypedName2(p.namespace, strings.Join(parts, `::`), nameAuthority)
 }

@@ -25,11 +25,19 @@ type (
 		parentedLoader
 		path            string
 		moduleName      string
+		initPlanName    eval.TypedName
+		initTaskName    eval.TypedName
 		initTypeSetName eval.TypedName
 		paths           map[eval.Namespace][]SmartPath
 		index           map[string][]string
 	}
+
+	SmartPathFactory func(loader eval.ModuleLoader, moduleNameRelative bool) SmartPath
 )
+
+var SmartPathFactories map[eval.PathType]SmartPathFactory = map[eval.PathType]SmartPathFactory{
+	eval.PuppetDataTypePath: newPuppetTypePath,
+}
 
 func init() {
 	eval.NewFileBasedLoader = newFileBasedLoader
@@ -42,6 +50,8 @@ func newFileBasedLoader(parent eval.Loader, path, moduleName string, lds ...eval
 			basicLoader: basicLoader{namedEntries: make(map[string]eval.LoaderEntry, 64)},
 			parent:      parent},
 		path:            path,
+		initPlanName:    eval.NewTypedName2(eval.NsPlan, `init`, parent.NameAuthority()),
+		initTaskName:    eval.NewTypedName2(eval.NsTask, `init`, parent.NameAuthority()),
 		initTypeSetName: eval.NewTypedName2(eval.NsType, `init_typeset`, parent.NameAuthority()),
 		moduleName:      moduleName,
 		paths:           paths}
@@ -58,24 +68,14 @@ func newFileBasedLoader(parent eval.Loader, path, moduleName string, lds ...eval
 }
 
 func (l *fileBasedLoader) newSmartPath(pathType eval.PathType, moduleNameRelative bool) SmartPath {
-	switch pathType {
-	case eval.PuppetDataTypePath:
-		return l.newPuppetTypePath(moduleNameRelative)
-	default:
-		panic(errors.NewIllegalArgument(`newSmartPath`, 1, fmt.Sprintf(`Unknown path type '%s'`, pathType)))
+	if f, ok := SmartPathFactories[pathType]; ok {
+		return f(l, moduleNameRelative)
 	}
+	panic(errors.NewIllegalArgument(`newSmartPath`, 1, fmt.Sprintf(`Unknown path type '%s'`, pathType)))
 }
 
-func (l *fileBasedLoader) newPuppetTypePath(moduleNameRelative bool) SmartPath {
-	return &smartPath{
-		relativePath:       `types`,
-		loader:             l,
-		namespace:          eval.NsType,
-		extension:          `.pp`,
-		moduleNameRelative: moduleNameRelative,
-		matchMany:          false,
-		instantiator:       InstantiatePuppetType,
-	}
+func newPuppetTypePath(loader eval.ModuleLoader, moduleNameRelative bool) SmartPath {
+	return NewSmartPath(`types`, `.pp`, loader, eval.NsType, moduleNameRelative, false,InstantiatePuppetType)
 }
 
 func (l *fileBasedLoader) LoadEntry(c eval.Context, name eval.TypedName) eval.LoaderEntry {
@@ -92,6 +92,10 @@ func (l *fileBasedLoader) LoadEntry(c eval.Context, name eval.TypedName) eval.Lo
 
 func (l *fileBasedLoader) ModuleName() string {
 	return l.moduleName
+}
+
+func (l *fileBasedLoader) Path() string {
+	return l.path
 }
 
 func (l *fileBasedLoader) isGlobal() bool {
@@ -114,6 +118,38 @@ func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderE
 	} else {
 		// The name is in the global name space.
 		switch name.Namespace() {
+		case eval.NsFunction:
+			// Can be defined in module using a global name. No action required
+		case eval.NsPlan:
+			if !l.isGlobal() {
+				// Global name must be the name of the module
+				if l.moduleName != name.Parts()[0] {
+					// Global name must be the name of the module
+					return nil
+				}
+
+				// Look for special 'init' plan
+				origins, smartPath := l.findExistingPath(l.initPlanName)
+				if smartPath == nil {
+					return nil
+				}
+				return l.instantiate(c, smartPath, name, origins)
+			}
+		case eval.NsTask:
+			if !l.isGlobal() {
+				// Global name must be the name of the module
+				if l.moduleName != name.Parts()[0] {
+					// Global name must be the name of the module
+					return nil
+				}
+
+				// Look for special 'init' task
+				origins, smartPath := l.findExistingPath(l.initTaskName)
+				if smartPath == nil {
+					return nil
+				}
+				return l.instantiate(c, smartPath, name, origins)
+			}
 		case eval.NsType:
 			if !l.isGlobal() {
 				// Global name must be the name of the module

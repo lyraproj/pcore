@@ -365,28 +365,6 @@ func (f *goFunction) PType() eval.Type {
 	return types.NewVariantType(variants...)
 }
 
-func AssertArgument(name string, index int, pt eval.Type, arg eval.Value) {
-	if !eval.IsInstance(pt, arg) {
-		panic(types.NewIllegalArgumentType(name, index, pt.String(), arg))
-	}
-}
-
-func CreateTupleType(params []eval.Parameter) *types.TupleType {
-	min := 0
-	max := len(params)
-	tps := make([]eval.Type, max)
-	for idx, p := range params {
-		tps[idx] = p.Type()
-		if !p.HasValue() {
-			min++
-		}
-		if p.CapturesRest() {
-			max = math.MaxInt64
-		}
-	}
-	return types.NewTupleType(tps, types.NewIntegerType(int64(min), int64(max)))
-}
-
 func init() {
 	eval.BuildFunction = buildFunction
 

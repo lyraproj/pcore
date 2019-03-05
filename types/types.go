@@ -873,13 +873,13 @@ func createMetaType2(na eval.URI, name string, typeName string, parentName strin
 	if parentName == `` {
 		switch typeName {
 		case `Object`:
-			return newObjectType3(name, nil, hash)
+			return NewParentedObjectType(name, nil, hash)
 		default:
-			return newTypeSetType3(na, name, hash)
+			return NewTypeSet(na, name, hash)
 		}
 	}
 
-	return newObjectType3(name, NewTypeReferenceType(parentName), hash)
+	return NewParentedObjectType(name, NewTypeReferenceType(parentName), hash)
 }
 
 func argError(e eval.Type, a eval.Value) errors.InstantiationError {

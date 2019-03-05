@@ -25,22 +25,13 @@ const (
 	FileReadDenied                        = `EVAL_FILE_READ_DENIED`
 	GoFunctionError                       = `EVAL_GO_FUNCTION_ERROR`
 	GoRuntimeTypeWithoutGoType            = `EVAL_GO_RUNTIME_TYPE_WITHOUT_GO_TYPE`
-	IllegalArgument                       = `EVAL_ILLEGAL_ARGUMENT`
-	IllegalArgumentCount                  = `EVAL_ILLEGAL_ARGUMENT_COUNT`
-	IllegalArgumentType                   = `EVAL_ILLEGAL_ARGUMENT_TYPE`
-	IllegalAssignment                     = `EVAL_ILLEGAL_ASSIGNMENT`
-	IllegalBreak                          = `EVAL_ILLEGAL_BREAK`
 	IllegalKindValueCombination           = `EVAL_ILLEGAL_KIND_VALUE_COMBINATION`
-	IllegalNext                           = `EVAL_ILLEGAL_NEXT`
 	IllegalObjectInheritance              = `EVAL_ILLEGAL_OBJECT_INHERITANCE`
-	IllegalReturn                         = `EVAL_ILLEGAL_RETURN`
-	IllegalMultiAssignmentSize            = `EVAL_ILLEGAL_MULTI_ASSIGNMENT_SIZE`
-	IllegalWhenStaticExpression           = `EVAL_ILLEGAL_WHEN_STATIC_EXPRESSION`
 	ImplAlreadyRegistered                 = `EVAL_IMPL_ALREADY_REGISTERED`
-	IllegalReassignment                   = `EVAL_ILLEGAL_REASSIGNMENT`
 	InstanceDoesNotRespond                = `EVAL_INSTANCE_DOES_NOT_RESPOND`
 	ImpossibleOptional                    = `EVAL_IMPOSSIBLE_OPTIONAL`
 	InvalidCharactersInName               = `EVAL_INVALID_CHARACTERS_IN_NAME`
+	InvalidJson                           = `EVAL_INVALID_JSON`
 	InvalidRegexp                         = `EVAL_INVALID_REGEXP`
 	InvalidSourceForGet                   = `EVAL_INVALID_SOURCE_FOR_GET`
 	InvalidSourceForSet                   = `EVAL_INVALID_SOURCE_FOR_SET`
@@ -56,24 +47,17 @@ const (
 	MatchNotRegexp                        = `EVAL_MATCH_NOT_REGEXP`
 	MatchNotString                        = `EVAL_MATCH_NOT_STRING`
 	MemberNameConflict                    = `EVAL_MEMBER_NAME_CONFLICT`
-	MissingMultiAssignmentKey             = `EVAL_MISSING_MULTI_ASSIGNMENT_KEY`
-	MissingRegexpInType                   = `EVAL_MISSING_REGEXP_IN_TYPE`
 	MissingRequiredAttribute              = `EVAL_MISSING_REQUIRED_ATTRIBUTE`
 	MissingTypeParameter                  = `EVAL_MISSING_TYPE_PARAMETER`
 	NoAttributeReader                     = `EVAL_NO_ATTRIBUTE_READER`
 	NoCurrentContext                      = `EVAL_NO_CURRENT_CONTEXT`
 	NoDefinition                          = `EVAL_NO_DEFINITION`
-	NotCollectionAt                       = `EVAL_NOT_COLLECTION_AT`
 	NotExpectedTypeset                    = `EVAL_NOT_EXPECTED_TYPESET`
 	NotInteger                            = `EVAL_NOT_INTEGER`
-	NotOnlyDefinition                     = `EVAL_NOT_ONLY_DEFINITION`
-	NotNumeric                            = `EVAL_NOT_NUMERIC`
 	NotParameterizedType                  = `EVAL_NOT_PARAMETERIZED_TYPE`
 	NotSemver                             = `EVAL_NOT_SEMVER`
 	NotSupportedByGoTimeLayout            = `EVAL_NOT_SUPPORTED_BY_GO_TIME_LAYOUT`
 	ObjectInheritsSelf                    = `EVAL_OBJECT_INHERITS_SELF`
-	OperatorNotApplicable                 = `EVAL_OPERATOR_NOT_APPLICABLE`
-	OperatorNotApplicableWhen             = `EVAL_OPERATOR_NOT_APPLICABLE_WHEN`
 	OverrideMemberMismatch                = `EVAL_OVERRIDE_MEMBER_MISMATCH`
 	OverrideTypeMismatch                  = `EVAL_OVERRIDE_TYPE_MISMATCH`
 	OverriddenNotFound                    = `EVAL_OVERRIDDEN_NOT_FOUND`
@@ -86,11 +70,6 @@ const (
 	SerializationDefaultConvertedToString = `EVAL_SERIALIZATION_DEFAULT_CONVERTED_TO_STRING`
 	SerializationRequiredAfterOptional    = `EVAL_SERIALIZATION_REQUIRED_AFTER_OPTIONAL`
 	SerializationUnknownConvertedToString = `EVAL_SERIALIZATION_UNKNOWN_CONVERTED_TO_STRING`
-	TaskBadJson                           = `EVAL_TASK_BAD_JSON`
-	TaskInitializerNotFound               = `EVAL_TASK_INITIALIZER_NOT_FOUND`
-	TaskNoExecutableFound                 = `EVAL_TASK_NO_EXECUTABLE_FOUND`
-	TaskNotJsonObject                     = `EVAL_TASK_NOT_JSON_OBJECT`
-	TaskTooManyFiles                      = `EVAL_TASK_TOO_MANY_FILES`
 	TimespanBadFormatSpec                 = `EVAL_TIMESPAN_BAD_FORMAT_SPEC`
 	CannotBeParsed                        = `EVAL_TIMESPAN_CANNOT_BE_PARSED`
 	TimespanFormatSpecNotHigher           = `EVAL_TIMESPAN_FORMAT_SPEC_NOT_HIGHER`
@@ -108,11 +87,7 @@ const (
 	UnableToDeserializeValue              = `EVAL_UNABLE_TO_DESERIALIZE_VALUE`
 	UnableToReadFile                      = `EVAL_UNABLE_TO_READ_FILE`
 	UnhandledPcoreVersion                 = `EVAL_UNHANDLED_PCORE_VERSION`
-	UnhandledExpression                   = `EVAL_UNHANDLED_EXPRESSION`
 	UnknownFunction                       = `EVAL_UNKNOWN_FUNCTION`
-	UnknownPlan                           = `EVAL_UNKNOWN_PLAN`
-	UnknownTask                           = `EVAL_UNKNOWN_TASK`
-	UnknownVariable                       = `EVAL_UNKNOWN_VARIABLE`
 	UnreflectableType                     = `EVAL_UNREFLECTABLE_TYPE`
 	UnreflectableValue                    = `EVAL_UNREFLECTABLE_VALUE`
 	UnresolvedType                        = `EVAL_UNRESOLVED_TYPE`
@@ -122,7 +97,6 @@ const (
 )
 
 func init() {
-
 	issue.Hard2(ArgumentsError, `Error when evaluating %{expression}: %{message}`, issue.HF{`expression`: issue.AnOrA})
 
 	issue.Hard(AttemptToRedefine, `attempt to redefine %{name}`)
@@ -168,35 +142,9 @@ func init() {
 
 	issue.Hard(GoRuntimeTypeWithoutGoType, `Attempt to create a Runtime['go', '%{name}'] without providing a Go type`)
 
-	issue.Hard2(IllegalArgument,
-		`Error when evaluating %{expression}, argument %{number}:  %{message}`, issue.HF{`expression`: issue.AnOrA})
-
-	issue.Hard2(IllegalArgumentCount,
-		`Error when evaluating %{expression}: Expected %{expected} arguments, got %{actual}`,
-		issue.HF{`expression`: issue.AnOrA})
-
-	issue.Hard2(IllegalArgumentType,
-		`Error when evaluating %{expression}: Expected argument %{number} to be %{expected}, got %{actual}`,
-		issue.HF{`expression`: issue.AnOrA})
-
-	issue.Hard2(IllegalAssignment, `Illegal attempt to assign to %{value}. Not an assignable reference`,
-		issue.HF{`value`: issue.AnOrA})
-
-	issue.Hard(IllegalBreak, `break() from context where this is illegal`)
-
-	issue.Hard2(IllegalWhenStaticExpression, `%{expression} is illegal within a type declaration`, issue.HF{`expression`: issue.UcAnOrA})
-
 	issue.Hard(IllegalKindValueCombination, `%{label} of kind '%{kind}' cannot be combined with an attribute value`)
 
-	issue.Hard(IllegalNext, `next() from context where this is illegal`)
-
 	issue.Hard(IllegalObjectInheritance, `An Object can only inherit another Object or alias thereof. The %{label} inherits from a %{type}.`)
-
-	issue.Hard(IllegalReturn, `return() from context where this is illegal`)
-
-	issue.Hard(IllegalMultiAssignmentSize, `Mismatched number of assignable entries and values, expected %{expected}, got %{actual}`)
-
-	issue.Hard(IllegalReassignment, `Cannot reassign variable '$%{var}'`)
 
 	issue.Hard(ImplAlreadyRegistered, `The type %{type} is already present in the implementation registry`)
 
@@ -207,6 +155,8 @@ func init() {
 	issue.Hard(InstanceDoesNotRespond, `An instance of %{type} does not respond to %{message}`)
 
 	issue.Hard(InvalidCharactersInName, `Name '%{name} contains invalid characters. Must start with letter and only contain letters, digits, and underscore'`)
+
+	issue.Hard(InvalidJson, `Unable to parse JSON from '%{path}': %{detail}`)
 
 	issue.Hard(InvalidRegexp, `Cannot compile regular expression '%{pattern}': %{detail}`)
 
@@ -236,10 +186,6 @@ func init() {
 
 	issue.Hard(MemberNameConflict, `%{label} conflicts with attribute with the same name`)
 
-	issue.Hard(MissingMultiAssignmentKey, `No value for required key '%{name}' in assignment to variables from hash`)
-
-	issue.Hard(MissingRegexpInType, `Given Regexp Type has no regular expression`)
-
 	issue.Hard(MissingRequiredAttribute, `%{label} requires a value but none was provided`)
 
 	issue.Hard(MissingTypeParameter, `'%{name}' is not a known type parameter for %{label}-Type`)
@@ -252,15 +198,9 @@ func init() {
 
 	issue.Hard(NoDefinition, `The code loaded from %{source} does not define the %{type} '%{name}`)
 
-	issue.Hard(NotCollectionAt, `The given data does not contain a Collection at %{walked_path}, got '%{klass}'`)
-
 	issue.Hard(NotInteger, `The value '%{value}' cannot be converted to an Integer`)
 
 	issue.Hard(NotExpectedTypeset, `The code loaded from %{source} does not define the TypeSet %{name}'`)
-
-	issue.Hard(NotNumeric, `The value '%{value}' cannot be converted to Numeric`)
-
-	issue.Hard(NotOnlyDefinition, `The code loaded from %{source} must contain only the %{type} '%{name}`)
 
 	issue.Hard2(NotParameterizedType, `%{type} is not a parameterized type`,
 		issue.HF{`type`: issue.UcAnOrA})
@@ -268,13 +208,6 @@ func init() {
 	issue.Hard(NotSemver, `The value cannot be converted to semantic version. Caused by '%{detail}'`)
 
 	issue.Hard(NotSupportedByGoTimeLayout, `The format specifier '%{format_specifier}' "%{description}" can not be converted to a Go Time Layout`)
-
-	issue.Hard2(OperatorNotApplicable, `Operator '%{operator}' is not applicable to %{left}`,
-		issue.HF{`left`: issue.AnOrA})
-
-	issue.Hard2(OperatorNotApplicableWhen,
-		`Operator '%{operator}' is not applicable to %{left} when right side is %{right}`,
-		issue.HF{`left`: issue.AnOrA, `right`: issue.AnOrA})
 
 	issue.Hard(OverrideMemberMismatch, `%{member} attempts to override %{label}`)
 
@@ -298,16 +231,6 @@ func init() {
 	issue.Hard2(SerializationUnknownConvertedToString, `%{path} contains %{klass} value. It will be converted to the String '%{value}'`, issue.HF{`klass`: issue.AnOrA})
 
 	issue.Hard(SerializationRequiredAfterOptional, `%{label} serialization is referencing required %{required} after optional %{optional}. Optional attributes must be last`)
-
-	issue.Hard(TaskBadJson, `Unable to parse task metadata from '%{path}': %{detail}`)
-
-	issue.Hard(TaskInitializerNotFound, `Unable to load the initializer for the Task data`)
-
-	issue.Hard(TaskNoExecutableFound, `No source besides task metadata was found in directory %{directory} for task %{name}`)
-
-	issue.Hard(TaskNotJsonObject, `The content of '%{path}' does not represent a JSON Object`)
-
-	issue.Hard(TaskTooManyFiles, `Only one file can exists besides the .json file for task %{name} in directory %{directory}`)
 
 	issue.Hard(TimespanBadFormatSpec, `Bad format specifier '%{expression}' in '%{format}', at position %{position}`)
 
@@ -341,17 +264,9 @@ func init() {
 
 	issue.Hard(UnableToReadFile, `Unable to read file '%{path}': %{detail}`)
 
-	issue.Hard(UnhandledExpression, `Evaluator cannot handle an expression of type %<expression>T`)
-
 	issue.Hard(UnhandledPcoreVersion, `The pcore version for TypeSet '%{name}' is not understood by this runtime. Expected range %{expected_range}, got %{pcore_version}`)
 
 	issue.Hard(UnknownFunction, `Unknown function: '%{name}'`)
-
-	issue.Hard(UnknownPlan, `Unknown plan: '%{name}'`)
-
-	issue.Hard(UnknownTask, `Task not found: '%{name}'`)
-
-	issue.Hard(UnknownVariable, `Unknown variable: '$%{name}'`)
 
 	issue.Hard(UnreflectableType, `Unable to create a eval.Type from value of type '%{type}'`)
 
@@ -365,3 +280,4 @@ func init() {
 
 	issue.Hard(WrongDefinition, `The code loaded from %{source} produced %{type} with the wrong name, expected %{expected}, actual %{actual}`)
 }
+

@@ -47,6 +47,8 @@ type (
 	ModuleLoader interface {
 		Loader
 
+		Path() string
+
 		ModuleName() string
 	}
 

@@ -410,7 +410,7 @@ func (r *reflector) TypeSetFromReflect(typeSetName string, version semver.Versio
 	es = append(es, WrapHashEntry2(eval.KeyPcoreVersion, WrapSemVer(eval.PcoreVersion)))
 	es = append(es, WrapHashEntry2(KeyVersion, WrapSemVer(version)))
 	es = append(es, WrapHashEntry2(KeyTypes, WrapHash(types)))
-	return newTypeSetType3(eval.RuntimeNameAuthority, typeSetName, WrapHash(es))
+	return NewTypeSet(eval.RuntimeNameAuthority, typeSetName, WrapHash(es))
 }
 
 func ParentType(t reflect.Type) reflect.Type {

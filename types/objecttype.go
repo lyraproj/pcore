@@ -23,7 +23,7 @@ func init() {
 	oneArgCtor := func(ctx eval.Context, args []eval.Value) eval.Value {
 		return newObjectType2(ctx, args...)
 	}
-	ObjectMetaType = newObjectType3(`Pcore::ObjectType`, AnyMetaType,
+	ObjectMetaType = NewParentedObjectType(`Pcore::ObjectType`, AnyMetaType,
 		WrapStringToValueMap(map[string]eval.Value{
 			`attributes`: SingletonHash2(`_pcore_init_hash`, TypeObjectInitHash)}),
 		oneArgCtor, oneArgCtor)
@@ -1251,7 +1251,7 @@ func newObjectType(name, typeDecl string, creators ...eval.DispatchFunction) eva
 	}
 	if h, ok := ta.(*HashValue); ok {
 		// "type = {}"
-		return newObjectType3(name, nil, h, creators...)
+		return NewParentedObjectType(name, nil, h, creators...)
 	}
 	if dt, ok := ta.(*DeferredType); ok {
 		ps := dt.Parameters()
@@ -1261,7 +1261,7 @@ func newObjectType(name, typeDecl string, creators ...eval.DispatchFunction) eva
 				if pn := dt.Name(); pn != `TypeSet` && pn != `Object` {
 					p = NewTypeReferenceType(pn)
 				}
-				return newObjectType3(name, p, h, creators...)
+				return NewParentedObjectType(name, p, h, creators...)
 			}
 		}
 	}
@@ -1290,7 +1290,7 @@ func newObjectType2(c eval.Context, args ...eval.Value) *objectType {
 	}
 }
 
-func newObjectType3(name string, parent eval.Type, initHash eval.OrderedMap, creators ...eval.DispatchFunction) *objectType {
+func NewParentedObjectType(name string, parent eval.Type, initHash eval.OrderedMap, creators ...eval.DispatchFunction) *objectType {
 	if name == `` {
 		name = initHash.Get5(`name`, emptyString).String()
 	}

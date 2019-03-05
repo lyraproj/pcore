@@ -96,7 +96,7 @@ func addTypes(c eval.Context, types ...eval.Type) {
 			rts = append(rts, rt)
 		}
 	}
-	resolveTypes(c, rts...)
+	ResolveTypes(c, rts...)
 }
 
 func (c *pcoreCtx) DefiningLoader() eval.DefiningLoader {
@@ -211,7 +211,7 @@ func resolveResolvables(c eval.Context) {
 		c.ImplementationRegistry().RegisterType(mp.T, mp.R)
 	}
 
-	resolveTypes(c, ts...)
+	ResolveTypes(c, ts...)
 
 	ctors := types.PopDeclaredConstructors()
 	for _, ct := range ctors {
@@ -266,7 +266,7 @@ func (c *pcoreCtx) clone() *pcoreCtx {
 	return clone
 }
 
-func resolveTypes(c eval.Context, types ...eval.ResolvableType) {
+func ResolveTypes(c eval.Context, types ...eval.ResolvableType) {
 	l := c.DefiningLoader()
 	typeSets := make([]eval.TypeSet, 0)
 	allAnnotated := make([]eval.Annotatable, 0, len(types))

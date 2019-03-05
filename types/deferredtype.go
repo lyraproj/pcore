@@ -20,6 +20,10 @@ type DeferredType struct {
 	resolved eval.Type
 }
 
+func NewDeferredType(name string, params ...eval.Value) *DeferredType {
+	return &DeferredType{tn: name, params: params}
+}
+
 func (dt *DeferredType) String() string {
 	return eval.ToString(dt)
 }
