@@ -654,24 +654,31 @@ func (t *typeSet) resolveDeferred(c eval.Context, lh eval.OrderedMap) *HashValue
 		es := make([]*HashEntry, 0, types.Len())
 		types.EachPair(func(typeName string, value interface{}) {
 			fullName := fmt.Sprintf(`%s::%s`, t.name, typeName)
-			if rde, ok := value.(*DeferredType); ok && len(rde.params) == 1 {
-				if ih, ok := rde.params[0].(eval.OrderedMap); ok {
-					name := rde.Name()
-					if !(name == `Object` || name == `TypeSet`) {
-						// the name `parent` is not allowed here
-						if pn, ok := ih.Get4(keyParent); ok {
-							if name != pn.String() {
-								panic(eval.Error(eval.DuplicateKey, issue.H{`key`: keyParent}))
+			var tp eval.Type
+			switch value := value.(type) {
+			case *DeferredType:
+				if len(value.params) == 1 {
+					if ih, ok := value.params[0].(eval.OrderedMap); ok {
+						name := value.Name()
+						if !(name == `Object` || name == `TypeSet`) {
+							// the name `parent` is not allowed here
+							if pn, ok := ih.Get4(keyParent); ok {
+								if name != pn.String() {
+									panic(eval.Error(eval.DuplicateKey, issue.H{`key`: keyParent}))
+								}
+							} else {
+								value.params[0] = ih.Merge(SingletonHash2(keyParent, WrapString(name)))
 							}
-						} else {
-							rde.params[0] = ih.Merge(SingletonHash2(keyParent, WrapString(name)))
 						}
 					}
 				}
-				es = append(es, WrapHashEntry2(typeName, NamedType(nameAuth, fullName, rde)))
-			} else if tc, ok := value.(eval.Type); ok {
-				es = append(es, WrapHashEntry2(typeName, tc))
+				tp = NamedType(nameAuth, fullName, value)
+			case eval.Type:
+				tp = value
+			default:
+				tp = NamedType(nameAuth, fullName, value.(eval.Value))
 			}
+			es = append(es, WrapHashEntry2(typeName, tp))
 		})
 		typesHash = WrapHash(es)
 	}

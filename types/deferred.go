@@ -9,6 +9,15 @@ import (
 
 var DeferredMetaType eval.ObjectType
 
+var DeferredResolve = func(d Deferred, c eval.Context) eval.Value {
+	fn := d.Name()
+	args := d.Arguments().AppendTo(make([]eval.Value, 0, d.Arguments().Len()))
+	for i, a := range args {
+		args[i] = ResolveDeferred(c, a)
+	}
+	return eval.Call(c, fn, args, nil)
+}
+
 func init() {
 	DeferredMetaType = newObjectType(`Deferred`, `{
     attributes => {
@@ -26,6 +35,10 @@ func init() {
 
 type Deferred interface {
 	eval.Value
+
+	Name() string
+
+	Arguments() *ArrayValue
 
 	Resolve(c eval.Context) eval.Value
 }
@@ -105,12 +118,7 @@ func (e *deferred) InitHash() eval.OrderedMap {
 }
 
 func (e *deferred) Resolve(c eval.Context) eval.Value {
-	fn := e.name
-	args := e.arguments.AppendTo(make([]eval.Value, 0, e.arguments.Len()))
-	for i, a := range args {
-		args[i] = ResolveDeferred(c, a)
-	}
-	return eval.Call(c, fn, args, nil)
+	return DeferredResolve(e, c)
 }
 
 // ResolveDeferred will resolve all occurrences of a DeferredValue in its
