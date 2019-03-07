@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type (
@@ -18,12 +18,12 @@ type (
 
 	NextIteration struct {
 		Breaker
-		value eval.Value
+		value px.Value
 	}
 
 	Return struct {
 		Breaker
-		value eval.Value
+		value px.Value
 	}
 
 	InstantiationError interface {
@@ -143,18 +143,18 @@ func NewStopIteration(location issue.Location) *StopIteration {
 	return &StopIteration{Breaker{location}}
 }
 
-func NewNextIteration(location issue.Location, value eval.Value) *NextIteration {
+func NewNextIteration(location issue.Location, value px.Value) *NextIteration {
 	return &NextIteration{Breaker{location}, value}
 }
 
-func (e *NextIteration) Value() eval.Value {
+func (e *NextIteration) Value() px.Value {
 	return e.value
 }
 
-func NewReturn(location issue.Location, value eval.Value) *Return {
+func NewReturn(location issue.Location, value px.Value) *Return {
 	return &Return{Breaker{location}, value}
 }
 
-func (e *Return) Value() eval.Value {
+func (e *Return) Value() px.Value {
 	return e.value
 }

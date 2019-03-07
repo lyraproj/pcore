@@ -2,223 +2,103 @@ package pcore
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
-	"path/filepath"
-	"sync"
 
-	"github.com/lyraproj/pcore/eval"
-	"github.com/lyraproj/pcore/impl"
-	"github.com/lyraproj/pcore/threadlocal"
-	"github.com/lyraproj/pcore/types"
-
-	// Ensure that StaticLoader is initialized
-	_ "github.com/lyraproj/pcore/loader"
+	"github.com/lyraproj/pcore/px"
+	"github.com/lyraproj/pcore/pximpl"
 )
 
-type (
-	pcoreImpl struct {
-		lock              sync.RWMutex
-		logger            eval.Logger
-		systemLoader      eval.Loader
-		environmentLoader eval.Loader
-		settings          map[string]*setting
-	}
-)
-
-var staticLock sync.Mutex
-var puppet = &pcoreImpl{settings: make(map[string]*setting, 32)}
-var topImplRegistry eval.ImplementationRegistry
-
-func init() {
-	eval.Puppet = puppet
-	puppet.DefineSetting(`environment`, types.DefaultStringType(), types.WrapString(`production`))
-	puppet.DefineSetting(`environmentpath`, types.DefaultStringType(), nil)
-	puppet.DefineSetting(`module_path`, types.DefaultStringType(), nil)
-	puppet.DefineSetting(`strict`, types.NewEnumType([]string{`off`, `warning`, `error`}, true), types.WrapString(`warning`))
-	puppet.DefineSetting(`tasks`, types.DefaultBooleanType(), types.WrapBoolean(false))
-	puppet.DefineSetting(`workflow`, types.DefaultBooleanType(), types.WrapBoolean(false))
+// DefineSetting defines a new setting with a given valueType and default
+// value.
+func DefineSetting(key string, valueType px.Type, dflt px.Value) {
+	pximpl.InitializeRuntime().DefineSetting(key, valueType, dflt)
 }
 
-func InitializePuppet() {
-	// First call initializes the static loader. There can be only one since it receives
-	// most of its contents from Go init() functions
-	staticLock.Lock()
-	defer staticLock.Unlock()
-
-	if puppet.logger != nil {
-		return
-	}
-
-	puppet.logger = eval.NewStdLogger()
-
-	eval.RegisterResolvableType(types.NewTypeAliasType(`Pcore::MemberName`, nil, types.TypeMemberName))
-	eval.RegisterResolvableType(types.NewTypeAliasType(`Pcore::SimpleTypeName`, nil, types.TypeSimpleTypeName))
-	eval.RegisterResolvableType(types.NewTypeAliasType(`Pcore::typeName`, nil, types.TypeTypeName))
-	eval.RegisterResolvableType(types.NewTypeAliasType(`Pcore::QRef`, nil, types.TypeQualifiedReference))
-
-	c := impl.NewContext(eval.StaticLoader().(eval.DefiningLoader), puppet.logger)
-	eval.ResolveResolvables(c)
-	topImplRegistry = c.ImplementationRegistry()
+// Do executes a given function with an initialized Context instance.
+//
+// The Context will be parented by the Go context returned by context.Background()
+func Do(f func(c px.Context)) {
+	pximpl.InitializeRuntime().Do(f)
 }
 
-func (p *pcoreImpl) Reset() {
-	p.lock.Lock()
-	p.systemLoader = nil
-	p.environmentLoader = nil
-	for _, s := range p.settings {
-		s.reset()
-	}
-	p.lock.Unlock()
+// DoWithParent executes a given function with an initialized Context instance.
+//
+// The context will be parented by the given Go context
+func DoWithParent(parentCtx context.Context, actor func(px.Context)) {
+	pximpl.InitializeRuntime().DoWithParent(parentCtx, actor)
 }
 
-func (p *pcoreImpl) SetLogger(logger eval.Logger) {
-	p.logger = logger
+// EnvironmentLoader returns the loader that finds things declared
+// in the environment and its modules. This loader is parented
+// by the SystemLoader
+func EnvironmentLoader() px.Loader {
+	return pximpl.InitializeRuntime().EnvironmentLoader()
 }
 
-func (p *pcoreImpl) SystemLoader() eval.Loader {
-	p.lock.Lock()
-	p.ensureSystemLoader()
-	p.lock.Unlock()
-	return p.systemLoader
+// Get returns a setting or calls the given defaultProducer
+// function if the setting does not exist
+func Get(key string, defaultProducer px.Producer) px.Value {
+	return pximpl.InitializeRuntime().Get(key, defaultProducer)
 }
 
-func (p *pcoreImpl) configuredStaticLoader() eval.Loader {
-	return eval.StaticLoader()
+// Loader returns a loader for module.
+func Loader(key string) px.Loader {
+	return pximpl.InitializeRuntime().Loader(key)
 }
 
-// not exported, provides unprotected access to shared object
-func (p *pcoreImpl) ensureSystemLoader() eval.Loader {
-	if p.systemLoader == nil {
-		p.systemLoader = eval.NewParentedLoader(p.configuredStaticLoader())
-	}
-	return p.systemLoader
+func NewContext(loader px.Loader, logger px.Logger) px.Context {
+	return pximpl.NewContext(loader, logger)
 }
 
-func (p *pcoreImpl) EnvironmentLoader() eval.Loader {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	if p.environmentLoader == nil {
-		p.ensureSystemLoader()
-		envLoader := p.systemLoader // TODO: Add proper environment loader
-		s := p.settings[`module_path`]
-		mds := make([]eval.ModuleLoader, 0)
-		lds := []eval.PathType{eval.PuppetFunctionPath, eval.PuppetDataTypePath, eval.PlanPath, eval.TaskPath}
-		if s.isSet() {
-			modulesPath := s.get().String()
-			fis, err := ioutil.ReadDir(modulesPath)
-			if err == nil {
-				for _, fi := range fis {
-					if fi.IsDir() && eval.IsValidModuleName(fi.Name()) {
-						ml := eval.NewFileBasedLoader(envLoader, filepath.Join(modulesPath, fi.Name()), fi.Name(), lds...)
-						mds = append(mds, ml)
-					}
-				}
-			}
-		}
-		if len(mds) > 0 {
-			p.environmentLoader = eval.NewDependencyLoader(mds)
-		} else {
-			p.environmentLoader = envLoader
-		}
-	}
-	return p.environmentLoader
+// Logger returns the logger that this instance was created with
+func Logger() px.Logger {
+	return pximpl.InitializeRuntime().Logger()
 }
 
-func (p *pcoreImpl) Loader(key string) eval.Loader {
-	envLoader := p.EnvironmentLoader()
-	if key == `` {
-		return envLoader
-	}
-	if dp, ok := envLoader.(eval.DependencyLoader); ok {
-		return dp.LoaderFor(key)
-	}
-	return nil
+// Reset clears all settings and loaders, except the static loader
+func Reset() {
+	pximpl.InitializeRuntime().Reset()
 }
 
-func (p *pcoreImpl) DefineSetting(key string, valueType eval.Type, dflt eval.Value) {
-	s := &setting{name: key, valueType: valueType, defaultValue: dflt}
-	if dflt != nil {
-		s.set(dflt)
-	}
-	p.lock.Lock()
-	p.settings[key] = s
-	p.lock.Unlock()
+// RootContext returns a new Context that is parented by the context.Background()
+// and is initialized with a loader that is parented by the EnvironmentLoader.
+func RootContext() px.Context {
+	return pximpl.InitializeRuntime().RootContext()
 }
 
-func (p *pcoreImpl) Get(key string, defaultProducer eval.Producer) eval.Value {
-	p.lock.RLock()
-	v, ok := p.settings[key]
-	p.lock.RUnlock()
-
-	if ok {
-		if v.isSet() {
-			return v.get()
-		}
-		if defaultProducer == nil {
-			return eval.Undef
-		}
-		return defaultProducer()
-	}
-	panic(fmt.Sprintf(`Attempt to access unknown setting '%s'`, key))
+// Set changes a setting
+func Set(key string, value px.Value) {
+	pximpl.InitializeRuntime().Set(key, value)
 }
 
-func (p *pcoreImpl) Logger() eval.Logger {
-	return p.logger
+// SetLogger changes the logger
+func SetLogger(logger px.Logger) {
+	pximpl.InitializeRuntime().SetLogger(logger)
 }
 
-func (p *pcoreImpl) RootContext() eval.Context {
-	InitializePuppet()
-	c := impl.WithParent(context.Background(), eval.NewParentedLoader(p.EnvironmentLoader()), p.logger, topImplRegistry)
-	threadlocal.Init()
-	threadlocal.Set(eval.PuppetContextKey, c)
-	return c
+// SystemLoader returns the loader that finds all built-ins. It's parented
+// by a static loader.
+func SystemLoader() px.Loader {
+	return pximpl.InitializeRuntime().SystemLoader()
 }
 
-func (p *pcoreImpl) Do(actor func(eval.Context)) {
-	p.DoWithParent(p.RootContext(), actor)
+// Try executes a given function with an initialized Context instance. If an error occurs,
+// it is caught and returned. The error returned from the given function is returned when
+// no other error is caught.
+//
+// The Context will be parented by the Go context returned by context.Background()
+func Try(actor func(px.Context) error) (err error) {
+	return pximpl.InitializeRuntime().Try(actor)
 }
 
-func (p *pcoreImpl) DoWithParent(parentCtx context.Context, actor func(eval.Context)) {
-	InitializePuppet()
-	var ctx eval.Context
-	if ec, ok := parentCtx.(eval.Context); ok {
-		ctx = ec.Fork()
-	} else {
-		ctx = impl.WithParent(parentCtx, eval.NewParentedLoader(p.EnvironmentLoader()), p.logger, topImplRegistry)
-	}
-	eval.DoWithContext(ctx, actor)
+// TryWithParent executes a given function with an initialized Context instance.  If an error occurs,
+// it is caught and returned. The error returned from the given function is returned when no other
+// error is caught
+//
+// The context will be parented by the given Go context
+func TryWithParent(parentCtx context.Context, actor func(px.Context) error) (err error) {
+	return pximpl.InitializeRuntime().TryWithParent(parentCtx, actor)
 }
 
-func (p *pcoreImpl) Try(actor func(eval.Context) error) (err error) {
-	return p.TryWithParent(p.RootContext(), actor)
-}
-
-func (p *pcoreImpl) TryWithParent(parentCtx context.Context, actor func(eval.Context) error) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			if ri, ok := r.(error); ok {
-				err = ri
-			} else {
-				panic(r)
-			}
-		}
-	}()
-	p.DoWithParent(parentCtx, func(c eval.Context) {
-		err = actor(c)
-	})
-	return
-}
-
-func (p *pcoreImpl) Set(key string, value eval.Value) {
-	p.lock.RLock()
-	v, ok := p.settings[key]
-	p.lock.RUnlock()
-
-	if ok {
-		v.set(value)
-		return
-	}
-	panic(fmt.Sprintf(`Attempt to assign unknown setting '%s'`, key))
+func WithParent(parent context.Context, loader px.Loader, logger px.Logger, ir px.ImplementationRegistry) px.Context {
+	return pximpl.WithParent(parent, loader, logger, ir)
 }

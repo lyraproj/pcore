@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 )
 
@@ -19,11 +19,11 @@ const MaxDedup = 2
 type Serializer interface {
 	// Convert the given RichData value to a series of Data values streamed to the
 	// given consumer.
-	Convert(value eval.Value, consumer eval.ValueConsumer)
+	Convert(value px.Value, consumer px.ValueConsumer)
 }
 
 type rdSerializer struct {
-	context       eval.Context
+	context       px.Context
 	richData      bool
 	messagePrefix string
 	dedupLevel    int
@@ -31,23 +31,23 @@ type rdSerializer struct {
 
 type context struct {
 	config     *rdSerializer
-	values     map[eval.Value]int
-	path       []eval.Value
+	values     map[px.Value]int
+	path       []px.Value
 	refIndex   int
 	dedupLevel int
-	consumer   eval.ValueConsumer
+	consumer   px.ValueConsumer
 }
 
 // NewSerializer returns a new Serializer
-func NewSerializer(ctx eval.Context, options eval.OrderedMap) Serializer {
+func NewSerializer(ctx px.Context, options px.OrderedMap) Serializer {
 	t := &rdSerializer{context: ctx}
-	t.richData = options.Get5(`rich_data`, types.BooleanTrue).(eval.BooleanValue).Bool()
-	t.messagePrefix = options.Get5(`message_prefix`, eval.EmptyString).String()
-	if !options.Get5(`local_reference`, types.BooleanTrue).(eval.BooleanValue).Bool() {
+	t.richData = options.Get5(`rich_data`, types.BooleanTrue).(px.BooleanValue).Bool()
+	t.messagePrefix = options.Get5(`message_prefix`, px.EmptyString).String()
+	if !options.Get5(`local_reference`, types.BooleanTrue).(px.BooleanValue).Bool() {
 		// local_reference explicitly set to false
 		t.dedupLevel = NoDedup
 	} else {
-		t.dedupLevel = int(options.Get5(`dedup_level`, types.WrapInteger(MaxDedup)).(eval.IntegerValue).Int())
+		t.dedupLevel = int(options.Get5(`dedup_level`, types.WrapInteger(MaxDedup)).(px.IntegerValue).Int())
 	}
 	return t
 }
@@ -59,8 +59,8 @@ var binaryType = types.WrapString(PcoreTypeBinary)
 var sensitiveType = types.WrapString(PcoreTypeSensitive)
 var hashKey = types.WrapString(PcoreTypeHash)
 
-func (t *rdSerializer) Convert(value eval.Value, consumer eval.ValueConsumer) {
-	c := context{config: t, values: make(map[eval.Value]int, 63), refIndex: 0, consumer: consumer, path: make([]eval.Value, 0, 16), dedupLevel: t.dedupLevel}
+func (t *rdSerializer) Convert(value px.Value, consumer px.ValueConsumer) {
+	c := context{config: t, values: make(map[px.Value]int, 63), refIndex: 0, consumer: consumer, path: make([]px.Value, 0, 16), dedupLevel: t.dedupLevel}
 	if c.dedupLevel >= MaxDedup && !consumer.CanDoComplexKeys() {
 		c.dedupLevel = NoKeyDedup
 	}
@@ -75,7 +75,7 @@ func (sc *context) pathToString() string {
 		}
 		if v == nil {
 			s.WriteString(`null`)
-		} else if eval.IsInstance(types.DefaultScalarType(), v) {
+		} else if px.IsInstance(types.DefaultScalarType(), v) {
 			v.ToString(s, types.Program, nil)
 		} else {
 			s.WriteString(issue.Label(s))
@@ -84,17 +84,17 @@ func (sc *context) pathToString() string {
 	return s.String()
 }
 
-func (sc *context) toData(level int, value eval.Value) {
+func (sc *context) toData(level int, value px.Value) {
 	if value == nil {
-		sc.addData(eval.Undef)
+		sc.addData(px.Undef)
 		return
 	}
 
 	switch value := value.(type) {
-	case *types.UndefValue, eval.IntegerValue, eval.FloatValue, eval.BooleanValue:
+	case *types.UndefValue, px.IntegerValue, px.FloatValue, px.BooleanValue:
 		// Never dedup
 		sc.addData(value)
-	case eval.StringValue:
+	case px.StringValue:
 		// Dedup only if length exceeds stringThreshold
 		key := value.String()
 		if sc.dedupLevel >= level && len(key) >= sc.consumer.StringDedupThreshold() {
@@ -111,14 +111,14 @@ func (sc *context) toData(level int, value eval.Value) {
 				sc.toData(1, defaultType)
 			})
 		} else {
-			eval.LogWarning(eval.SerializationDefaultConvertedToString, issue.H{`path`: sc.pathToString()})
+			px.LogWarning(px.SerializationDefaultConvertedToString, issue.H{`path`: sc.pathToString()})
 			sc.toData(1, types.WrapString(`default`))
 		}
 	case *types.HashValue:
 		if sc.consumer.CanDoComplexKeys() || value.AllKeysAreStrings() {
 			sc.process(value, func() {
 				sc.addHash(value.Len(), func() {
-					value.EachPair(func(key, elem eval.Value) {
+					value.EachPair(func(key, elem px.Value) {
 						sc.toData(2, key)
 						sc.withPath(key, func() { sc.toData(1, elem) })
 					})
@@ -130,7 +130,7 @@ func (sc *context) toData(level int, value eval.Value) {
 	case *types.ArrayValue:
 		sc.process(value, func() {
 			sc.addArray(value.Len(), func() {
-				value.EachWithIndex(func(elem eval.Value, idx int) {
+				value.EachWithIndex(func(elem px.Value, idx int) {
 					sc.withPath(types.WrapInteger(int64(idx)), func() { sc.toData(1, elem) })
 				})
 			})
@@ -174,7 +174,7 @@ func (sc *context) toData(level int, value eval.Value) {
 	}
 }
 
-func (sc *context) unknownToStringWithWarning(level int, value eval.Value) {
+func (sc *context) unknownToStringWithWarning(level int, value px.Value) {
 	var klass string
 	var s string
 	if rt, ok := value.(*types.RuntimeValue); ok {
@@ -184,17 +184,17 @@ func (sc *context) unknownToStringWithWarning(level int, value eval.Value) {
 		s = value.String()
 		klass = value.PType().Name()
 	}
-	eval.LogWarning(eval.SerializationUnknownConvertedToString, issue.H{`path`: sc.pathToString(), `klass`: klass, `value`: s})
+	px.LogWarning(px.SerializationUnknownConvertedToString, issue.H{`path`: sc.pathToString(), `klass`: klass, `value`: s})
 	sc.toData(level, types.WrapString(s))
 }
 
-func (sc *context) withPath(p eval.Value, doer eval.Doer) {
+func (sc *context) withPath(p px.Value, doer px.Doer) {
 	sc.path = append(sc.path, p)
 	doer()
 	sc.path = sc.path[0 : len(sc.path)-1]
 }
 
-func (sc *context) process(value eval.Value, doer eval.Doer) {
+func (sc *context) process(value px.Value, doer px.Doer) {
 	if sc.dedupLevel == NoDedup {
 		doer()
 		return
@@ -208,15 +208,15 @@ func (sc *context) process(value eval.Value, doer eval.Doer) {
 	}
 }
 
-func (sc *context) nonStringKeyedHashToData(hash eval.OrderedMap) {
+func (sc *context) nonStringKeyedHashToData(hash px.OrderedMap) {
 	if sc.config.richData {
 		sc.toKeyExtendedHash(hash)
 		return
 	}
 	sc.process(hash, func() {
 		sc.addHash(hash.Len(), func() {
-			hash.EachPair(func(key, elem eval.Value) {
-				if s, ok := key.(eval.StringValue); ok {
+			hash.EachPair(func(key, elem px.Value) {
+				if s, ok := key.(px.StringValue); ok {
 					sc.toData(2, s)
 				} else {
 					sc.unknownToStringWithWarning(2, key)
@@ -227,22 +227,22 @@ func (sc *context) nonStringKeyedHashToData(hash eval.OrderedMap) {
 	})
 }
 
-func (sc *context) addArray(len int, doer eval.Doer) {
+func (sc *context) addArray(len int, doer px.Doer) {
 	sc.refIndex++
 	sc.consumer.AddArray(len, doer)
 }
 
-func (sc *context) addHash(len int, doer eval.Doer) {
+func (sc *context) addHash(len int, doer px.Doer) {
 	sc.refIndex++
 	sc.consumer.AddHash(len, doer)
 }
 
-func (sc *context) addData(v eval.Value) {
+func (sc *context) addData(v px.Value) {
 	sc.refIndex++
 	sc.consumer.Add(v)
 }
 
-func (sc *context) valueToDataHash(value eval.Value) {
+func (sc *context) valueToDataHash(value px.Value) {
 	if _, ok := value.(*types.RuntimeValue); ok {
 		sc.unknownToStringWithWarning(1, value)
 		return
@@ -261,8 +261,8 @@ func (sc *context) valueToDataHash(value eval.Value) {
 			})
 			return
 		}
-	case eval.ObjectType:
-		tv := value.(eval.ObjectType)
+	case px.ObjectType:
+		tv := value.(px.ObjectType)
 		if sc.isKnownType(tv.Name()) {
 			sc.process(value, func() {
 				sc.addHash(2, func() {
@@ -277,8 +277,8 @@ func (sc *context) valueToDataHash(value eval.Value) {
 	}
 
 	vt := value.PType()
-	if tx, ok := value.(eval.Type); ok {
-		if ss, ok := value.(eval.SerializeAsString); ok && ss.CanSerializeAsString() {
+	if tx, ok := value.(px.Type); ok {
+		if ss, ok := value.(px.SerializeAsString); ok && ss.CanSerializeAsString() {
 			sc.process(value, func() {
 				sc.addHash(2, func() {
 					sc.toData(2, typeKey)
@@ -292,7 +292,7 @@ func (sc *context) valueToDataHash(value eval.Value) {
 		vt = tx.MetaType()
 	}
 
-	if ss, ok := value.(eval.SerializeAsString); ok && ss.CanSerializeAsString() {
+	if ss, ok := value.(px.SerializeAsString); ok && ss.CanSerializeAsString() {
 		sc.process(value, func() {
 			sc.addHash(2, func() {
 				sc.toData(2, typeKey)
@@ -304,12 +304,12 @@ func (sc *context) valueToDataHash(value eval.Value) {
 		return
 	}
 
-	if po, ok := value.(eval.PuppetObject); ok {
+	if po, ok := value.(px.PuppetObject); ok {
 		sc.process(value, func() {
 			sc.addHash(2, func() {
 				sc.toData(2, typeKey)
 				sc.withPath(typeKey, func() { sc.pcoreTypeToData(vt) })
-				po.InitHash().EachPair(func(k, v eval.Value) {
+				po.InitHash().EachPair(func(k, v px.Value) {
 					sc.toData(2, k) // No need to convert key. It's always a string
 					sc.withPath(k, func() { sc.toData(1, v) })
 				})
@@ -318,11 +318,11 @@ func (sc *context) valueToDataHash(value eval.Value) {
 		return
 	}
 
-	if ot, ok := vt.(eval.ObjectType); ok {
+	if ot, ok := vt.(px.ObjectType); ok {
 		sc.process(value, func() {
 			ai := ot.AttributesInfo()
 			attrs := ai.Attributes()
-			args := make([]eval.Value, len(attrs))
+			args := make([]px.Value, len(attrs))
 			for i, a := range attrs {
 				args[i] = a.Get(value)
 			}
@@ -349,14 +349,14 @@ func (sc *context) valueToDataHash(value eval.Value) {
 }
 
 func (sc *context) isKnownType(typeName string) bool {
-	if strings.HasPrefix(typeName, `Pcore::`) {
+	if strings.HasPrefix(typeName, `Runtime::`) {
 		return true
 	}
-	_, found := eval.Load(sc.config.context, eval.NewTypedName(eval.NsType, typeName))
+	_, found := px.Load(sc.config.context, px.NewTypedName(px.NsType, typeName))
 	return found
 }
 
-func (sc *context) pcoreTypeToData(pcoreType eval.Type) {
+func (sc *context) pcoreTypeToData(pcoreType px.Type) {
 	typeName := pcoreType.Name()
 	if sc.isKnownType(typeName) {
 		sc.toData(1, types.WrapString(typeName))
@@ -365,14 +365,14 @@ func (sc *context) pcoreTypeToData(pcoreType eval.Type) {
 	}
 }
 
-func (sc *context) toKeyExtendedHash(hash eval.OrderedMap) {
+func (sc *context) toKeyExtendedHash(hash px.OrderedMap) {
 	sc.process(hash, func() {
 		sc.addHash(2, func() {
 			sc.toData(2, typeKey)
 			sc.toData(1, hashKey)
 			sc.toData(2, valueKey)
 			sc.addArray(hash.Len()*2, func() {
-				hash.EachPair(func(key, value eval.Value) {
+				hash.EachPair(func(key, value px.Value) {
 					sc.toData(1, key)
 					sc.withPath(key, func() { sc.toData(1, value) })
 				})

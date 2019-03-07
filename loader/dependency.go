@@ -1,29 +1,29 @@
 package loader
 
-import "github.com/lyraproj/pcore/eval"
+import "github.com/lyraproj/pcore/px"
 
 type dependencyLoader struct {
 	basicLoader
-	loaders []eval.ModuleLoader
-	index   map[string]eval.ModuleLoader
+	loaders []px.ModuleLoader
+	index   map[string]px.ModuleLoader
 }
 
-func newDependencyLoader(loaders []eval.ModuleLoader) eval.Loader {
-	index := make(map[string]eval.ModuleLoader, len(loaders))
+func newDependencyLoader(loaders []px.ModuleLoader) px.Loader {
+	index := make(map[string]px.ModuleLoader, len(loaders))
 	for _, ml := range loaders {
 		index[ml.ModuleName()] = ml
 	}
 	return &dependencyLoader{
-		basicLoader: basicLoader{namedEntries: make(map[string]eval.LoaderEntry, 32)},
+		basicLoader: basicLoader{namedEntries: make(map[string]px.LoaderEntry, 32)},
 		loaders:     loaders,
 		index:       index}
 }
 
 func init() {
-	eval.NewDependencyLoader = newDependencyLoader
+	px.NewDependencyLoader = newDependencyLoader
 }
 
-func (l *dependencyLoader) LoadEntry(c eval.Context, name eval.TypedName) eval.LoaderEntry {
+func (l *dependencyLoader) LoadEntry(c px.Context, name px.TypedName) px.LoaderEntry {
 	entry := l.basicLoader.LoadEntry(c, name)
 	if entry == nil {
 		entry = l.find(c, name)
@@ -35,11 +35,11 @@ func (l *dependencyLoader) LoadEntry(c eval.Context, name eval.TypedName) eval.L
 	return entry
 }
 
-func (l *dependencyLoader) LoaderFor(moduleName string) eval.ModuleLoader {
+func (l *dependencyLoader) LoaderFor(moduleName string) px.ModuleLoader {
 	return l.index[moduleName]
 }
 
-func (l *dependencyLoader) find(c eval.Context, name eval.TypedName) eval.LoaderEntry {
+func (l *dependencyLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 	if name.IsQualified() {
 		if ml, ok := l.index[name.Parts()[0]]; ok {
 			return ml.LoadEntry(c, name)

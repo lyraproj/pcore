@@ -3,7 +3,7 @@ package hash
 import (
 	"fmt"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 // Mutable and order preserving hash with string keys and arbitrary values. Used, among other things, by the
@@ -97,7 +97,7 @@ func (h *StringHash) EachValue(consumer func(value interface{})) {
 
 // Equals compares two hashes for equality. Hashes are considered equal if the have
 // the same size and contains the same key/value associations irrespective of order
-func (h *StringHash) Equals(other interface{}, g eval.Guard) bool {
+func (h *StringHash) Equals(other interface{}, g px.Guard) bool {
 	oh, ok := other.(*StringHash)
 	if !ok || len(h.entries) != len(oh.entries) {
 		return false
@@ -105,7 +105,7 @@ func (h *StringHash) Equals(other interface{}, g eval.Guard) bool {
 
 	for _, e := range h.entries {
 		oi, ok := oh.index[e.key]
-		if !(ok && eval.GuardedEquals(e.value, oh.entries[oi].value, g)) {
+		if !(ok && px.GuardedEquals(e.value, oh.entries[oi].value, g)) {
 			return false
 		}
 	}

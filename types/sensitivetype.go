@@ -6,22 +6,22 @@ import (
 	"github.com/lyraproj/pcore/utils"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 var sensitiveTypeDefault = &SensitiveType{typ: anyTypeDefault}
 
 type (
 	SensitiveType struct {
-		typ eval.Type
+		typ px.Type
 	}
 
 	SensitiveValue struct {
-		value eval.Value
+		value px.Value
 	}
 )
 
-var SensitiveMetaType eval.ObjectType
+var SensitiveMetaType px.ObjectType
 
 func init() {
 	SensitiveMetaType = newObjectType(`Pcore::SensitiveType`,
@@ -32,14 +32,14 @@ func init() {
 			value => Any
 		},
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newSensitiveType2(args...)
 		})
 
 	newGoConstructor(`Sensitive`,
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Any`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				return WrapSensitive(args[0])
 			})
 		})
@@ -49,19 +49,19 @@ func DefaultSensitiveType() *SensitiveType {
 	return sensitiveTypeDefault
 }
 
-func NewSensitiveType(containedType eval.Type) *SensitiveType {
+func NewSensitiveType(containedType px.Type) *SensitiveType {
 	if containedType == nil || containedType == anyTypeDefault {
 		return DefaultSensitiveType()
 	}
 	return &SensitiveType{containedType}
 }
 
-func newSensitiveType2(args ...eval.Value) *SensitiveType {
+func newSensitiveType2(args ...px.Value) *SensitiveType {
 	switch len(args) {
 	case 0:
 		return DefaultSensitiveType()
 	case 1:
-		if containedType, ok := args[0].(eval.Type); ok {
+		if containedType, ok := args[0].(px.Type); ok {
 			return NewSensitiveType(containedType)
 		}
 		panic(NewIllegalArgumentType(`Sensitive[]`, 0, `Type`, args[0]))
@@ -70,45 +70,45 @@ func newSensitiveType2(args ...eval.Value) *SensitiveType {
 	}
 }
 
-func (t *SensitiveType) ContainedType() eval.Type {
+func (t *SensitiveType) ContainedType() px.Type {
 	return t.typ
 }
 
-func (t *SensitiveType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *SensitiveType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	t.typ.Accept(v, g)
 }
 
-func (t *SensitiveType) Default() eval.Type {
+func (t *SensitiveType) Default() px.Type {
 	return DefaultSensitiveType()
 }
 
-func (t *SensitiveType) Equals(o interface{}, g eval.Guard) bool {
+func (t *SensitiveType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*SensitiveType); ok {
 		return t.typ.Equals(ot.typ, g)
 	}
 	return false
 }
 
-func (t *SensitiveType) Generic() eval.Type {
-	return NewSensitiveType(eval.GenericType(t.typ))
+func (t *SensitiveType) Generic() px.Type {
+	return NewSensitiveType(px.GenericType(t.typ))
 }
 
-func (t *SensitiveType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *SensitiveType) IsAssignable(o px.Type, g px.Guard) bool {
 	if ot, ok := o.(*SensitiveType); ok {
 		return GuardedIsAssignable(t.typ, ot.typ, g)
 	}
 	return false
 }
 
-func (t *SensitiveType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *SensitiveType) IsInstance(o px.Value, g px.Guard) bool {
 	if sv, ok := o.(*SensitiveValue); ok {
 		return GuardedIsInstance(t.typ, sv.Unwrap(), g)
 	}
 	return false
 }
 
-func (t *SensitiveType) MetaType() eval.ObjectType {
+func (t *SensitiveType) MetaType() px.ObjectType {
 	return SensitiveMetaType
 }
 
@@ -116,14 +116,14 @@ func (t *SensitiveType) Name() string {
 	return `Sensitive`
 }
 
-func (t *SensitiveType) Parameters() []eval.Value {
+func (t *SensitiveType) Parameters() []px.Value {
 	if t.typ == DefaultAnyType() {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
-	return []eval.Value{t.typ}
+	return []px.Value{t.typ}
 }
 
-func (t *SensitiveType) Resolve(c eval.Context) eval.Type {
+func (t *SensitiveType) Resolve(c px.Context) px.Type {
 	t.typ = resolve(c, t.typ)
 	return t
 }
@@ -137,37 +137,37 @@ func (t *SensitiveType) SerializationString() string {
 }
 
 func (t *SensitiveType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *SensitiveType) PType() eval.Type {
+func (t *SensitiveType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func (t *SensitiveType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *SensitiveType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func WrapSensitive(val eval.Value) *SensitiveValue {
+func WrapSensitive(val px.Value) *SensitiveValue {
 	return &SensitiveValue{val}
 }
 
-func (s *SensitiveValue) Equals(o interface{}, g eval.Guard) bool {
+func (s *SensitiveValue) Equals(o interface{}, g px.Guard) bool {
 	return false
 }
 
 func (s *SensitiveValue) String() string {
-	return eval.ToString2(s, None)
+	return px.ToString2(s, None)
 }
 
-func (s *SensitiveValue) ToString(b io.Writer, f eval.FormatContext, g eval.RDetect) {
+func (s *SensitiveValue) ToString(b io.Writer, f px.FormatContext, g px.RDetect) {
 	utils.WriteString(b, `Sensitive [value redacted]`)
 }
 
-func (s *SensitiveValue) PType() eval.Type {
+func (s *SensitiveValue) PType() px.Type {
 	return NewSensitiveType(s.Unwrap().PType())
 }
 
-func (s *SensitiveValue) Unwrap() eval.Value {
+func (s *SensitiveValue) Unwrap() px.Value {
 	return s.value
 }

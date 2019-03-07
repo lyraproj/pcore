@@ -2,39 +2,39 @@ package serialization
 
 import (
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 )
 
 type dsContext struct {
 	types.BasicCollector
 	allowUnresolved bool
-	context         eval.Context
-	newTypes        []eval.Type
-	value           eval.Value
-	converted       map[eval.Value]eval.Value
+	context         px.Context
+	newTypes        []px.Type
+	value           px.Value
+	converted       map[px.Value]px.Value
 }
 
 // NewDeserializer creates a new Collector that consumes input and creates a RichData Value
-func NewDeserializer(ctx eval.Context, options eval.OrderedMap) eval.Collector {
+func NewDeserializer(ctx px.Context, options px.OrderedMap) px.Collector {
 	ds := &dsContext{
 		context:         ctx,
-		newTypes:        make([]eval.Type, 0, 11),
-		converted:       make(map[eval.Value]eval.Value, 11),
-		allowUnresolved: options.Get5(`allow_unresolved`, types.BooleanFalse).(eval.BooleanValue).Bool()}
+		newTypes:        make([]px.Type, 0, 11),
+		converted:       make(map[px.Value]px.Value, 11),
+		allowUnresolved: options.Get5(`allow_unresolved`, types.BooleanFalse).(px.BooleanValue).Bool()}
 	ds.Init()
 	return ds
 }
 
-func (ds *dsContext) Value() eval.Value {
+func (ds *dsContext) Value() px.Value {
 	if ds.value == nil {
 		ds.value = ds.convert(ds.BasicCollector.Value())
-		eval.AddTypes(ds.context, ds.newTypes...)
+		px.AddTypes(ds.context, ds.newTypes...)
 	}
 	return ds.value
 }
 
-func (ds *dsContext) convert(value eval.Value) eval.Value {
+func (ds *dsContext) convert(value px.Value) px.Value {
 	if cv, ok := ds.converted[value]; ok {
 		return cv
 	}
@@ -52,9 +52,9 @@ func (ds *dsContext) convert(value eval.Value) eval.Value {
 				default:
 					v := ds.convertOther(hash, pcoreType)
 					switch v.(type) {
-					case eval.ObjectType, eval.TypeSet, *types.TypeAliasType:
+					case px.ObjectType, px.TypeSet, *types.TypeAliasType:
 						// Ensure that type is made known to current loader
-						rt := v.(eval.ResolvableType)
+						rt := v.(px.ResolvableType)
 						n := rt.Name()
 						// Duplicates can be found here if serialization was made with dedupLevel NoDedup
 						for _, nt := range ds.newTypes {
@@ -62,15 +62,15 @@ func (ds *dsContext) convert(value eval.Value) eval.Value {
 								return nt
 							}
 						}
-						tn := eval.NewTypedName(eval.NsType, n)
-						if lt, ok := eval.Load(ds.context, tn); ok {
+						tn := px.NewTypedName(px.NsType, n)
+						if lt, ok := px.Load(ds.context, tn); ok {
 							t := rt.Resolve(ds.context)
 							if t.Equals(lt, nil) {
-								return lt.(eval.Value)
+								return lt.(px.Value)
 							}
-							panic(eval.Error(eval.AttemptToRedefine, issue.H{`name`: tn}))
+							panic(px.Error(px.AttemptToRedefine, issue.H{`name`: tn}))
 						}
-						ds.newTypes = append(ds.newTypes, v.(eval.Type))
+						ds.newTypes = append(ds.newTypes, v.(px.Type))
 					}
 					return v
 				}
@@ -79,7 +79,7 @@ func (ds *dsContext) convert(value eval.Value) eval.Value {
 
 		return types.BuildHash(hash.Len(), func(h *types.HashValue, entries []*types.HashEntry) []*types.HashEntry {
 			ds.converted[value] = h
-			hash.EachPair(func(k, v eval.Value) {
+			hash.EachPair(func(k, v px.Value) {
 				entries = append(entries, types.WrapHashEntry(ds.convert(k), ds.convert(v)))
 			})
 			return entries
@@ -87,17 +87,17 @@ func (ds *dsContext) convert(value eval.Value) eval.Value {
 	}
 
 	if array, ok := value.(*types.ArrayValue); ok {
-		return types.BuildArray(array.Len(), func(a *types.ArrayValue, elements []eval.Value) []eval.Value {
+		return types.BuildArray(array.Len(), func(a *types.ArrayValue, elements []px.Value) []px.Value {
 			ds.converted[value] = a
-			array.Each(func(v eval.Value) { elements = append(elements, ds.convert(v)) })
+			array.Each(func(v px.Value) { elements = append(elements, ds.convert(v)) })
 			return elements
 		})
 	}
 	return value
 }
 
-func (ds *dsContext) convertHash(hv eval.OrderedMap) eval.Value {
-	value := hv.Get5(PcoreValueKey, eval.EmptyArray).(eval.List)
+func (ds *dsContext) convertHash(hv px.OrderedMap) px.Value {
+	value := hv.Get5(PcoreValueKey, px.EmptyArray).(px.List)
 	return types.BuildHash(value.Len(), func(hash *types.HashValue, entries []*types.HashEntry) []*types.HashEntry {
 		ds.converted[hv] = hash
 		for idx := 0; idx < value.Len(); idx += 2 {
@@ -107,16 +107,16 @@ func (ds *dsContext) convertHash(hv eval.OrderedMap) eval.Value {
 	})
 }
 
-func (ds *dsContext) convertSensitive(hash eval.OrderedMap) eval.Value {
-	cv := types.WrapSensitive(ds.convert(hash.Get5(PcoreValueKey, eval.Undef)))
+func (ds *dsContext) convertSensitive(hash px.OrderedMap) px.Value {
+	cv := types.WrapSensitive(ds.convert(hash.Get5(PcoreValueKey, px.Undef)))
 	ds.converted[hash] = cv
 	return cv
 }
 
-func (ds *dsContext) convertOther(hash eval.OrderedMap, typeValue eval.Value) eval.Value {
-	value := hash.Get6(PcoreValueKey, func() eval.Value {
-		return hash.RejectPairs(func(k, v eval.Value) bool {
-			if s, ok := k.(eval.StringValue); ok {
+func (ds *dsContext) convertOther(hash px.OrderedMap, typeValue px.Value) px.Value {
+	value := hash.Get6(PcoreValueKey, func() px.Value {
+		return hash.RejectPairs(func(k, v px.Value) bool {
+			if s, ok := k.(px.StringValue); ok {
 				return s.String() == PcoreTypeKey
 			}
 			return false
@@ -126,57 +126,57 @@ func (ds *dsContext) convertOther(hash eval.OrderedMap, typeValue eval.Value) ev
 		typ := ds.convert(typeHash)
 		if _, ok := typ.(*types.HashValue); ok {
 			if !ds.allowUnresolved {
-				panic(eval.Error(eval.UnableToDeserializeType, issue.H{`hash`: typ.String()}))
+				panic(px.Error(px.UnableToDeserializeType, issue.H{`hash`: typ.String()}))
 			}
 			return hash
 		}
-		return ds.pcoreTypeHashToValue(typ.(eval.Type), hash, value)
+		return ds.pcoreTypeHashToValue(typ.(px.Type), hash, value)
 	}
 	typ := ds.context.ParseType(typeValue)
 	if tr, ok := typ.(*types.TypeReferenceType); ok {
 		if !ds.allowUnresolved {
-			panic(eval.Error(eval.UnresolvedType, issue.H{`typeString`: tr.String()}))
+			panic(px.Error(px.UnresolvedType, issue.H{`typeString`: tr.String()}))
 		}
 		return hash
 	}
-	return ds.pcoreTypeHashToValue(typ.(eval.Type), hash, value)
+	return ds.pcoreTypeHashToValue(typ.(px.Type), hash, value)
 }
 
-func (ds *dsContext) pcoreTypeHashToValue(typ eval.Type, key, value eval.Value) eval.Value {
-	var ov eval.Value
+func (ds *dsContext) pcoreTypeHashToValue(typ px.Type, key, value px.Value) px.Value {
+	var ov px.Value
 	if hash, ok := value.(*types.HashValue); ok {
 		if ov, ok = ds.allocate(typ); ok {
 			ds.converted[key] = ov
-			ov.(eval.Object).InitFromHash(ds.context, ds.convert(hash).(*types.HashValue))
+			ov.(px.Object).InitFromHash(ds.context, ds.convert(hash).(*types.HashValue))
 			return ov
 		}
 
 		hash = ds.convert(hash).(*types.HashValue)
-		if ot, ok := typ.(eval.ObjectType); ok {
+		if ot, ok := typ.(px.ObjectType); ok {
 			if ot.HasHashConstructor() {
-				ov = eval.New(ds.context, typ, hash)
+				ov = px.New(ds.context, typ, hash)
 			} else {
-				ov = eval.New(ds.context, typ, ot.AttributesInfo().PositionalFromHash(hash)...)
+				ov = px.New(ds.context, typ, ot.AttributesInfo().PositionalFromHash(hash)...)
 			}
 		} else {
-			ov = eval.New(ds.context, typ, hash)
+			ov = px.New(ds.context, typ, hash)
 		}
 	} else {
-		if str, ok := value.(eval.StringValue); ok {
-			ov = eval.New(ds.context, typ, str)
+		if str, ok := value.(px.StringValue); ok {
+			ov = px.New(ds.context, typ, str)
 		} else {
-			panic(eval.Error(eval.UnableToDeserializeValue, issue.H{`type`: typ.Name(), `arg_type`: value.PType().Name()}))
+			panic(px.Error(px.UnableToDeserializeValue, issue.H{`type`: typ.Name(), `arg_type`: value.PType().Name()}))
 		}
 	}
 	ds.converted[key] = ov
 	return ov
 }
 
-func (ds *dsContext) allocate(typ eval.Type) (eval.Object, bool) {
-	if allocator, ok := eval.Load(ds.context, eval.NewTypedName(eval.NsAllocator, typ.Name())); ok {
-		return allocator.(eval.Lambda).Call(nil, nil).(eval.Object), true
+func (ds *dsContext) allocate(typ px.Type) (px.Object, bool) {
+	if allocator, ok := px.Load(ds.context, px.NewTypedName(px.NsAllocator, typ.Name())); ok {
+		return allocator.(px.Lambda).Call(nil, nil).(px.Object), true
 	}
-	if ot, ok := typ.(eval.ObjectType); ok && ot.Name() == `Pcore::ObjectType` {
+	if ot, ok := typ.(px.ObjectType); ok && ot.Name() == `Pcore::ObjectType` {
 		return types.AllocObjectType(), true
 	}
 	return nil, false

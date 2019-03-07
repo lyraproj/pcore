@@ -1,14 +1,15 @@
 package types
 
 import (
-	"github.com/lyraproj/pcore/eval"
 	"reflect"
 	"time"
+
+	"github.com/lyraproj/pcore/px"
 )
 
 // This init function must be run last in the type package. Hence the file name
 func init() {
-	primitivePTypes = map[reflect.Kind]eval.Type{
+	primitivePTypes = map[reflect.Kind]px.Type{
 		reflect.String:  DefaultStringType(),
 		reflect.Int:     DefaultIntegerType(),
 		reflect.Int8:    integerType8,
@@ -25,7 +26,7 @@ func init() {
 		reflect.Bool:    DefaultBooleanType(),
 	}
 
-	coreTypes = map[string]eval.Type{
+	coreTypes = map[string]px.Type{
 		`Annotation`:    DefaultAnnotationType(),
 		`Any`:           DefaultAnyType(),
 		`Array`:         DefaultArrayType(),
@@ -84,35 +85,35 @@ func init() {
 		`Variant`:       DefaultVariantType(),
 	}
 
-	wellKnown = map[reflect.Type]eval.Type{
-		reflect.TypeOf(&ArrayValue{}):                    DefaultArrayType(),
-		reflect.TypeOf((*eval.List)(nil)).Elem():         DefaultArrayType(),
-		reflect.TypeOf(&BinaryValue{}):                   DefaultBinaryType(),
-		reflect.TypeOf(floatValue(0.0)):                  DefaultFloatType(),
-		reflect.TypeOf((*eval.FloatValue)(nil)).Elem():   DefaultFloatType(),
-		reflect.TypeOf(&HashValue{}):                     DefaultHashType(),
-		reflect.TypeOf((*eval.OrderedMap)(nil)).Elem():   DefaultHashType(),
-		reflect.TypeOf(integerValue(0)):                  DefaultIntegerType(),
-		reflect.TypeOf((*eval.IntegerValue)(nil)).Elem(): DefaultIntegerType(),
-		reflect.TypeOf(&RegexpValue{}):                   DefaultRegexpType(),
-		reflect.TypeOf(&SemVerValue{}):                   DefaultSemVerType(),
-		reflect.TypeOf(&SensitiveValue{}):                DefaultSensitiveType(),
-		reflect.TypeOf(stringValue(``)):                  DefaultStringType(),
-		reflect.TypeOf((*eval.StringValue)(nil)).Elem():  DefaultStringType(),
-		reflect.TypeOf(TimespanValue(0)):                 DefaultTimespanType(),
-		reflect.TypeOf(time.Duration(0)):                 DefaultTimespanType(),
-		reflect.TypeOf(time.Time{}):                      DefaultTimestampType(),
-		reflect.TypeOf(&TimestampValue{}):                DefaultTimestampType(),
-		evalValueType:                                    DefaultAnyType(),
-		reflect.TypeOf((*eval.PuppetObject)(nil)).Elem(): DefaultObjectType(),
-		reflect.TypeOf((*eval.Object)(nil)).Elem():       DefaultObjectType(),
-		evalObjectTypeType:                               ObjectMetaType,
-		reflect.TypeOf(&TypeType{}):                      DefaultTypeType(),
-		evalTypeType:                                     DefaultTypeType(),
-		reflect.TypeOf(&typeSet{}):                       TypeSetMetaType,
-		evalTypeSetType:                                  TypeSetMetaType,
-		reflect.TypeOf((*eval.TypedName)(nil)).Elem():    TypedNameMetaType,
-		reflect.TypeOf(&UndefValue{}):                    DefaultUndefType(),
-		reflect.TypeOf(&UriValue{}):                      DefaultUriType(),
+	wellKnown = map[reflect.Type]px.Type{
+		reflect.TypeOf(&ArrayValue{}):                  DefaultArrayType(),
+		reflect.TypeOf((*px.List)(nil)).Elem():         DefaultArrayType(),
+		reflect.TypeOf(&BinaryValue{}):                 DefaultBinaryType(),
+		reflect.TypeOf(floatValue(0.0)):                DefaultFloatType(),
+		reflect.TypeOf((*px.FloatValue)(nil)).Elem():   DefaultFloatType(),
+		reflect.TypeOf(&HashValue{}):                   DefaultHashType(),
+		reflect.TypeOf((*px.OrderedMap)(nil)).Elem():   DefaultHashType(),
+		reflect.TypeOf(integerValue(0)):                DefaultIntegerType(),
+		reflect.TypeOf((*px.IntegerValue)(nil)).Elem(): DefaultIntegerType(),
+		reflect.TypeOf(&RegexpValue{}):                 DefaultRegexpType(),
+		reflect.TypeOf(&SemVerValue{}):                 DefaultSemVerType(),
+		reflect.TypeOf(&SensitiveValue{}):              DefaultSensitiveType(),
+		reflect.TypeOf(stringValue(``)):                DefaultStringType(),
+		reflect.TypeOf((*px.StringValue)(nil)).Elem():  DefaultStringType(),
+		reflect.TypeOf(TimespanValue(0)):               DefaultTimespanType(),
+		reflect.TypeOf(time.Duration(0)):               DefaultTimespanType(),
+		reflect.TypeOf(time.Time{}):                    DefaultTimestampType(),
+		reflect.TypeOf(&TimestampValue{}):              DefaultTimestampType(),
+		evalValueType:                                  DefaultAnyType(),
+		reflect.TypeOf((*px.PuppetObject)(nil)).Elem(): DefaultObjectType(),
+		reflect.TypeOf((*px.Object)(nil)).Elem():       DefaultObjectType(),
+		evalObjectTypeType:                             ObjectMetaType,
+		reflect.TypeOf(&TypeType{}):                    DefaultTypeType(),
+		evalTypeType:                                   DefaultTypeType(),
+		reflect.TypeOf(&typeSet{}):                     TypeSetMetaType,
+		evalTypeSetType:                                TypeSetMetaType,
+		reflect.TypeOf((*px.TypedName)(nil)).Elem():    TypedNameMetaType,
+		reflect.TypeOf(&UndefValue{}):                  DefaultUndefType(),
+		reflect.TypeOf(&UriValue{}):                    DefaultUriType(),
 	}
 }

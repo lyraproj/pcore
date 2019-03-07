@@ -8,44 +8,44 @@ import (
 	"strconv"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type NumericType struct{}
 
 var numericTypeDefault = &NumericType{}
 
-var NumericMetaType eval.ObjectType
+var NumericMetaType px.ObjectType
 
 func init() {
-	NumericMetaType = newObjectType(`Pcore::NumericType`, `Pcore::ScalarDataType {}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+	NumericMetaType = newObjectType(`Pcore::NumericType`, `Pcore::ScalarDataType {}`, func(ctx px.Context, args []px.Value) px.Value {
 		return DefaultNumericType()
 	})
 
 	newGoConstructor2(`Numeric`,
-		func(t eval.LocalTypes) {
+		func(t px.LocalTypes) {
 			t.Type(`Convertible`, `Variant[Numeric, Boolean, Pattern[/`+FloatPattern+`/], Timespan, Timestamp]`)
 			t.Type(`NamedArgs`, `Struct[from => Convertible, Optional[abs] => Boolean]`)
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`NamedArgs`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				return numberFromNamedArgs(args, true)
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Convertible`)
 			d.OptionalParam(`Boolean`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				return numberFromPositionalArgs(args, true)
 			})
 		},
 	)
 }
 
-func numberFromPositionalArgs(args []eval.Value, tryInt bool) eval.NumericValue {
+func numberFromPositionalArgs(args []px.Value, tryInt bool) px.NumericValue {
 	n := fromConvertible(args[0], tryInt)
 	if len(args) > 1 && args[1].(booleanValue).Bool() {
 		if i, ok := n.(integerValue); ok {
@@ -57,9 +57,9 @@ func numberFromPositionalArgs(args []eval.Value, tryInt bool) eval.NumericValue 
 	return n
 }
 
-func numberFromNamedArgs(args []eval.Value, tryInt bool) eval.NumericValue {
+func numberFromNamedArgs(args []px.Value, tryInt bool) px.NumericValue {
 	h := args[0].(*HashValue)
-	n := fromConvertible(h.Get5(`from`, eval.Undef), tryInt)
+	n := fromConvertible(h.Get5(`from`, px.Undef), tryInt)
 	a := h.Get5(`abs`, nil)
 	if a != nil && a.(booleanValue).Bool() {
 		if i, ok := n.(integerValue); ok {
@@ -75,16 +75,16 @@ func DefaultNumericType() *NumericType {
 	return numericTypeDefault
 }
 
-func (t *NumericType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *NumericType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *NumericType) Equals(o interface{}, g eval.Guard) bool {
+func (t *NumericType) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*NumericType)
 	return ok
 }
 
-func (t *NumericType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *NumericType) IsAssignable(o px.Type, g px.Guard) bool {
 	switch o.(type) {
 	case *IntegerType, *FloatType:
 		return true
@@ -93,7 +93,7 @@ func (t *NumericType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	}
 }
 
-func (t *NumericType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *NumericType) IsInstance(o px.Value, g px.Guard) bool {
 	switch o.PType().(type) {
 	case *FloatType, *IntegerType:
 		return true
@@ -102,7 +102,7 @@ func (t *NumericType) IsInstance(o eval.Value, g eval.Guard) bool {
 	}
 }
 
-func (t *NumericType) MetaType() eval.ObjectType {
+func (t *NumericType) MetaType() px.ObjectType {
 	return NumericMetaType
 }
 
@@ -110,7 +110,7 @@ func (t *NumericType) Name() string {
 	return `Numeric`
 }
 
-func (t *NumericType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *NumericType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return reflect.TypeOf(float64(0.0)), true
 }
 
@@ -123,18 +123,18 @@ func (t *NumericType) SerializationString() string {
 }
 
 func (t *NumericType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *NumericType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *NumericType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *NumericType) PType() eval.Type {
+func (t *NumericType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func fromConvertible(c eval.Value, allowInt bool) eval.NumericValue {
+func fromConvertible(c px.Value, allowInt bool) px.NumericValue {
 	switch c := c.(type) {
 	case integerValue:
 		if allowInt {
@@ -150,7 +150,7 @@ func fromConvertible(c eval.Value, allowInt bool) eval.NumericValue {
 			return integerValue(c.Int())
 		}
 		return floatValue(c.Float())
-	case eval.NumericValue:
+	case px.NumericValue:
 		return c
 	case stringValue:
 		s := c.String()

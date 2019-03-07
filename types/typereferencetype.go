@@ -5,14 +5,14 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type TypeReferenceType struct {
 	typeString string
 }
 
-var TypeReferenceMetaType eval.ObjectType
+var TypeReferenceMetaType px.ObjectType
 
 func init() {
 	TypeReferenceMetaType = newObjectType(`Pcore::TypeReference`,
@@ -20,7 +20,7 @@ func init() {
 	attributes => {
 		type_string => String[1]
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newTypeReferenceType2(args...)
 		})
 }
@@ -33,7 +33,7 @@ func NewTypeReferenceType(typeString string) *TypeReferenceType {
 	return &TypeReferenceType{typeString}
 }
 
-func newTypeReferenceType2(args ...eval.Value) *TypeReferenceType {
+func newTypeReferenceType2(args ...px.Value) *TypeReferenceType {
 	switch len(args) {
 	case 0:
 		return DefaultTypeReferenceType()
@@ -47,22 +47,22 @@ func newTypeReferenceType2(args ...eval.Value) *TypeReferenceType {
 	}
 }
 
-func (t *TypeReferenceType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *TypeReferenceType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *TypeReferenceType) Default() eval.Type {
+func (t *TypeReferenceType) Default() px.Type {
 	return typeReferenceTypeDefault
 }
 
-func (t *TypeReferenceType) Equals(o interface{}, g eval.Guard) bool {
+func (t *TypeReferenceType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*TypeReferenceType); ok {
 		return t.typeString == ot.typeString
 	}
 	return false
 }
 
-func (t *TypeReferenceType) Get(key string) (eval.Value, bool) {
+func (t *TypeReferenceType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `type_string`:
 		return stringValue(t.typeString), true
@@ -71,16 +71,16 @@ func (t *TypeReferenceType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *TypeReferenceType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *TypeReferenceType) IsAssignable(o px.Type, g px.Guard) bool {
 	tr, ok := o.(*TypeReferenceType)
 	return ok && t.typeString == tr.typeString
 }
 
-func (t *TypeReferenceType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *TypeReferenceType) IsInstance(o px.Value, g px.Guard) bool {
 	return false
 }
 
-func (t *TypeReferenceType) MetaType() eval.ObjectType {
+func (t *TypeReferenceType) MetaType() px.ObjectType {
 	return TypeReferenceMetaType
 }
 
@@ -97,32 +97,32 @@ func (t *TypeReferenceType) SerializationString() string {
 }
 
 func (t *TypeReferenceType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *TypeReferenceType) Parameters() []eval.Value {
+func (t *TypeReferenceType) Parameters() []px.Value {
 	if *t == *typeReferenceTypeDefault {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
-	return []eval.Value{stringValue(t.typeString)}
+	return []px.Value{stringValue(t.typeString)}
 }
 
-func (t *TypeReferenceType) Resolve(c eval.Context) eval.Type {
+func (t *TypeReferenceType) Resolve(c px.Context) px.Type {
 	r := c.ParseType2(t.typeString)
-	if rt, ok := r.(eval.ResolvableType); ok {
+	if rt, ok := r.(px.ResolvableType); ok {
 		if tr, ok := rt.(*TypeReferenceType); ok && t.typeString == tr.typeString {
-			panic(eval.Error(eval.UnresolvedType, issue.H{`typeString`: t.typeString}))
+			panic(px.Error(px.UnresolvedType, issue.H{`typeString`: t.typeString}))
 		}
 		r = rt.Resolve(c)
 	}
 	return r
 }
 
-func (t *TypeReferenceType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *TypeReferenceType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *TypeReferenceType) PType() eval.Type {
+func (t *TypeReferenceType) PType() px.Type {
 	return &TypeType{t}
 }
 

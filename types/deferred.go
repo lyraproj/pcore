@@ -4,18 +4,18 @@ import (
 	"io"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
-var DeferredMetaType eval.ObjectType
+var DeferredMetaType px.ObjectType
 
-var DeferredResolve = func(d Deferred, c eval.Context) eval.Value {
+var DeferredResolve = func(d Deferred, c px.Context) px.Value {
 	fn := d.Name()
-	args := d.Arguments().AppendTo(make([]eval.Value, 0, d.Arguments().Len()))
+	args := d.Arguments().AppendTo(make([]px.Value, 0, d.Arguments().Len()))
 	for i, a := range args {
 		args[i] = ResolveDeferred(c, a)
 	}
-	return eval.Call(c, fn, args, nil)
+	return px.Call(c, fn, args, nil)
 }
 
 func init() {
@@ -25,22 +25,22 @@ func init() {
       name  => { type => Pattern[/\A[$]?[a-z][0-9A-Za-z_]*(?:::[a-z][0-9A-Za-z_]*)*\z/] },
       arguments => { type => Optional[Array[Any]], value => undef},
     }}`,
-		func(ctx eval.Context, args []eval.Value) eval.Value {
+		func(ctx px.Context, args []px.Value) px.Value {
 			return newDeferred2(args...)
 		},
-		func(ctx eval.Context, args []eval.Value) eval.Value {
+		func(ctx px.Context, args []px.Value) px.Value {
 			return newDeferredFromHash(args[0].(*HashValue))
 		})
 }
 
 type Deferred interface {
-	eval.Value
+	px.Value
 
 	Name() string
 
 	Arguments() *ArrayValue
 
-	Resolve(c eval.Context) eval.Value
+	Resolve(c px.Context) px.Value
 }
 
 type deferred struct {
@@ -48,11 +48,11 @@ type deferred struct {
 	arguments *ArrayValue
 }
 
-func NewDeferred(name string, arguments ...eval.Value) *deferred {
+func NewDeferred(name string, arguments ...px.Value) *deferred {
 	return &deferred{name, WrapValues(arguments)}
 }
 
-func newDeferred2(args ...eval.Value) *deferred {
+func newDeferred2(args ...px.Value) *deferred {
 	argc := len(args)
 	if argc < 1 || argc > 2 {
 		panic(errors.NewIllegalArgumentCount(`deferred[]`, `1 - 2`, argc))
@@ -70,8 +70,8 @@ func newDeferred2(args ...eval.Value) *deferred {
 }
 
 func newDeferredFromHash(hash *HashValue) *deferred {
-	name := hash.Get5(`name`, eval.EmptyString).String()
-	arguments := hash.Get5(`arguments`, eval.EmptyArray).(*ArrayValue)
+	name := hash.Get5(`name`, px.EmptyString).String()
+	arguments := hash.Get5(`arguments`, px.EmptyArray).(*ArrayValue)
 	return &deferred{name, arguments}
 }
 
@@ -84,26 +84,26 @@ func (e *deferred) Arguments() *ArrayValue {
 }
 
 func (e *deferred) String() string {
-	return eval.ToString(e)
+	return px.ToString(e)
 }
 
-func (e *deferred) Equals(other interface{}, guard eval.Guard) bool {
+func (e *deferred) Equals(other interface{}, guard px.Guard) bool {
 	if o, ok := other.(*deferred); ok {
 		return e.name == o.name &&
-			eval.GuardedEquals(e.arguments, o.arguments, guard)
+			px.GuardedEquals(e.arguments, o.arguments, guard)
 	}
 	return false
 }
 
-func (e *deferred) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (e *deferred) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	ObjectToString(e, s, b, g)
 }
 
-func (e *deferred) PType() eval.Type {
+func (e *deferred) PType() px.Type {
 	return DeferredMetaType
 }
 
-func (e *deferred) Get(key string) (value eval.Value, ok bool) {
+func (e *deferred) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `name`:
 		return stringValue(e.name), true
@@ -113,26 +113,26 @@ func (e *deferred) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (e *deferred) InitHash() eval.OrderedMap {
+func (e *deferred) InitHash() px.OrderedMap {
 	return WrapHash([]*HashEntry{WrapHashEntry2(`name`, stringValue(e.name)), WrapHashEntry2(`arguments`, e.arguments)})
 }
 
-func (e *deferred) Resolve(c eval.Context) eval.Value {
+func (e *deferred) Resolve(c px.Context) px.Value {
 	return DeferredResolve(e, c)
 }
 
 // ResolveDeferred will resolve all occurrences of a DeferredValue in its
 // given argument. Array and Hash arguments will be resolved recursively.
-func ResolveDeferred(c eval.Context, a eval.Value) eval.Value {
+func ResolveDeferred(c px.Context, a px.Value) px.Value {
 	switch a := a.(type) {
 	case Deferred:
 		return a.Resolve(c)
 	case *ArrayValue:
-		return a.Map(func(v eval.Value) eval.Value {
+		return a.Map(func(v px.Value) px.Value {
 			return ResolveDeferred(c, v)
 		})
 	case *HashValue:
-		return a.MapEntries(func(v eval.MapEntry) eval.MapEntry {
+		return a.MapEntries(func(v px.MapEntry) px.MapEntry {
 			return WrapHashEntry(ResolveDeferred(c, v.Key()), ResolveDeferred(c, v.Value()))
 		})
 	default:

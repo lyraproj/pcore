@@ -1,20 +1,19 @@
-package eval_test
+package px_test
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/pcore"
+
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 	"github.com/lyraproj/semver/semver"
-
-	// Initialize pcore
-	_ "github.com/lyraproj/pcore/pcore"
 )
 
 func ExampleContext_ParseType2() {
-	eval.Puppet.Do(func(c eval.Context) {
+	pcore.Do(func(c px.Context) {
 		t := c.ParseType2(`Object[
       name => 'Address',
       attributes => {
@@ -28,8 +27,8 @@ func ExampleContext_ParseType2() {
         }
       }
     ]`)
-		eval.AddTypes(c, t)
-		v := eval.New(c, t, eval.Wrap(c, map[string]string{`lineOne`: `30 East 60th Street`}))
+		px.AddTypes(c, t)
+		v := px.New(c, t, px.Wrap(c, map[string]string{`lineOne`: `30 East 60th Street`}))
 		fmt.Println(v.String())
 	})
 
@@ -38,10 +37,10 @@ func ExampleContext_ParseType2() {
 
 func ExampleWrap() {
 	// Wrap native Go types
-	str := eval.Wrap(nil, "hello")
-	idx := eval.Wrap(nil, 23)
-	bl := eval.Wrap(nil, true)
-	und := eval.Undef
+	str := px.Wrap(nil, "hello")
+	idx := px.Wrap(nil, 23)
+	bl := px.Wrap(nil, true)
+	und := px.Undef
 
 	fmt.Printf("'%s' is a %s\n", str, str.PType())
 	fmt.Printf("'%s' is a %s\n", idx, idx.PType())
@@ -57,7 +56,7 @@ func ExampleWrap() {
 
 func ExampleWrap_slice() {
 	// Wrap native Go slice
-	arr := eval.Wrap(nil, []interface{}{1, "2", true, nil, "hello"})
+	arr := px.Wrap(nil, []interface{}{1, "2", true, nil, "hello"})
 	fmt.Printf("%s is an %s\n", arr, arr.PType())
 
 	// Output:
@@ -66,13 +65,13 @@ func ExampleWrap_slice() {
 
 func ExampleWrap_hash() {
 	// Wrap native Go hash
-	hsh := eval.Wrap(nil, map[string]interface{}{
+	hsh := px.Wrap(nil, map[string]interface{}{
 		"first":  1,
 		"second": 20,
 		"third":  "three",
 		"nested": []string{"hello", "world"},
 	})
-	nst, _ := hsh.(eval.OrderedMap).Get4("nested")
+	nst, _ := hsh.(px.OrderedMap).Get4("nested")
 	fmt.Printf("'%s' is a %s\n", hsh, hsh.PType())
 	fmt.Printf("hsh['nested'] == %s, an instance of %s\n", nst, nst.PType())
 
@@ -81,8 +80,8 @@ func ExampleWrap_hash() {
 	// hsh['nested'] == ['hello', 'world'], an instance of Array[Enum['hello', 'world'], 2, 2]
 }
 
-func ExamplePcore_parseType() {
-	eval.Puppet.Do(func(ctx eval.Context) {
+func ExampleContext_ParseType2_enum() {
+	pcore.Do(func(ctx px.Context) {
 		pcoreType := ctx.ParseType2("Enum[foo,fee,fum]")
 		fmt.Printf("%s is an instance of %s\n", pcoreType, pcoreType.PType())
 	})
@@ -90,19 +89,19 @@ func ExamplePcore_parseType() {
 	// Enum['foo', 'fee', 'fum'] is an instance of Type[Enum['foo', 'fee', 'fum']]
 }
 
-func ExamplePcore_isInstance() {
-	eval.Puppet.Do(func(ctx eval.Context) {
+func ExampleIsInstance() {
+	pcore.Do(func(ctx px.Context) {
 		pcoreType := ctx.ParseType2("Enum[foo,fee,fum]")
-		fmt.Println(eval.IsInstance(pcoreType, eval.Wrap(ctx, "foo")))
-		fmt.Println(eval.IsInstance(pcoreType, eval.Wrap(ctx, "bar")))
+		fmt.Println(px.IsInstance(pcoreType, px.Wrap(ctx, "foo")))
+		fmt.Println(px.IsInstance(pcoreType, px.Wrap(ctx, "bar")))
 	})
 	// Output:
 	// true
 	// false
 }
 
-func ExamplePcore_parseTypeError() {
-	err := eval.Puppet.Try(func(ctx eval.Context) error {
+func ExampleContext_ParseType2_error() {
+	err := pcore.Try(func(ctx px.Context) error {
 		ctx.ParseType2("Enum[foo") // Missing end bracket
 		return nil
 	})
@@ -119,10 +118,10 @@ func ExampleObjectType_fromReflectedValue() {
 		IssueCode string `puppet:"name => issue_code"`
 	}
 
-	c := eval.Puppet.RootContext()
+	c := pcore.RootContext()
 	ts := &TestStruct{`the message`, `THE_KIND`, `THE_CODE`}
-	et, _ := eval.Load(c, eval.NewTypedName(eval.NsType, `Error`))
-	ev := et.(eval.ObjectType).FromReflectedValue(c, reflect.ValueOf(ts).Elem())
+	et, _ := px.Load(c, px.NewTypedName(px.NsType, `Error`))
+	ev := et.(px.ObjectType).FromReflectedValue(c, reflect.ValueOf(ts).Elem())
 	fmt.Println(ev)
 	// Output: Error('message' => 'the message', 'kind' => 'THE_KIND', 'issue_code' => 'THE_CODE')
 }
@@ -158,15 +157,15 @@ func ExampleImplementationRegistry() {
 		panic(err)
 	}
 
-	c := eval.Puppet.RootContext()
-	eval.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
+	c := pcore.RootContext()
+	px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
 
 	ir := c.ImplementationRegistry()
 	ir.RegisterType(c.ParseType2(`My::Address`), reflect.TypeOf(TestAddress{}))
 	ir.RegisterType(c.ParseType2(`My::Person`), reflect.TypeOf(TestPerson{}))
 
 	ts := &TestPerson{`Bob Tester`, 34, &TestAddress{`Example Road 23`, `12345`}, true}
-	ev := eval.Wrap(c, ts)
+	ev := px.Wrap(c, ts)
 	fmt.Println(ev)
 	// Output: My::Person('name' => 'Bob Tester', 'age' => 34, 'address' => My::Address('street' => 'Example Road 23', 'zip' => '12345'), 'active' => true)
 }
@@ -197,15 +196,15 @@ func ExampleImplementationRegistry_tags() {
       enabled => Boolean,
 		}`)
 
-	c := eval.Puppet.RootContext()
-	eval.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
+	c := pcore.RootContext()
+	px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
 
 	ir := c.ImplementationRegistry()
 	ir.RegisterType(c.ParseType2(`My::Address`), reflect.TypeOf(TestAddress{}))
 	ir.RegisterType(c.ParseType2(`My::Person`), reflect.TypeOf(TestPerson{}))
 
 	ts := &TestPerson{`Bob Tester`, 34, &TestAddress{`Example Road 23`, `12345`}, true}
-	ev := eval.Wrap(c, ts)
+	ev := px.Wrap(c, ts)
 	fmt.Println(ev)
 	// Output: My::Person('name' => 'Bob Tester', 'age' => 34, 'address' => My::Address('street' => 'Example Road 23', 'zip_code' => '12345'), 'enabled' => true)
 }
@@ -220,10 +219,10 @@ func TestReflectorAndImplRepo(t *testing.T) {
 		Address ObscurelyNamedAddress
 	}
 
-	eval.Puppet.Do(func(c eval.Context) {
+	pcore.Do(func(c px.Context) {
 		typeSet := c.Reflector().TypeSetFromReflect(`My`, semver.MustParseVersion(`1.0.0`), map[string]string{`ObscurelyNamedAddress`: `Address`},
 			reflect.TypeOf(&ObscurelyNamedAddress{}), reflect.TypeOf(&Person{}))
-		eval.AddTypes(c, typeSet)
+		px.AddTypes(c, typeSet)
 		tss := typeSet.String()
 		exp := `TypeSet[{pcore_uri => 'http://puppet.com/2016.1/pcore', pcore_version => '1.0.0', name_authority => 'http://puppet.com/2016.1/runtime', name => 'My', version => '1.0.0', types => {Address => {attributes => {'street' => String, 'zip_code' => String}}, Person => {attributes => {'name' => String, 'address' => Address}}}}]`
 		if tss != exp {

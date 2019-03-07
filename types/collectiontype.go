@@ -5,21 +5,21 @@ import (
 	"math"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type CollectionType struct {
 	size *IntegerType
 }
 
-var CollectionMetaType eval.ObjectType
+var CollectionMetaType px.ObjectType
 
 func init() {
 	CollectionMetaType = newObjectType(`Pcore::CollectionType`, `Pcore::AnyType {
   attributes => {
     'size_type' => { type => Type[Integer], value => Integer[0] }
   }
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 		return newCollectionType2(args...)
 	})
 }
@@ -35,7 +35,7 @@ func NewCollectionType(size *IntegerType) *CollectionType {
 	return &CollectionType{size}
 }
 
-func newCollectionType2(args ...eval.Value) *CollectionType {
+func newCollectionType2(args ...px.Value) *CollectionType {
 	switch len(args) {
 	case 0:
 		return DefaultCollectionType()
@@ -76,31 +76,31 @@ func newCollectionType2(args ...eval.Value) *CollectionType {
 	}
 }
 
-func (t *CollectionType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *CollectionType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	t.size.Accept(v, g)
 }
 
-func (t *CollectionType) Default() eval.Type {
+func (t *CollectionType) Default() px.Type {
 	return collectionTypeDefault
 }
 
-func (t *CollectionType) Equals(o interface{}, g eval.Guard) bool {
+func (t *CollectionType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*CollectionType); ok {
 		return t.size.Equals(ot.size, g)
 	}
 	return false
 }
 
-func (t *CollectionType) Generic() eval.Type {
+func (t *CollectionType) Generic() px.Type {
 	return collectionTypeDefault
 }
 
-func (t *CollectionType) Get(key string) (eval.Value, bool) {
+func (t *CollectionType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `size_type`:
 		if t.size == nil {
-			return eval.Undef, true
+			return px.Undef, true
 		}
 		return t.size, true
 	default:
@@ -108,7 +108,7 @@ func (t *CollectionType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *CollectionType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *CollectionType) IsAssignable(o px.Type, g px.Guard) bool {
 	var osz *IntegerType
 	switch o := o.(type) {
 	case *CollectionType:
@@ -128,11 +128,11 @@ func (t *CollectionType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	return t.size.IsAssignable(osz, g)
 }
 
-func (t *CollectionType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *CollectionType) IsInstance(o px.Value, g px.Guard) bool {
 	return t.IsAssignable(o.PType(), g)
 }
 
-func (t *CollectionType) MetaType() eval.ObjectType {
+func (t *CollectionType) MetaType() px.ObjectType {
 	return CollectionMetaType
 }
 
@@ -140,9 +140,9 @@ func (t *CollectionType) Name() string {
 	return `Collection`
 }
 
-func (t *CollectionType) Parameters() []eval.Value {
+func (t *CollectionType) Parameters() []px.Value {
 	if *t.size == *IntegerTypePositive {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
 	return t.size.SizeParameters()
 }
@@ -160,14 +160,14 @@ func (t *CollectionType) Size() *IntegerType {
 }
 
 func (t *CollectionType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *CollectionType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *CollectionType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *CollectionType) PType() eval.Type {
+func (t *CollectionType) PType() px.Type {
 	return &TypeType{t}
 }
 

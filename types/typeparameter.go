@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/lyraproj/pcore/eval"
 	"github.com/lyraproj/pcore/hash"
+	"github.com/lyraproj/pcore/px"
 )
 
 type typeParameter struct {
@@ -17,20 +17,20 @@ var TypeTypeParameter = NewStructType([]*StructElement{
 func (t *typeParameter) initHash() *hash.StringHash {
 	h := t.attribute.initHash()
 	h.Put(keyType, h.Get(keyType, nil).(*TypeType).PType())
-	if v, ok := h.Get3(keyValue); ok && eval.Equals(v, undef) {
+	if v, ok := h.Get3(keyValue); ok && px.Equals(v, undef) {
 		h.Delete(keyValue)
 	}
 	return h
 }
 
-func (t *typeParameter) Equals(o interface{}, g eval.Guard) bool {
+func (t *typeParameter) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*typeParameter); ok {
 		return t.attribute.Equals(&ot.attribute, g)
 	}
 	return false
 }
 
-func (t *typeParameter) InitHash() eval.OrderedMap {
+func (t *typeParameter) InitHash() px.OrderedMap {
 	return WrapStringPValue(t.initHash())
 }
 

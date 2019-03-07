@@ -1,4 +1,4 @@
-package eval
+package px
 
 type (
 	InvokableValue interface {
@@ -136,6 +136,8 @@ var NewGoConstructor func(typeName string, creators ...DispatchCreator)
 var MakeGoAllocator func(allocFunc DispatchFunction) Lambda
 
 var NewGoConstructor2 func(typeName string, localTypes LocalTypesCreator, creators ...DispatchCreator)
+
+var NewParameter func(name string, typ Type, value Value, capturesRest bool) Parameter
 
 var MakeGoConstructor func(typeName string, creators ...DispatchCreator) ResolvableFunction
 

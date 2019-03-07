@@ -6,18 +6,18 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type typedName struct {
-	namespace eval.Namespace
-	authority eval.URI
+	namespace px.Namespace
+	authority px.URI
 	name      string
 	canonical string
 	parts     []string
 }
 
-var TypedNameMetaType eval.Type
+var TypedNameMetaType px.Type
 
 func init() {
 	TypedNameMetaType = newObjectType(`TypedName`, `{
@@ -34,38 +34,38 @@ func init() {
       'is_parent' => Callable[[TypedName],Boolean],
       'relative_to' => Callable[[TypedName],Optional[TypedName]]
     }
-  }`, func(ctx eval.Context, args []eval.Value) eval.Value {
-		ns := eval.Namespace(args[0].String())
+  }`, func(ctx px.Context, args []px.Value) px.Value {
+		ns := px.Namespace(args[0].String())
 		n := args[1].String()
 		if len(args) > 2 {
-			return newTypedName2(ns, n, eval.URI(args[2].(*UriValue).String()))
+			return newTypedName2(ns, n, px.URI(args[2].(*UriValue).String()))
 		}
 		return NewTypedName(ns, n)
-	}, func(ctx eval.Context, args []eval.Value) eval.Value {
+	}, func(ctx px.Context, args []px.Value) px.Value {
 		h := args[0].(*HashValue)
-		ns := eval.Namespace(h.Get5(`namespace`, eval.EmptyString).String())
-		n := h.Get5(`name`, eval.EmptyString).String()
+		ns := px.Namespace(h.Get5(`namespace`, px.EmptyString).String())
+		n := h.Get5(`name`, px.EmptyString).String()
 		if x, ok := h.Get4(`authority`); ok {
-			return newTypedName2(ns, n, eval.URI(x.(*UriValue).String()))
+			return newTypedName2(ns, n, px.URI(x.(*UriValue).String()))
 		}
 		return NewTypedName(ns, n)
 	})
 }
 
-func (t *typedName) ToString(bld io.Writer, format eval.FormatContext, g eval.RDetect) {
+func (t *typedName) ToString(bld io.Writer, format px.FormatContext, g px.RDetect) {
 	ObjectToString(t, format, bld, g)
 }
 
-func (t *typedName) PType() eval.Type {
+func (t *typedName) PType() px.Type {
 	return TypedNameMetaType
 }
 
-func (t *typedName) Call(c eval.Context, method eval.ObjFunc, args []eval.Value, block eval.Lambda) (result eval.Value, ok bool) {
+func (t *typedName) Call(c px.Context, method px.ObjFunc, args []px.Value, block px.Lambda) (result px.Value, ok bool) {
 	switch method.Name() {
 	case `is_parent`:
-		return booleanValue(t.IsParent(args[0].(eval.TypedName))), true
+		return booleanValue(t.IsParent(args[0].(px.TypedName))), true
 	case `relative_to`:
-		if r, ok := t.RelativeTo(args[0].(eval.TypedName)); ok {
+		if r, ok := t.RelativeTo(args[0].(px.TypedName)); ok {
 			return r, true
 		}
 		return undef, true
@@ -73,13 +73,13 @@ func (t *typedName) Call(c eval.Context, method eval.ObjFunc, args []eval.Value,
 	return nil, false
 }
 
-func (t *typedName) Get(key string) (value eval.Value, ok bool) {
+func (t *typedName) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `namespace`:
 		return stringValue(string(t.namespace)), true
 	case `authority`:
-		if t.authority == eval.RuntimeNameAuthority {
-			return eval.Undef, true
+		if t.authority == px.RuntimeNameAuthority {
+			return px.Undef, true
 		}
 		return WrapURI2(string(t.authority)), true
 	case `name`:
@@ -104,23 +104,23 @@ func (t *typedName) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (t *typedName) InitHash() eval.OrderedMap {
+func (t *typedName) InitHash() px.OrderedMap {
 	es := make([]*HashEntry, 0, 3)
 	es = append(es, WrapHashEntry2(`namespace`, stringValue(string(t.Namespace()))))
 	es = append(es, WrapHashEntry2(`name`, stringValue(t.Name())))
-	if t.authority != eval.RuntimeNameAuthority {
+	if t.authority != px.RuntimeNameAuthority {
 		es = append(es, WrapHashEntry2(`authority`, WrapURI2(string(t.authority))))
 	}
 	return WrapHash(es)
 }
 
-func NewTypedName(namespace eval.Namespace, name string) eval.TypedName {
-	return newTypedName2(namespace, name, eval.RuntimeNameAuthority)
+func NewTypedName(namespace px.Namespace, name string) px.TypedName {
+	return newTypedName2(namespace, name, px.RuntimeNameAuthority)
 }
 
 var allowedCharacters = regexp.MustCompile(`\A[A-Za-z][0-9A-Z_a-z]*\z`)
 
-func newTypedName2(namespace eval.Namespace, name string, nameAuthority eval.URI) eval.TypedName {
+func newTypedName2(namespace px.Namespace, name string, nameAuthority px.URI) px.TypedName {
 	tn := typedName{}
 	tn.namespace = namespace
 	tn.authority = nameAuthority
@@ -128,25 +128,25 @@ func newTypedName2(namespace eval.Namespace, name string, nameAuthority eval.URI
 	return &tn
 }
 
-func typedNameFromMapKey(mapKey string) eval.TypedName {
+func typedNameFromMapKey(mapKey string) px.TypedName {
 	if i := strings.LastIndexByte(mapKey, '/'); i > 0 {
 		pfx := mapKey[:i]
 		name := mapKey[i+1:]
 		if i = strings.LastIndexByte(pfx, '/'); i > 0 {
-			return newTypedName2(eval.Namespace(pfx[i+1:]), name, eval.URI(pfx[:i]))
+			return newTypedName2(px.Namespace(pfx[i+1:]), name, px.URI(pfx[:i]))
 		}
 	}
-	panic(eval.Error(eval.InvalidTypedNameMapKey, issue.H{`mapKey`: mapKey}))
+	panic(px.Error(px.InvalidTypedNameMapKey, issue.H{`mapKey`: mapKey}))
 }
 
-func (t *typedName) Child() eval.TypedName {
+func (t *typedName) Child() px.TypedName {
 	if !t.IsQualified() {
 		return nil
 	}
 	return t.child(1)
 }
 
-func (t *typedName) child(stripCount int) eval.TypedName {
+func (t *typedName) child(stripCount int) px.TypedName {
 	name := t.name
 	sx := 0
 	for i := 0; i < stripCount; i++ {
@@ -173,7 +173,7 @@ func (t *typedName) child(stripCount int) eval.TypedName {
 	return tn
 }
 
-func (t *typedName) Parent() eval.TypedName {
+func (t *typedName) Parent() px.TypedName {
 	lx := strings.LastIndex(t.name, `::`)
 	if lx < 0 {
 		return nil
@@ -193,8 +193,8 @@ func (t *typedName) Parent() eval.TypedName {
 	return tn
 }
 
-func (t *typedName) Equals(other interface{}, g eval.Guard) bool {
-	if tn, ok := other.(eval.TypedName); ok {
+func (t *typedName) Equals(other interface{}, g px.Guard) bool {
+	if tn, ok := other.(px.TypedName); ok {
 		return t.MapKey() == tn.MapKey()
 	}
 	return false
@@ -204,7 +204,7 @@ func (t *typedName) Name() string {
 	return t.name
 }
 
-func (t *typedName) IsParent(o eval.TypedName) bool {
+func (t *typedName) IsParent(o px.TypedName) bool {
 	tps := t.Parts()
 	ops := o.Parts()
 	top := len(tps)
@@ -219,7 +219,7 @@ func (t *typedName) IsParent(o eval.TypedName) bool {
 	return false
 }
 
-func (t *typedName) RelativeTo(parent eval.TypedName) (eval.TypedName, bool) {
+func (t *typedName) RelativeTo(parent px.TypedName) (px.TypedName, bool) {
 	if parent.IsParent(t) {
 		return t.child(len(parent.Parts())), true
 	}
@@ -245,7 +245,7 @@ func (t *typedName) Parts() []string {
 		parts := strings.Split(strings.ToLower(t.name), `::`)
 		for _, part := range parts {
 			if !allowedCharacters.MatchString(part) {
-				panic(eval.Error(eval.InvalidCharactersInName, issue.H{`name`: t.name}))
+				panic(px.Error(px.InvalidCharactersInName, issue.H{`name`: t.name}))
 			}
 		}
 		t.parts = parts
@@ -253,9 +253,9 @@ func (t *typedName) Parts() []string {
 	return t.parts
 }
 
-func (t *typedName) PartsList() eval.List {
+func (t *typedName) PartsList() px.List {
 	parts := t.Parts()
-	es := make([]eval.Value, len(parts))
+	es := make([]px.Value, len(parts))
 	for i, p := range parts {
 		es[i] = stringValue(p)
 	}
@@ -263,13 +263,13 @@ func (t *typedName) PartsList() eval.List {
 }
 
 func (t *typedName) String() string {
-	return eval.ToString(t)
+	return px.ToString(t)
 }
 
-func (t *typedName) Namespace() eval.Namespace {
+func (t *typedName) Namespace() px.Namespace {
 	return t.namespace
 }
 
-func (t *typedName) Authority() eval.URI {
+func (t *typedName) Authority() px.URI {
 	return t.authority
 }

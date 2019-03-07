@@ -3,20 +3,17 @@ package serialization_test
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 
-	"github.com/lyraproj/pcore/eval"
-	"github.com/lyraproj/pcore/impl"
+	"github.com/lyraproj/pcore/pcore"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/serialization"
 	"github.com/lyraproj/pcore/types"
 	"github.com/lyraproj/semver/semver"
-
-	"reflect"
-
-	_ "github.com/lyraproj/pcore/pcore"
 )
 
 func ExampleNewSerializer_richDataRoundtrip() {
-	eval.Puppet.Do(func(ctx eval.Context) {
+	pcore.Do(func(ctx px.Context) {
 		ver, _ := semver.NewVersion(1, 0, 0)
 		v := types.WrapSemVer(ver)
 		fmt.Printf("%T '%s'\n", v, v)
@@ -25,7 +22,7 @@ func ExampleNewSerializer_richDataRoundtrip() {
 		buf := bytes.NewBufferString(``)
 		dc.Convert(v, serialization.NewJsonStreamer(buf))
 
-		fc := serialization.NewDeserializer(ctx, eval.EmptyMap)
+		fc := serialization.NewDeserializer(ctx, px.EmptyMap)
 		serialization.JsonToData(`/tmp/sample.json`, buf, fc)
 		v2 := fc.Value()
 
@@ -37,19 +34,19 @@ func ExampleNewSerializer_richDataRoundtrip() {
 }
 
 func ExampleNewSerializer_objectRoundtrip() {
-	eval.Puppet.Do(func(ctx eval.Context) {
-		p := impl.NewParameter(`p1`, ctx.ParseType2(`Type[String]`), nil, false)
+	pcore.Do(func(ctx px.Context) {
+		p := px.NewParameter(`p1`, ctx.ParseType2(`Type[String]`), nil, false)
 		fmt.Println(p)
 
-		dc := serialization.NewSerializer(ctx, eval.EmptyMap)
+		dc := serialization.NewSerializer(ctx, px.EmptyMap)
 		buf := bytes.NewBufferString(``)
-		dc.Convert(types.WrapValues([]eval.Value{p, p}), serialization.NewJsonStreamer(buf))
+		dc.Convert(types.WrapValues([]px.Value{p, p}), serialization.NewJsonStreamer(buf))
 
-		fc := serialization.NewDeserializer(ctx, eval.EmptyMap)
+		fc := serialization.NewDeserializer(ctx, px.EmptyMap)
 		b := buf.String()
 		fmt.Println(b)
 		serialization.JsonToData(`/tmp/sample.json`, buf, fc)
-		p2 := fc.Value().(eval.List).At(0)
+		p2 := fc.Value().(px.List).At(0)
 
 		fmt.Println(p2)
 	})
@@ -60,14 +57,14 @@ func ExampleNewSerializer_objectRoundtrip() {
 }
 
 func ExampleNewSerializer_structInArrayRoundtrip() {
-	eval.Puppet.Do(func(ctx eval.Context) {
-		p := types.WrapValues([]eval.Value{ctx.ParseType2(`Struct[a => String, b => Integer]`)})
+	pcore.Do(func(ctx px.Context) {
+		p := types.WrapValues([]px.Value{ctx.ParseType2(`Struct[a => String, b => Integer]`)})
 		fmt.Println(p)
-		dc := serialization.NewSerializer(ctx, eval.EmptyMap)
+		dc := serialization.NewSerializer(ctx, px.EmptyMap)
 		buf := bytes.NewBufferString(``)
 		dc.Convert(p, serialization.NewJsonStreamer(buf))
 
-		fc := serialization.NewDeserializer(ctx, eval.EmptyMap)
+		fc := serialization.NewDeserializer(ctx, px.EmptyMap)
 		b := buf.String()
 		fmt.Println(b)
 		serialization.JsonToData(`/tmp/sample.json`, buf, fc)
@@ -82,7 +79,7 @@ func ExampleNewSerializer_structInArrayRoundtrip() {
 }
 
 func ExampleNewSerializer_typeSetRoundtrip() {
-	eval.Puppet.Do(func(ctx eval.Context) {
+	pcore.Do(func(ctx px.Context) {
 		p := ctx.ParseType2(`TypeSet[{
       name => 'Foo',
       version => '1.0.0',
@@ -97,13 +94,13 @@ func ExampleNewSerializer_typeSetRoundtrip() {
   }
         ]
       }}]`)
-		eval.AddTypes(ctx, p)
+		px.AddTypes(ctx, p)
 		fmt.Println(p)
-		dc := serialization.NewSerializer(eval.Puppet.RootContext(), eval.EmptyMap)
+		dc := serialization.NewSerializer(pcore.RootContext(), px.EmptyMap)
 		buf := bytes.NewBufferString(``)
 		dc.Convert(p, serialization.NewJsonStreamer(buf))
 
-		fc := serialization.NewDeserializer(ctx, eval.EmptyMap)
+		fc := serialization.NewDeserializer(ctx, px.EmptyMap)
 		b := buf.String()
 		fmt.Println(b)
 		serialization.JsonToData(`/tmp/sample.json`, buf, fc)
@@ -119,18 +116,18 @@ func ExampleNewSerializer_typeSetRoundtrip() {
 func ExampleNewSerializer_goValueRoundtrip() {
 	type MyInt int
 
-	eval.Puppet.Do(func(ctx eval.Context) {
+	pcore.Do(func(ctx px.Context) {
 		mi := MyInt(32)
-		eval.AddTypes(ctx, ctx.Reflector().TypeFromReflect(`Test::MyInt`, nil, reflect.TypeOf(mi)))
+		px.AddTypes(ctx, ctx.Reflector().TypeFromReflect(`Test::MyInt`, nil, reflect.TypeOf(mi)))
 
-		v := eval.Wrap(ctx, mi)
+		v := px.Wrap(ctx, mi)
 		fmt.Println(v)
 
-		dc := serialization.NewSerializer(eval.Puppet.RootContext(), eval.EmptyMap)
+		dc := serialization.NewSerializer(pcore.RootContext(), px.EmptyMap)
 		buf := bytes.NewBufferString(``)
 		dc.Convert(v, serialization.NewJsonStreamer(buf))
 
-		fc := serialization.NewDeserializer(ctx, eval.EmptyMap)
+		fc := serialization.NewDeserializer(ctx, px.EmptyMap)
 		serialization.JsonToData(`/tmp/sample.json`, buf, fc)
 		v2 := fc.Value()
 
@@ -147,23 +144,23 @@ func ExampleNewSerializer_goStructRoundtrip() {
 		Y string
 	}
 
-	eval.Puppet.Do(func(ctx eval.Context) {
+	pcore.Do(func(ctx px.Context) {
 		mi := &MyStruct{32, "hello"}
-		eval.AddTypes(ctx, ctx.Reflector().TypeFromReflect(`Test::MyStruct`, nil, reflect.TypeOf(mi)))
+		px.AddTypes(ctx, ctx.Reflector().TypeFromReflect(`Test::MyStruct`, nil, reflect.TypeOf(mi)))
 
-		v := eval.Wrap(ctx, mi)
+		v := px.Wrap(ctx, mi)
 		fmt.Println(v)
 
-		dc := serialization.NewSerializer(eval.Puppet.RootContext(), eval.EmptyMap)
+		dc := serialization.NewSerializer(pcore.RootContext(), px.EmptyMap)
 		buf := bytes.NewBufferString(``)
 		dc.Convert(v, serialization.NewJsonStreamer(buf))
 
-		fc := serialization.NewDeserializer(ctx, eval.EmptyMap)
+		fc := serialization.NewDeserializer(ctx, px.EmptyMap)
 		serialization.JsonToData(`/tmp/sample.json`, buf, fc)
 		v2 := fc.Value()
 
 		fmt.Println(v2)
-		ms2 := v2.(eval.Reflected).Reflect(ctx).Interface()
+		ms2 := v2.(px.Reflected).Reflect(ctx).Interface()
 		fmt.Printf("%T %v\n", ms2, ms2)
 	})
 	// Output:
@@ -174,27 +171,27 @@ func ExampleNewSerializer_goStructRoundtrip() {
 
 func ExampleNewSerializer_goStructWithDynamicRoundtrip() {
 	type MyStruct struct {
-		X eval.List
-		Y eval.OrderedMap
+		X px.List
+		Y px.OrderedMap
 	}
 
-	eval.Puppet.Do(func(ctx eval.Context) {
-		mi := &MyStruct{eval.Wrap(ctx, []int{32}).(eval.List), eval.Wrap(ctx, map[string]string{"msg": "hello"}).(eval.OrderedMap)}
-		eval.AddTypes(ctx, ctx.Reflector().TypeFromReflect(`Test::MyStruct`, nil, reflect.TypeOf(mi)))
+	pcore.Do(func(ctx px.Context) {
+		mi := &MyStruct{px.Wrap(ctx, []int{32}).(px.List), px.Wrap(ctx, map[string]string{"msg": "hello"}).(px.OrderedMap)}
+		px.AddTypes(ctx, ctx.Reflector().TypeFromReflect(`Test::MyStruct`, nil, reflect.TypeOf(mi)))
 
-		v := eval.Wrap(ctx, mi)
+		v := px.Wrap(ctx, mi)
 		fmt.Println(v)
 
-		dc := serialization.NewSerializer(eval.Puppet.RootContext(), eval.EmptyMap)
+		dc := serialization.NewSerializer(pcore.RootContext(), px.EmptyMap)
 		buf := bytes.NewBufferString(``)
 		dc.Convert(v, serialization.NewJsonStreamer(buf))
 
-		fc := serialization.NewDeserializer(ctx, eval.EmptyMap)
+		fc := serialization.NewDeserializer(ctx, px.EmptyMap)
 		serialization.JsonToData(`/tmp/sample.json`, buf, fc)
 		v2 := fc.Value()
 
 		fmt.Println(v2)
-		ms2 := v2.(eval.Reflected).Reflect(ctx).Interface()
+		ms2 := v2.(px.Reflected).Reflect(ctx).Interface()
 		fmt.Printf("%T %v\n", ms2, ms2)
 	})
 	// Output:
@@ -204,9 +201,9 @@ func ExampleNewSerializer_goStructWithDynamicRoundtrip() {
 }
 
 func ExampleSerializer_Convert() {
-	eval.Puppet.Do(func(ctx eval.Context) {
+	pcore.Do(func(ctx px.Context) {
 		ver, _ := semver.NewVersion(1, 0, 0)
-		cl := eval.NewCollector()
+		cl := px.NewCollector()
 		serialization.NewSerializer(ctx, types.SingletonHash2(`rich_data`, types.BooleanTrue)).Convert(types.WrapSemVer(ver), cl)
 		fmt.Println(cl.Value())
 	})
@@ -214,9 +211,9 @@ func ExampleSerializer_Convert() {
 }
 
 func ExampleNewJsonStreamer() {
-	eval.Puppet.Do(func(ctx eval.Context) {
+	pcore.Do(func(ctx px.Context) {
 		buf := bytes.NewBufferString(``)
-		serialization.NewSerializer(ctx, eval.EmptyMap).Convert(
+		serialization.NewSerializer(ctx, px.EmptyMap).Convert(
 			types.WrapStringToInterfaceMap(ctx, map[string]interface{}{`__ptype`: `SemVer`, `__pvalue`: `1.0.0`}), serialization.NewJsonStreamer(buf))
 		fmt.Println(buf)
 	})
@@ -224,9 +221,9 @@ func ExampleNewJsonStreamer() {
 }
 
 func ExampleJsonToData() {
-	eval.Puppet.Do(func(ctx eval.Context) {
+	pcore.Do(func(ctx px.Context) {
 		buf := bytes.NewBufferString(`{"__ptype":"SemVer","__pvalue":"1.0.0"}`)
-		fc := eval.NewCollector()
+		fc := px.NewCollector()
 		serialization.JsonToData(`/tmp/ver.json`, buf, fc)
 		fmt.Println(fc.Value())
 	})

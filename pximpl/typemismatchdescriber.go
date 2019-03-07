@@ -1,4 +1,4 @@
-package impl
+package pximpl
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -36,9 +36,9 @@ type (
 
 	expectedActualMismatch interface {
 		mismatch
-		actual() eval.Type
-		expected() eval.Type
-		setExpected(expected eval.Type)
+		actual() px.Type
+		expected() px.Type
+		setExpected(expected px.Type)
 	}
 
 	sizeMismatch interface {
@@ -68,8 +68,8 @@ type (
 
 	basicEAMismatch struct {
 		basicMismatch
-		actualType   eval.Type
-		expectedType eval.Type
+		actualType   px.Type
+		expectedType px.Type
 	}
 
 	typeMismatch      struct{ basicEAMismatch }
@@ -154,7 +154,7 @@ func mergeMismatch(m mismatch, o mismatch, path []*pathElement) mismatch {
 		if ot, ok := o.(*typeMismatch); ok {
 			if ev, ok := et.expectedType.(*types.VariantType); ok {
 				if ov, ok := ot.expectedType.(*types.VariantType); ok {
-					ts := make([]eval.Type, 0, len(ev.Types())+len(ov.Types()))
+					ts := make([]px.Type, 0, len(ev.Types())+len(ov.Types()))
 					ts = append(ts, ev.Types()...)
 					ts = append(ts, ov.Types()...)
 					et.setExpected(types.NewVariantType(types.UniqueTypes(ts)...))
@@ -163,12 +163,12 @@ func mergeMismatch(m mismatch, o mismatch, path []*pathElement) mismatch {
 				}
 			} else {
 				if ov, ok := ot.expectedType.(*types.VariantType); ok {
-					ts := make([]eval.Type, 0, len(ov.Types())+1)
+					ts := make([]px.Type, 0, len(ov.Types())+1)
 					ts = append(ts, et.expectedType)
 					ts = append(ts, ov.Types()...)
 					et.setExpected(types.NewVariantType(types.UniqueTypes(ts)...))
 				} else {
-					if !eval.Equals(et.expectedType, ot.expectedType) {
+					if !px.Equals(et.expectedType, ot.expectedType) {
 						et.setExpected(types.NewVariantType(et.expectedType, ot.expectedType))
 					}
 				}
@@ -336,19 +336,19 @@ func (ea *basicEAMismatch) equals(other mismatch) bool {
 	return false
 }
 
-func (ea *basicEAMismatch) expected() eval.Type {
+func (ea *basicEAMismatch) expected() px.Type {
 	return ea.expectedType
 }
 
-func (ea *basicEAMismatch) actual() eval.Type {
+func (ea *basicEAMismatch) actual() px.Type {
 	return ea.actualType
 }
 
-func (ea *basicEAMismatch) setExpected(expected eval.Type) {
+func (ea *basicEAMismatch) setExpected(expected px.Type) {
 	ea.expectedType = expected
 }
 
-func newTypeMismatch(path []*pathElement, expected eval.Type, actual eval.Type) mismatch {
+func newTypeMismatch(path []*pathElement, expected px.Type, actual px.Type) mismatch {
 	return &typeMismatch{basicEAMismatch{basicMismatch{p: path}, actual, expected}}
 }
 
@@ -394,10 +394,10 @@ func (tm *typeMismatch) text() string {
 			multi = true
 		}
 	} else {
-		el := []eval.Type{e}
+		el := []px.Type{e}
 		if reportDetailed(el, a) {
 			as = detailedToActualToS(el, a)
-			es = eval.ToString2(e, types.Expanded)
+			es = px.ToString2(e, types.Expanded)
 		} else {
 			as = shortName(a)
 			es = shortName(e)
@@ -410,38 +410,38 @@ func (tm *typeMismatch) text() string {
 	return fmt.Sprintf(`expects %s %s value, got %s`, issue.Article(es), es, as)
 }
 
-func shortName(t eval.Type) string {
-	if tc, ok := t.(eval.TypeWithContainedType); ok && !(tc.ContainedType() == nil || tc.ContainedType() == types.DefaultAnyType()) {
+func shortName(t px.Type) string {
+	if tc, ok := t.(px.TypeWithContainedType); ok && !(tc.ContainedType() == nil || tc.ContainedType() == types.DefaultAnyType()) {
 		return fmt.Sprintf("%s[%s]", t.Name(), tc.ContainedType().Name())
 	}
 	return t.Name()
 }
 
-func detailedToActualToS(es []eval.Type, a eval.Type) string {
+func detailedToActualToS(es []px.Type, a px.Type) string {
 	es = allResolved(es)
-	if alwaysFullyDetailed(es, a) || anyAssignable(es, eval.Generalize(a)) {
-		if as, ok := a.(eval.StringType); ok && as.Value() != nil {
+	if alwaysFullyDetailed(es, a) || anyAssignable(es, px.Generalize(a)) {
+		if as, ok := a.(px.StringType); ok && as.Value() != nil {
 			b := bytes.NewBufferString(``)
 			utils.PuppetQuote(b, *as.Value())
 			return b.String()
 		}
-		return eval.ToString2(a, types.Expanded)
+		return px.ToString2(a, types.Expanded)
 	}
 	return a.Name()
 }
 
-func anyAssignable(es []eval.Type, a eval.Type) bool {
+func anyAssignable(es []px.Type, a px.Type) bool {
 	for _, e := range es {
-		if eval.IsAssignable(e, a) {
+		if px.IsAssignable(e, a) {
 			return true
 		}
 	}
 	return false
 }
 
-func alwaysFullyDetailed(es []eval.Type, a eval.Type) bool {
+func alwaysFullyDetailed(es []px.Type, a px.Type) bool {
 	for _, e := range es {
-		if eval.Equals(eval.Generalize(e), eval.Generalize(a)) {
+		if px.Equals(px.Generalize(e), px.Generalize(a)) {
 			return true
 		}
 		if _, ok := e.(*types.TypeAliasType); ok {
@@ -457,12 +457,12 @@ func alwaysFullyDetailed(es []eval.Type, a eval.Type) bool {
 	return false
 }
 
-func specialization(e eval.Type, a eval.Type) (result bool) {
+func specialization(e px.Type, a px.Type) (result bool) {
 	switch e.(type) {
 	case *types.InitType:
 		result = true
-	case eval.StringType:
-		as, ok := a.(eval.StringType)
+	case px.StringType:
+		as, ok := a.(px.StringType)
 		result = ok && as.Value() != nil
 	case *types.StructType:
 		_, result = a.(*types.HashType)
@@ -474,8 +474,8 @@ func specialization(e eval.Type, a eval.Type) (result bool) {
 	return
 }
 
-func allResolved(es []eval.Type) []eval.Type {
-	rs := make([]eval.Type, len(es))
+func allResolved(es []px.Type) []px.Type {
+	rs := make([]px.Type, len(es))
 	for i, e := range es {
 		if ea, ok := e.(*types.TypeAliasType); ok {
 			e = ea.ResolvedType()
@@ -485,23 +485,23 @@ func allResolved(es []eval.Type) []eval.Type {
 	return rs
 }
 
-func reportDetailed(e []eval.Type, a eval.Type) bool {
+func reportDetailed(e []px.Type, a px.Type) bool {
 	return alwaysFullyDetailed(e, a) || assignableToDefault(e, a)
 }
 
-func assignableToDefault(es []eval.Type, a eval.Type) bool {
+func assignableToDefault(es []px.Type, a px.Type) bool {
 	for _, e := range es {
 		if ea, ok := e.(*types.TypeAliasType); ok {
 			e = ea.ResolvedType()
 		}
-		if eval.IsAssignable(eval.DefaultFor(e), a) {
+		if px.IsAssignable(px.DefaultFor(e), a) {
 			return true
 		}
 	}
 	return false
 }
 
-func newPatternMismatch(path []*pathElement, expected eval.Type, actual eval.Type) mismatch {
+func newPatternMismatch(path []*pathElement, expected px.Type, actual px.Type) mismatch {
 	return &patternMismatch{
 		typeMismatch{
 			basicEAMismatch{
@@ -520,12 +520,12 @@ func (m *patternMismatch) text() string {
 		valuePfx = `an undef value or `
 	}
 	return fmt.Sprintf(`expects %sa match for %s, got %s`,
-		valuePfx, eval.ToString2(e, types.Expanded), m.actualString())
+		valuePfx, px.ToString2(e, types.Expanded), m.actualString())
 }
 
 func (m *patternMismatch) actualString() string {
 	a := m.actualType
-	if as, ok := a.(eval.StringType); ok && as.Value() != nil {
+	if as, ok := a.(px.StringType); ok && as.Value() != nil {
 		return fmt.Sprintf(`'%s'`, *as.Value())
 	}
 	return shortName(a)
@@ -595,7 +595,7 @@ func (tm *countMismatch) text() string {
 		rangeToS(tm.actualType.(*types.IntegerType), `none`))
 }
 
-func describeOptionalType(expected *types.OptionalType, original, actual eval.Type, path []*pathElement) []mismatch {
+func describeOptionalType(expected *types.OptionalType, original, actual px.Type, path []*pathElement) []mismatch {
 	if _, ok := actual.(*types.UndefType); ok {
 		return NoMismatch
 	}
@@ -606,45 +606,45 @@ func describeOptionalType(expected *types.OptionalType, original, actual eval.Ty
 	return internalDescribe(expected.ContainedType(), original, actual, path)
 }
 
-func describeEnumType(expected *types.EnumType, original, actual eval.Type, path []*pathElement) []mismatch {
-	if eval.IsAssignable(expected, actual) {
+func describeEnumType(expected *types.EnumType, original, actual px.Type, path []*pathElement) []mismatch {
+	if px.IsAssignable(expected, actual) {
 		return []mismatch{}
 	}
 	return []mismatch{newPatternMismatch(path, original, actual)}
 }
 
-func describeInitType(expected *types.InitType, actual eval.Type, path []*pathElement) []mismatch {
-	if eval.IsAssignable(expected, actual) {
+func describeInitType(expected *types.InitType, actual px.Type, path []*pathElement) []mismatch {
+	if px.IsAssignable(expected, actual) {
 		return []mismatch{}
 	}
 
 	ds := make([]mismatch, 0, 4)
 	ix := 0
-	at := types.NewTupleType([]eval.Type{actual}, nil)
-	expected.EachSignature(func(sg eval.Signature) {
+	at := types.NewTupleType([]px.Type{actual}, nil)
+	expected.EachSignature(func(sg px.Signature) {
 		ds = append(ds, describeSignatureArguments(sg, at, append(path, &pathElement{strconv.Itoa(ix), signature}))...)
 	})
 	return ds
 }
 
-func describePatternType(expected *types.PatternType, original, actual eval.Type, path []*pathElement) []mismatch {
-	if eval.IsAssignable(expected, actual) {
+func describePatternType(expected *types.PatternType, original, actual px.Type, path []*pathElement) []mismatch {
+	if px.IsAssignable(expected, actual) {
 		return NoMismatch
 	}
 	return []mismatch{newPatternMismatch(path, original, actual)}
 }
 
-func describeTypeAliasType(expected *types.TypeAliasType, actual eval.Type, path []*pathElement) []mismatch {
-	return internalDescribe(eval.Normalize(expected.ResolvedType()), expected, actual, path)
+func describeTypeAliasType(expected *types.TypeAliasType, actual px.Type, path []*pathElement) []mismatch {
+	return internalDescribe(px.Normalize(expected.ResolvedType()), expected, actual, path)
 }
 
-func describeArrayType(expected *types.ArrayType, original, actual eval.Type, path []*pathElement) []mismatch {
+func describeArrayType(expected *types.ArrayType, original, actual px.Type, path []*pathElement) []mismatch {
 	descriptions := make([]mismatch, 0, 4)
 	et := expected.ElementType()
 	if ta, ok := actual.(*types.TupleType); ok {
-		if eval.IsAssignable(expected.Size(), ta.Size()) {
+		if px.IsAssignable(expected.Size(), ta.Size()) {
 			for ax, at := range ta.Types() {
-				if !eval.IsAssignable(et, at) {
+				if !px.IsAssignable(et, at) {
 					descriptions = append(descriptions, internalDescribe(et, et, at, pathWith(path, &pathElement{strconv.Itoa(ax), index}))...)
 				}
 			}
@@ -652,7 +652,7 @@ func describeArrayType(expected *types.ArrayType, original, actual eval.Type, pa
 			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), ta.Size()))
 		}
 	} else if aa, ok := actual.(*types.ArrayType); ok {
-		if eval.IsAssignable(expected.Size(), aa.Size()) {
+		if px.IsAssignable(expected.Size(), aa.Size()) {
 			descriptions = append(descriptions, newTypeMismatch(path, original, types.NewArrayType(aa.ElementType(), nil)))
 		} else {
 			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), aa.Size()))
@@ -663,12 +663,12 @@ func describeArrayType(expected *types.ArrayType, original, actual eval.Type, pa
 	return descriptions
 }
 
-func describeHashType(expected *types.HashType, original, actual eval.Type, path []*pathElement) []mismatch {
+func describeHashType(expected *types.HashType, original, actual px.Type, path []*pathElement) []mismatch {
 	descriptions := make([]mismatch, 0, 4)
 	kt := expected.KeyType()
 	vt := expected.ValueType()
 	if sa, ok := actual.(*types.StructType); ok {
-		if eval.IsAssignable(expected.Size(), sa.Size()) {
+		if px.IsAssignable(expected.Size(), sa.Size()) {
 			for _, al := range sa.Elements() {
 				descriptions = append(descriptions, internalDescribe(kt, kt, al.Key(), pathWith(path, &pathElement{al.Name(), entryKey}))...)
 				descriptions = append(descriptions, internalDescribe(vt, vt, al.Value(), pathWith(path, &pathElement{al.Name(), entry}))...)
@@ -677,7 +677,7 @@ func describeHashType(expected *types.HashType, original, actual eval.Type, path
 			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), sa.Size()))
 		}
 	} else if ha, ok := actual.(*types.HashType); ok {
-		if eval.IsAssignable(expected.Size(), ha.Size()) {
+		if px.IsAssignable(expected.Size(), ha.Size()) {
 			descriptions = append(descriptions, newTypeMismatch(path, original, types.NewHashType(ha.KeyType(), ha.ValueType(), nil)))
 		} else {
 			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), ha.Size()))
@@ -688,7 +688,7 @@ func describeHashType(expected *types.HashType, original, actual eval.Type, path
 	return descriptions
 }
 
-func describeStructType(expected *types.StructType, original, actual eval.Type, path []*pathElement) []mismatch {
+func describeStructType(expected *types.StructType, original, actual px.Type, path []*pathElement) []mismatch {
 	descriptions := make([]mismatch, 0, 4)
 	if sa, ok := actual.(*types.StructType); ok {
 		h2 := sa.HashedMembersCloned()
@@ -710,7 +710,7 @@ func describeStructType(expected *types.StructType, original, actual eval.Type, 
 			descriptions = append(descriptions, newExtraneousKey(path, key))
 		}
 	} else if ha, ok := actual.(*types.HashType); ok {
-		if eval.IsAssignable(expected.Size(), ha.Size()) {
+		if px.IsAssignable(expected.Size(), ha.Size()) {
 			descriptions = append(descriptions, newTypeMismatch(path, original, types.NewHashType(ha.KeyType(), ha.ValueType(), nil)))
 		} else {
 			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), ha.Size()))
@@ -721,15 +721,15 @@ func describeStructType(expected *types.StructType, original, actual eval.Type, 
 	return descriptions
 }
 
-func describeTupleType(expected *types.TupleType, original, actual eval.Type, path []*pathElement) []mismatch {
+func describeTupleType(expected *types.TupleType, original, actual px.Type, path []*pathElement) []mismatch {
 	return describeTuple(expected, original, actual, path, newCountMismatch)
 }
 
-func describeArgumentTuple(expected *types.TupleType, actual eval.Type, path []*pathElement) []mismatch {
+func describeArgumentTuple(expected *types.TupleType, actual px.Type, path []*pathElement) []mismatch {
 	return describeTuple(expected, expected, actual, path, newCountMismatch)
 }
 
-func describeTuple(expected *types.TupleType, original, actual eval.Type, path []*pathElement, sm sizeMismatchFunc) []mismatch {
+func describeTuple(expected *types.TupleType, original, actual px.Type, path []*pathElement, sm sizeMismatchFunc) []mismatch {
 	if aa, ok := actual.(*types.ArrayType); ok {
 		if len(expected.Types()) == 0 {
 			return NoMismatch
@@ -741,7 +741,7 @@ func describeTuple(expected *types.TupleType, original, actual eval.Type, path [
 			return []mismatch{newTypeMismatch(path, original, actual)}
 		}
 
-		if !eval.IsAssignable(expected.Size(), aa.Size()) {
+		if !px.IsAssignable(expected.Size(), aa.Size()) {
 			return []mismatch{sm(path, expected.Size(), aa.Size())}
 		}
 
@@ -754,11 +754,11 @@ func describeTuple(expected *types.TupleType, original, actual eval.Type, path [
 	}
 
 	if at, ok := actual.(*types.TupleType); ok {
-		if eval.Equals(expected, actual) {
+		if px.Equals(expected, actual) {
 			return NoMismatch
 		}
 
-		if !eval.IsAssignable(expected.Size(), at.Size()) {
+		if !px.IsAssignable(expected.Size(), at.Size()) {
 			return []mismatch{sm(path, expected.Size(), at.Size())}
 		}
 
@@ -803,7 +803,7 @@ func pathWith(path []*pathElement, elem *pathElement) []*pathElement {
 	return pc
 }
 
-func describeCallableType(expected *types.CallableType, original, actual eval.Type, path []*pathElement) []mismatch {
+func describeCallableType(expected *types.CallableType, original, actual px.Type, path []*pathElement) []mismatch {
 	if ca, ok := actual.(*types.CallableType); ok {
 		ep := expected.ParametersType()
 		paramErrors := NoMismatch
@@ -814,10 +814,10 @@ func describeCallableType(expected *types.CallableType, original, actual eval.Ty
 		if len(paramErrors) == 0 {
 			er := expected.ReturnType()
 			ar := types.NilAs(types.DefaultAnyType(), ca.ReturnType())
-			if er == nil || eval.IsAssignable(er, ar) {
+			if er == nil || px.IsAssignable(er, ar) {
 				eb := expected.BlockType()
 				ab := ca.BlockType()
-				if eb == nil || eval.IsAssignable(eb, types.NilAs(types.DefaultUndefType(), ab)) {
+				if eb == nil || px.IsAssignable(eb, types.NilAs(types.DefaultUndefType(), ab)) {
 					return NoMismatch
 				}
 				if ab == nil {
@@ -832,16 +832,16 @@ func describeCallableType(expected *types.CallableType, original, actual eval.Ty
 	return []mismatch{newTypeMismatch(path, original, actual)}
 }
 
-func describeAnyType(expected eval.Type, original, actual eval.Type, path []*pathElement) []mismatch {
-	if eval.IsAssignable(expected, actual) {
+func describeAnyType(expected px.Type, original, actual px.Type, path []*pathElement) []mismatch {
+	if px.IsAssignable(expected, actual) {
 		return NoMismatch
 	}
 	return []mismatch{newTypeMismatch(path, original, actual)}
 }
 
-func describe(expected eval.Type, actual eval.Type, path []*pathElement) []mismatch {
+func describe(expected px.Type, actual px.Type, path []*pathElement) []mismatch {
 	var unresolved *types.TypeReferenceType
-	expected.Accept(func(t eval.Type) {
+	expected.Accept(func(t px.Type) {
 		if unresolved == nil {
 			if ur, ok := t.(*types.TypeReferenceType); ok {
 				unresolved = ur
@@ -852,10 +852,10 @@ func describe(expected eval.Type, actual eval.Type, path []*pathElement) []misma
 	if unresolved != nil {
 		return []mismatch{newUnresolvedTypeReference(path, unresolved.TypeString())}
 	}
-	return internalDescribe(eval.Normalize(expected), expected, actual, path)
+	return internalDescribe(px.Normalize(expected), expected, actual, path)
 }
 
-func internalDescribe(expected eval.Type, original, actual eval.Type, path []*pathElement) []mismatch {
+func internalDescribe(expected px.Type, original, actual px.Type, path []*pathElement) []mismatch {
 	switch expected := expected.(type) {
 	case *types.VariantType:
 		return describeVariantType(expected, original, actual, path)
@@ -884,7 +884,7 @@ func internalDescribe(expected eval.Type, original, actual eval.Type, path []*pa
 	}
 }
 
-func describeVariantType(expected *types.VariantType, original, actual eval.Type, path []*pathElement) []mismatch {
+func describeVariantType(expected *types.VariantType, original, actual px.Type, path []*pathElement) []mismatch {
 	vs := make([]mismatch, 0, len(expected.Types()))
 	ts := expected.Types()
 	if _, ok := original.(*types.OptionalType); ok {
@@ -892,7 +892,7 @@ func describeVariantType(expected *types.VariantType, original, actual eval.Type
 	}
 
 	for ex, vt := range ts {
-		if eval.IsAssignable(vt, actual) {
+		if px.IsAssignable(vt, actual) {
 			return NoMismatch
 		}
 		d := internalDescribe(vt, vt, actual, pathWith(path, &pathElement{strconv.Itoa(ex), variant}))
@@ -962,9 +962,9 @@ next:
 }
 
 func init() {
-	eval.DescribeSignatures = describeSignatures
+	px.DescribeSignatures = describeSignatures
 
-	eval.DescribeMismatch = func(name string, expected, actual eval.Type) string {
+	px.DescribeMismatch = func(name string, expected, actual px.Type) string {
 		result := describe(expected, actual, []*pathElement{{name, subject}})
 		switch len(result) {
 		case 0:
@@ -981,7 +981,7 @@ func init() {
 	}
 }
 
-func describeSignatures(signatures []eval.Signature, argsTuple eval.Type, block eval.Lambda) string {
+func describeSignatures(signatures []px.Signature, argsTuple px.Type, block px.Lambda) string {
 	errorArrays := make([][]mismatch, len(signatures))
 	allSet := true
 	for ix, sg := range signatures {
@@ -1046,12 +1046,12 @@ func describeSignatures(signatures []eval.Signature, argsTuple eval.Type, block 
 	return strings.Join(result, "\n")
 }
 
-func describeSignatureArguments(signature eval.Signature, args eval.Type, path []*pathElement) []mismatch {
+func describeSignatureArguments(signature px.Signature, args px.Type, path []*pathElement) []mismatch {
 	paramsTuple := signature.ParametersType().(*types.TupleType)
 	eSize := paramsTuple.Size()
 
 	var aSize *types.IntegerType
-	var aTypes []eval.Type
+	var aTypes []px.Type
 	switch args := args.(type) {
 	case *types.TupleType:
 		aSize = args.Size()
@@ -1059,12 +1059,12 @@ func describeSignatureArguments(signature eval.Signature, args eval.Type, path [
 	case *types.ArrayType:
 		aSize = args.Size()
 		n := int(aSize.Min())
-		aTypes = make([]eval.Type, n)
+		aTypes = make([]px.Type, n)
 		for i := 0; i < n; i++ {
 			aTypes[i] = args.ElementType()
 		}
 	}
-	if eval.IsAssignable(eSize, aSize) {
+	if px.IsAssignable(eSize, aSize) {
 		eTypes := paramsTuple.Types()
 		eLast := len(eTypes) - 1
 		eNames := signature.ParameterNames()
@@ -1074,7 +1074,7 @@ func describeSignatureArguments(signature eval.Signature, args eval.Type, path [
 				ex = eLast
 			}
 			eType := eTypes[ex]
-			if !eval.IsAssignable(eType, aType) {
+			if !px.IsAssignable(eType, aType) {
 				descriptions := describe(eType, aType, pathWith(path, &pathElement{eNames[ex], _parameter}))
 				if len(descriptions) > 0 {
 					return descriptions
@@ -1086,10 +1086,10 @@ func describeSignatureArguments(signature eval.Signature, args eval.Type, path [
 	return []mismatch{newCountMismatch(path, eSize, aSize)}
 }
 
-func describeSignatureBlock(signature eval.Signature, aBlock eval.Lambda, path []*pathElement) []mismatch {
+func describeSignatureBlock(signature px.Signature, aBlock px.Lambda, path []*pathElement) []mismatch {
 	eBlock := signature.BlockType()
 	if aBlock == nil {
-		if eBlock == nil || eval.IsAssignable(eBlock, types.DefaultUndefType()) {
+		if eBlock == nil || px.IsAssignable(eBlock, types.DefaultUndefType()) {
 			return NoMismatch
 		}
 		return []mismatch{newMissingRequiredBlock(path)}
@@ -1101,7 +1101,7 @@ func describeSignatureBlock(signature eval.Signature, aBlock eval.Lambda, path [
 	return describe(eBlock, aBlock.Signature(), pathWith(path, &pathElement{signature.BlockName(), block}))
 }
 
-func signatureString(signature eval.Signature) string {
+func signatureString(signature px.Signature) string {
 	tuple := signature.ParametersType().(*types.TupleType)
 	size := tuple.Size()
 	if size.Min() == 0 && size.Max() == 0 {

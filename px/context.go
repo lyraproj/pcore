@@ -1,9 +1,10 @@
-package eval
+package px
 
 import (
 	"context"
-	"github.com/lyraproj/pcore/threadlocal"
 	"runtime"
+
+	"github.com/lyraproj/pcore/threadlocal"
 
 	"github.com/lyraproj/issue/issue"
 )
@@ -89,16 +90,30 @@ type Context interface {
 	StackTop() issue.Location
 }
 
-// AddTypes Makes the given types known to the loader appointed by this context
-var AddTypes func(c Context, types ...Type)
+// AddTypes Makes the given types known to the loader appointed by the Context
+func AddTypes(c Context, types ...Type) {
+	l := c.DefiningLoader()
+	rts := make([]ResolvableType, 0, len(types))
+	for _, t := range types {
+		l.SetEntry(NewTypedName(NsType, t.Name()), NewLoaderEntry(t, nil))
+		if rt, ok := t.(ResolvableType); ok {
+			rts = append(rts, rt)
+		}
+	}
+	ResolveTypes(c, rts...)
+}
 
-// Call calls a function known to the loader with arguments and an optional
-// block.
-var Call func(c Context, name string, args []Value, block Lambda) Value
+// Call calls a function known to the loader of the Context with arguments and an optional block.
+func Call(c Context, name string, args []Value, block Lambda) Value {
+	tn := NewTypedName2(`function`, name, c.Loader().NameAuthority())
+	if f, ok := Load(c, tn); ok {
+		return f.(Function).Call(c, block, args...)
+	}
+	panic(issue.NewReported(UnknownFunction, issue.SEVERITY_ERROR, issue.H{`name`: tn.String()}, c.StackTop()))
+}
 
-// Resolve types, constructions, or functions that has been recently added
-var ResolveResolvables func(c Context)
-
+// DoWithContext sets the given context to be the current context of the executing Go routine, calls
+// the actor, and ensures that the old Context is restored once that call ends normally by panic.
 func DoWithContext(ctx Context, actor func(Context)) {
 	if saveCtx, ok := threadlocal.Get(PuppetContextKey); ok {
 		defer func() {
@@ -111,8 +126,17 @@ func DoWithContext(ctx Context, actor func(Context)) {
 	actor(ctx)
 }
 
-var CurrentContext func() Context
+// CurrentContext returns the current runtime context or panics if no such context has been assigned
+func CurrentContext() Context {
+	if ctx, ok := threadlocal.Get(PuppetContextKey); ok {
+		return ctx.(Context)
+	}
+	_, file, line, _ := runtime.Caller(1)
+	panic(issue.NewReported(NoCurrentContext, issue.SEVERITY_ERROR, issue.NO_ARGS, issue.NewLocation(file, line, 0)))
+}
 
+// StackTop returns the top of the stack contained in the current context or a location determined
+// as the Go function that was the caller of the caller of this function, i.e. runtime.Caller(2).
 func StackTop() issue.Location {
 	if ctx, ok := threadlocal.Get(PuppetContextKey); ok {
 		return ctx.(Context).StackTop()
@@ -120,3 +144,10 @@ func StackTop() issue.Location {
 	_, file, line, _ := runtime.Caller(2)
 	return issue.NewLocation(file, line, 0)
 }
+
+// ResolveResolvables resolves types, constructions, or functions that has been recently added by
+// init() functions
+var ResolveResolvables func(c Context)
+
+// Resolve
+var ResolveTypes func(c Context, types ...ResolvableType)

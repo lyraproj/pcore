@@ -11,7 +11,7 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type (
@@ -34,7 +34,7 @@ var MinTime = time.Time{}
 var MaxTime = time.Unix(MaxUnixSecs, 999999999)
 var timestampTypeDefault = &TimestampType{MinTime, MaxTime}
 
-var TimestampMetaType eval.ObjectType
+var TimestampMetaType px.ObjectType
 
 var DefaultTimestampFormatsWoTz []*TimestampFormat
 var DefaultTimestampFormats []*TimestampFormat
@@ -47,7 +47,7 @@ func init() {
 		from => { type => Optional[Timestamp], value => undef },
 		to => { type => Optional[Timestamp], value => undef }
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newTimestampType2(args...)
 		})
 
@@ -73,19 +73,19 @@ func init() {
 
 	newGoConstructor2(`Timestamp`,
 
-		func(t eval.LocalTypes) {
+		func(t px.LocalTypes) {
 			t.Type(`Formats`, `Variant[String[2],Array[String[2], 1]]`)
 		},
 
-		func(d eval.Dispatch) {
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+		func(d px.Dispatch) {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				return WrapTimestamp(time.Now())
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Variant[Integer,Float]`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				arg := args[0]
 				if i, ok := arg.(integerValue); ok {
 					return WrapTimestamp(time.Unix(int64(i), 0))
@@ -95,11 +95,11 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`String[1]`)
 			d.OptionalParam(`Formats`)
 			d.OptionalParam(`String[1]`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				formats := DefaultTimestampFormats
 				tz := ``
 				if len(args) > 1 {
@@ -112,12 +112,12 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Struct[string => String[1],Optional[format] => Formats,Optional[timezone] => String[1]]`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				hash := args[0].(*HashValue)
 				str := hash.Get5(`string`, emptyString).String()
-				formats := toTimestampFormats(hash.Get5(`format`, eval.Undef))
+				formats := toTimestampFormats(hash.Get5(`format`, px.Undef))
 				tz := hash.Get5(`timezone`, emptyString).String()
 				return ParseTimestamp(str, formats, tz)
 			})
@@ -143,7 +143,7 @@ func TimeFromString(value string) time.Time {
 	return time.Time(*ParseTimestamp(value, DefaultTimestampFormats, ``))
 }
 
-func newTimestampType2(args ...eval.Value) *TimestampType {
+func newTimestampType2(args ...px.Value) *TimestampType {
 	argc := len(args)
 	if argc > 2 {
 		panic(errors.NewIllegalArgumentCount(`Timestamp[]`, `0 or 2`, argc))
@@ -151,7 +151,7 @@ func newTimestampType2(args ...eval.Value) *TimestampType {
 	if argc == 0 {
 		return timestampTypeDefault
 	}
-	convertArg := func(args []eval.Value, argNo int) time.Time {
+	convertArg := func(args []px.Value, argNo int) time.Time {
 		arg := args[argNo]
 		var (
 			t  time.Time
@@ -192,31 +192,31 @@ func newTimestampType2(args ...eval.Value) *TimestampType {
 	}
 }
 
-func (t *TimestampType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *TimestampType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *TimestampType) Default() eval.Type {
+func (t *TimestampType) Default() px.Type {
 	return timestampTypeDefault
 }
 
-func (t *TimestampType) Equals(other interface{}, guard eval.Guard) bool {
+func (t *TimestampType) Equals(other interface{}, guard px.Guard) bool {
 	if ot, ok := other.(*TimestampType); ok {
 		return t.min.Equal(ot.min) && t.max.Equal(ot.max)
 	}
 	return false
 }
 
-func (t *TimestampType) Get(key string) (eval.Value, bool) {
+func (t *TimestampType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `from`:
-		v := eval.Undef
+		v := px.Undef
 		if t.min != MinTime {
 			v = WrapTimestamp(t.min)
 		}
 		return v, true
 	case `to`:
-		v := eval.Undef
+		v := px.Undef
 		if t.max != MaxTime {
 			v = WrapTimestamp(t.max)
 		}
@@ -226,35 +226,35 @@ func (t *TimestampType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *TimestampType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *TimestampType) IsInstance(o px.Value, g px.Guard) bool {
 	return t.IsAssignable(o.PType(), g)
 }
 
-func (t *TimestampType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *TimestampType) IsAssignable(o px.Type, g px.Guard) bool {
 	if ot, ok := o.(*TimestampType); ok {
 		return (t.min.Before(ot.min) || t.min.Equal(ot.min)) && (t.max.After(ot.max) || t.max.Equal(ot.max))
 	}
 	return false
 }
 
-func (t *TimestampType) MetaType() eval.ObjectType {
+func (t *TimestampType) MetaType() px.ObjectType {
 	return TimestampMetaType
 }
 
-func (t *TimestampType) Parameters() []eval.Value {
+func (t *TimestampType) Parameters() []px.Value {
 	if t.max.Equal(MaxTime) {
 		if t.min.Equal(MinTime) {
-			return eval.EmptyValues
+			return px.EmptyValues
 		}
-		return []eval.Value{stringValue(t.min.String())}
+		return []px.Value{stringValue(t.min.String())}
 	}
 	if t.min.Equal(MinTime) {
-		return []eval.Value{WrapDefault(), stringValue(t.max.String())}
+		return []px.Value{WrapDefault(), stringValue(t.max.String())}
 	}
-	return []eval.Value{stringValue(t.min.String()), stringValue(t.max.String())}
+	return []px.Value{stringValue(t.min.String()), stringValue(t.max.String())}
 }
 
-func (t *TimestampType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *TimestampType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return reflect.TypeOf(time.Time{}), true
 }
 
@@ -267,14 +267,14 @@ func (t *TimestampType) SerializationString() string {
 }
 
 func (t *TimestampType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *TimestampType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *TimestampType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *TimestampType) PType() eval.Type {
+func (t *TimestampType) PType() px.Type {
 	return &TypeType{t}
 }
 
@@ -297,7 +297,7 @@ func ParseTimestamp(str string, formats []*TimestampFormat, tz string) *Timestam
 		}
 		fs.WriteString(f.format)
 	}
-	panic(eval.Error(eval.TimestampCannotBeParsed, issue.H{`str`: str, `formats`: fs.String()}))
+	panic(px.Error(px.TimestampCannotBeParsed, issue.H{`str`: str, `formats`: fs.String()}))
 }
 
 func parseTime(str string, formats []*TimestampFormat, tz string) (time.Time, bool) {
@@ -312,7 +312,7 @@ func parseTime(str string, formats []*TimestampFormat, tz string) (time.Time, bo
 		if err == nil {
 			if usedTz != ts.Location().String() {
 				if tz != `` {
-					panic(eval.Error(eval.TimestampTzAmbiguity, issue.H{`parsed`: ts.Location().String(), `given`: tz}))
+					panic(px.Error(px.TimestampTzAmbiguity, issue.H{`parsed`: ts.Location().String(), `given`: tz}))
 				}
 				// Golang does real weird things when the string contains a timezone that isn't equal
 				// to the given timezone. Instead of loading the given zone, it creates a new location
@@ -334,12 +334,12 @@ func parseTime(str string, formats []*TimestampFormat, tz string) (time.Time, bo
 func loadLocation(tz string) *time.Location {
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
-		panic(eval.Error(eval.InvalidTimezone, issue.H{`zone`: tz, `detail`: err.Error()}))
+		panic(px.Error(px.InvalidTimezone, issue.H{`zone`: tz, `detail`: err.Error()}))
 	}
 	return loc
 }
 
-func (tv *TimestampValue) Equals(o interface{}, g eval.Guard) bool {
+func (tv *TimestampValue) Equals(o interface{}, g px.Guard) bool {
 	if ov, ok := o.(*TimestampValue); ok {
 		return tv.Int() == ov.Int()
 	}
@@ -367,14 +367,14 @@ func (tv *TimestampValue) Format2(format, tz string) string {
 	return DefaultTimestampFormatParser.ParseFormat(format).Format2(tv, tz)
 }
 
-func (tv *TimestampValue) Reflect(c eval.Context) reflect.Value {
+func (tv *TimestampValue) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf((time.Time)(*tv))
 }
 
-func (tv *TimestampValue) ReflectTo(c eval.Context, dest reflect.Value) {
+func (tv *TimestampValue) ReflectTo(c px.Context, dest reflect.Value) {
 	rv := tv.Reflect(c)
 	if !rv.Type().AssignableTo(dest.Type()) {
-		panic(eval.Error(eval.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
+		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
 	}
 	dest.Set(rv)
 }
@@ -396,7 +396,7 @@ func (tv *TimestampValue) SerializationString() string {
 }
 
 func (tv *TimestampValue) String() string {
-	return eval.ToString2(tv, None)
+	return px.ToString2(tv, None)
 }
 
 func (tv *TimestampValue) ToKey(b *bytes.Buffer) {
@@ -423,14 +423,14 @@ func (tv *TimestampValue) ToKey(b *bytes.Buffer) {
 	b.WriteByte(byte(n))
 }
 
-func (tv *TimestampValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (tv *TimestampValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	_, err := io.WriteString(b, (*time.Time)(tv).Format(DefaultTimestampFormats[0].layout))
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (tv *TimestampValue) PType() eval.Type {
+func (tv *TimestampValue) PType() px.Type {
 	t := time.Time(*tv)
 	return &TimestampType{t, t}
 }
@@ -756,15 +756,15 @@ func strftimeToLayout(bld *bytes.Buffer, str string) {
 }
 
 func notSupportedByGoTimeLayout(str string, start, pos int, description string) issue.Reported {
-	return eval.Error(eval.NotSupportedByGoTimeLayout, issue.H{`format_specifier`: str[start : pos+1], `description`: description})
+	return px.Error(px.NotSupportedByGoTimeLayout, issue.H{`format_specifier`: str[start : pos+1], `description`: description})
 }
 
-func toTimestampFormats(fmt eval.Value) []*TimestampFormat {
+func toTimestampFormats(fmt px.Value) []*TimestampFormat {
 	formats := DefaultTimestampFormats
 	switch fmt := fmt.(type) {
 	case *ArrayValue:
 		formats = make([]*TimestampFormat, fmt.Len())
-		fmt.EachWithIndex(func(f eval.Value, i int) {
+		fmt.EachWithIndex(func(f px.Value, i int) {
 			formats[i] = DefaultTimestampFormatParser.ParseFormat(f.String())
 		})
 	case stringValue:

@@ -6,19 +6,19 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/semver/semver"
 )
 
 const tagName = "puppet"
 
 type reflector struct {
-	c eval.Context
+	c px.Context
 }
 
-var pValueType = reflect.TypeOf((*eval.Value)(nil)).Elem()
+var pValueType = reflect.TypeOf((*px.Value)(nil)).Elem()
 
-func NewReflector(c eval.Context) eval.Reflector {
+func NewReflector(c px.Context) px.Reflector {
 	return &reflector{c}
 }
 
@@ -84,14 +84,14 @@ func (r *reflector) FieldName(f *reflect.StructField) string {
 	return issue.FirstToLower(f.Name)
 }
 
-func (r *reflector) Reflect(src eval.Value) reflect.Value {
-	if sn, ok := src.(eval.Reflected); ok {
+func (r *reflector) Reflect(src px.Value) reflect.Value {
+	if sn, ok := src.(px.Reflected); ok {
 		return sn.Reflect(r.c)
 	}
-	panic(eval.Error(eval.UnreflectableValue, issue.H{`type`: src.PType()}))
+	panic(px.Error(px.UnreflectableValue, issue.H{`type`: src.PType()}))
 }
 
-func (r *reflector) Reflect2(src eval.Value, rt reflect.Type) reflect.Value {
+func (r *reflector) Reflect2(src px.Value, rt reflect.Type) reflect.Value {
 	if rt != nil && rt.Kind() == reflect.Interface && rt.AssignableTo(pValueType) {
 		sv := reflect.ValueOf(src)
 		if sv.Type().AssignableTo(rt) {
@@ -104,50 +104,50 @@ func (r *reflector) Reflect2(src eval.Value, rt reflect.Type) reflect.Value {
 }
 
 // ReflectTo assigns the native value of src to dest
-func (r *reflector) ReflectTo(src eval.Value, dest reflect.Value) {
+func (r *reflector) ReflectTo(src px.Value, dest reflect.Value) {
 	assertSettable(&dest)
 	if dest.Kind() == reflect.Interface && dest.Type().AssignableTo(pValueType) {
 		sv := reflect.ValueOf(src)
 		if !sv.Type().AssignableTo(dest.Type()) {
-			panic(eval.Error(eval.AttemptToSetWrongKind, issue.H{`expected`: sv.Type().String(), `actual`: dest.Type().String()}))
+			panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: sv.Type().String(), `actual`: dest.Type().String()}))
 		}
 		dest.Set(sv)
 	} else {
 		switch src := src.(type) {
-		case eval.Reflected:
+		case px.Reflected:
 			src.ReflectTo(r.c, dest)
-		case eval.PuppetObject:
-			src.PType().(eval.ObjectType).ToReflectedValue(r.c, src, dest)
+		case px.PuppetObject:
+			src.PType().(px.ObjectType).ToReflectedValue(r.c, src, dest)
 		default:
-			panic(eval.Error(eval.InvalidSourceForSet, issue.H{`type`: src.PType()}))
+			panic(px.Error(px.InvalidSourceForSet, issue.H{`type`: src.PType()}))
 		}
 	}
 }
 
-func (r *reflector) ReflectType(src eval.Type) (reflect.Type, bool) {
+func (r *reflector) ReflectType(src px.Type) (reflect.Type, bool) {
 	return ReflectType(r.c, src)
 }
 
-func ReflectType(c eval.Context, src eval.Type) (reflect.Type, bool) {
-	if sn, ok := src.(eval.ReflectedType); ok {
+func ReflectType(c px.Context, src px.Type) (reflect.Type, bool) {
+	if sn, ok := src.(px.ReflectedType); ok {
 		return sn.ReflectType(c)
 	}
 	return nil, false
 }
 
-func (r *reflector) TagHash(f *reflect.StructField) (eval.OrderedMap, bool) {
+func (r *reflector) TagHash(f *reflect.StructField) (px.OrderedMap, bool) {
 	return TagHash(f)
 }
 
-func TagHash(f *reflect.StructField) (eval.OrderedMap, bool) {
+func TagHash(f *reflect.StructField) (px.OrderedMap, bool) {
 	return ParseTagHash(f.Tag.Get(tagName))
 }
 
-func ParseTagHash(tag string) (eval.OrderedMap, bool) {
+func ParseTagHash(tag string) (px.OrderedMap, bool) {
 	if tag != `` {
 		tagExpr, err := Parse(`{` + tag + `}`)
 		if err == nil {
-			return tagExpr.(eval.OrderedMap), true
+			return tagExpr.(px.OrderedMap), true
 		}
 	}
 	return nil, false
@@ -155,9 +155,9 @@ func ParseTagHash(tag string) (eval.OrderedMap, bool) {
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
-func (r *reflector) FunctionDeclFromReflect(name string, mt reflect.Type, withReceiver bool) eval.OrderedMap {
+func (r *reflector) FunctionDeclFromReflect(name string, mt reflect.Type, withReceiver bool) px.OrderedMap {
 	returnsError := false
-	var rt eval.Type
+	var rt px.Type
 	var err error
 	oc := mt.NumOut()
 	switch oc {
@@ -182,12 +182,12 @@ func (r *reflector) FunctionDeclFromReflect(name string, mt reflect.Type, withRe
 		if ot.AssignableTo(errorType) {
 			returnsError = true
 		} else {
-			var rt2 eval.Type
+			var rt2 px.Type
 			rt2, err = wrapReflectedType(r.c, mt.Out(1))
 			if err != nil {
 				panic(err)
 			}
-			rt = NewTupleType([]eval.Type{rt, rt2}, nil)
+			rt = NewTupleType([]px.Type{rt, rt2}, nil)
 		}
 	default:
 		ot := mt.Out(oc - 1)
@@ -195,7 +195,7 @@ func (r *reflector) FunctionDeclFromReflect(name string, mt reflect.Type, withRe
 			returnsError = true
 			oc = oc - 1
 		}
-		ts := make([]eval.Type, oc)
+		ts := make([]px.Type, oc)
 		for i := 0; i < oc; i++ {
 			ts[i], err = wrapReflectedType(r.c, mt.Out(i))
 			if err != nil {
@@ -216,7 +216,7 @@ func (r *reflector) FunctionDeclFromReflect(name string, mt reflect.Type, withRe
 	if pc == ix {
 		pt = EmptyTupleType()
 	} else {
-		ps := make([]eval.Type, pc-ix)
+		ps := make([]px.Type, pc-ix)
 		for p := ix; p < pc; p++ {
 			ps[p-ix], err = wrapReflectedType(r.c, mt.In(p))
 			if err != nil {
@@ -244,7 +244,7 @@ func (r *reflector) FunctionDeclFromReflect(name string, mt reflect.Type, withRe
 	return WrapHash(ds)
 }
 
-func (r *reflector) InitializerFromTagged(typeName string, parent eval.Type, tg eval.AnnotatedType) eval.OrderedMap {
+func (r *reflector) InitializerFromTagged(typeName string, parent px.Type, tg px.AnnotatedType) px.OrderedMap {
 	rf := tg.Type()
 	ie := make([]*HashEntry, 0, 2)
 	if rf.Kind() == reflect.Func {
@@ -306,12 +306,12 @@ func (r *reflector) InitializerFromTagged(typeName string, parent eval.Type, tg 
 	return WrapHash(ie)
 }
 
-func (r *reflector) TypeFromReflect(typeName string, parent eval.Type, rf reflect.Type) eval.ObjectType {
-	return r.TypeFromTagged(typeName, parent, eval.NewTaggedType(rf, nil), nil)
+func (r *reflector) TypeFromReflect(typeName string, parent px.Type, rf reflect.Type) px.ObjectType {
+	return r.TypeFromTagged(typeName, parent, px.NewTaggedType(rf, nil), nil)
 }
 
-func (r *reflector) TypeFromTagged(typeName string, parent eval.Type, tg eval.AnnotatedType, rcFunc eval.Doer) eval.ObjectType {
-	return BuildObjectType(typeName, parent, func(obj eval.ObjectType) eval.OrderedMap {
+func (r *reflector) TypeFromTagged(typeName string, parent px.Type, tg px.AnnotatedType, rcFunc px.Doer) px.ObjectType {
+	return BuildObjectType(typeName, parent, func(obj px.ObjectType) px.OrderedMap {
 		obj.(*objectType).goType = tg
 
 		r.c.ImplementationRegistry().RegisterType(obj, tg.Type())
@@ -322,10 +322,10 @@ func (r *reflector) TypeFromTagged(typeName string, parent eval.Type, tg eval.An
 	})
 }
 
-func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh eval.OrderedMap) (name string, decl eval.OrderedMap) {
+func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh px.OrderedMap) (name string, decl px.OrderedMap) {
 	as := make([]*HashEntry, 0)
-	var val eval.Value
-	var typ eval.Type
+	var val px.Value
+	var typ px.Type
 
 	if fh != nil {
 		if v, ok := fh.Get4(keyName); ok {
@@ -339,7 +339,7 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh eval.OrderedMap)
 			as = append(as, v.(*HashEntry))
 		}
 		if v, ok := fh.Get4(keyType); ok {
-			if t, ok := v.(eval.Type); ok {
+			if t, ok := v.(px.Type); ok {
 				typ = t
 			}
 		}
@@ -347,12 +347,12 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh eval.OrderedMap)
 
 	if typ == nil {
 		var err error
-		if typ, err = eval.WrapReflectedType(r.c, f.Type); err != nil {
+		if typ, err = px.WrapReflectedType(r.c, f.Type); err != nil {
 			panic(err)
 		}
 	}
 
-	optional := typ.IsInstance(eval.Undef, nil)
+	optional := typ.IsInstance(px.Undef, nil)
 	if optional {
 		if val == nil {
 			// If no value is declared and the type is declared as optional, then
@@ -360,7 +360,7 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh eval.OrderedMap)
 			as = append(as, WrapHashEntry2(keyValue, undef))
 		}
 	} else {
-		if eval.Equals(val, undef) {
+		if px.Equals(val, undef) {
 			// Convenience. If a value is declared as being undef, then ensure that
 			// type accepts undef
 			typ = NewOptionalType(typ)
@@ -374,7 +374,7 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh eval.OrderedMap)
 			// OK. Can be nil
 		default:
 			// The field will always have a value (the Go zero value), so it cannot be nil.
-			panic(eval.Error(eval.ImpossibleOptional, issue.H{`name`: f.Name, `type`: typ.String()}))
+			panic(px.Error(px.ImpossibleOptional, issue.H{`name`: f.Name, `type`: typ.String()}))
 		}
 	}
 
@@ -386,11 +386,11 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh eval.OrderedMap)
 	return name, WrapHash(as)
 }
 
-func (r *reflector) TypeSetFromReflect(typeSetName string, version semver.Version, aliases map[string]string, rTypes ...reflect.Type) eval.TypeSet {
+func (r *reflector) TypeSetFromReflect(typeSetName string, version semver.Version, aliases map[string]string, rTypes ...reflect.Type) px.TypeSet {
 	types := make([]*HashEntry, 0)
 	prefix := typeSetName + `::`
 	for _, rt := range rTypes {
-		var parent eval.Type
+		var parent px.Type
 		fs := r.Fields(rt)
 		nf := len(fs)
 		if nf > 0 {
@@ -406,11 +406,11 @@ func (r *reflector) TypeSetFromReflect(typeSetName string, version semver.Versio
 	}
 
 	es := make([]*HashEntry, 0)
-	es = append(es, WrapHashEntry2(eval.KeyPcoreUri, stringValue(string(eval.PcoreUri))))
-	es = append(es, WrapHashEntry2(eval.KeyPcoreVersion, WrapSemVer(eval.PcoreVersion)))
+	es = append(es, WrapHashEntry2(px.KeyPcoreUri, stringValue(string(px.PcoreUri))))
+	es = append(es, WrapHashEntry2(px.KeyPcoreVersion, WrapSemVer(px.PcoreVersion)))
 	es = append(es, WrapHashEntry2(KeyVersion, WrapSemVer(version)))
 	es = append(es, WrapHashEntry2(KeyTypes, WrapHash(types)))
-	return NewTypeSet(eval.RuntimeNameAuthority, typeSetName, WrapHash(es))
+	return NewTypeSet(px.RuntimeNameAuthority, typeSetName, WrapHash(es))
 }
 
 func ParentType(t reflect.Type) reflect.Type {
@@ -442,6 +442,6 @@ func typeName(prefix string, aliases map[string]string, rt reflect.Type) string 
 
 func assertSettable(value *reflect.Value) {
 	if !value.CanSet() {
-		panic(eval.Error(eval.AttemptToSetUnsettable, issue.H{`kind`: value.Type().String()}))
+		panic(px.Error(px.AttemptToSetUnsettable, issue.H{`kind`: value.Type().String()}))
 	}
 }

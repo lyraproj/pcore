@@ -15,7 +15,7 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
@@ -25,7 +25,7 @@ type (
 		max time.Duration
 	}
 
-	// TimespanValue represents time.Duration as an eval.Value
+	// TimespanValue represents time.Duration as an pcore.Value
 	TimespanValue time.Duration
 )
 
@@ -54,7 +54,7 @@ var TimespanMax = time.Duration(math.MaxInt64)
 
 var timespanTypeDefault = &TimespanType{TimespanMin, TimespanMax}
 
-var TimespanMetaType eval.ObjectType
+var TimespanMetaType px.ObjectType
 var DefaultTimespanFormatParser *TimespanFormatParser
 
 func init() {
@@ -77,18 +77,18 @@ func init() {
 		from => { type => Optional[Timespan], value => undef },
 		to => { type => Optional[Timespan], value => undef }
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newTimespanType2(args...)
 		})
 
 	newGoConstructor2(`Timespan`,
-		func(t eval.LocalTypes) {
+		func(t px.LocalTypes) {
 			t.Type(`Formats`, `Variant[String[2],Array[String[2], 1]]`)
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Variant[Integer,Float]`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				arg := args[0]
 				if i, ok := arg.(integerValue); ok {
 					return WrapTimespan(time.Duration(i * NsecsPerSec))
@@ -97,10 +97,10 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`String[1]`)
 			d.OptionalParam(`Formats`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				formats := DefaultTimespanFormats
 				if len(args) > 1 {
 					formats = toTimespanFormats(args[1])
@@ -110,7 +110,7 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Integer`)
 			d.Param(`Integer`)
 			d.Param(`Integer`)
@@ -118,7 +118,7 @@ func init() {
 			d.OptionalParam(`Integer`)
 			d.OptionalParam(`Integer`)
 			d.OptionalParam(`Integer`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				days := args[0].(integerValue).Int()
 				hours := args[1].(integerValue).Int()
 				minutes := args[2].(integerValue).Int()
@@ -138,9 +138,9 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Struct[string => String[1], Optional[format] => Formats]`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				hash := args[0].(*HashValue)
 				str := hash.Get5(`string`, emptyString)
 				formats := toTimespanFormats(hash.Get5(`format`, undef))
@@ -148,7 +148,7 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Struct[Optional[negative] => Boolean,
         Optional[days] => Integer,
         Optional[hours] => Integer,
@@ -157,7 +157,7 @@ func init() {
         Optional[milliseconds] => Integer,
         Optional[microseconds] => Integer,
         Optional[nanoseconds] => Integer]`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				return WrapTimespan(fromFieldsHash(args[0].(*HashValue)))
 			})
 		})
@@ -171,7 +171,7 @@ func NewTimespanType(min time.Duration, max time.Duration) *TimespanType {
 	return &TimespanType{min, max}
 }
 
-func newTimespanType2(args ...eval.Value) *TimespanType {
+func newTimespanType2(args ...px.Value) *TimespanType {
 	argc := len(args)
 	if argc > 2 {
 		panic(errors.NewIllegalArgumentCount(`Timespan[]`, `0 or 2`, argc))
@@ -179,7 +179,7 @@ func newTimespanType2(args ...eval.Value) *TimespanType {
 	if argc == 0 {
 		return timespanTypeDefault
 	}
-	convertArg := func(args []eval.Value, argNo int) time.Duration {
+	convertArg := func(args []px.Value, argNo int) time.Duration {
 		arg := args[argNo]
 		var (
 			t  time.Duration
@@ -219,31 +219,31 @@ func newTimespanType2(args ...eval.Value) *TimespanType {
 	}
 }
 
-func (t *TimespanType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *TimespanType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *TimespanType) Default() eval.Type {
+func (t *TimespanType) Default() px.Type {
 	return timespanTypeDefault
 }
 
-func (t *TimespanType) Equals(other interface{}, guard eval.Guard) bool {
+func (t *TimespanType) Equals(other interface{}, guard px.Guard) bool {
 	if ot, ok := other.(*TimespanType); ok {
 		return t.min == ot.min && t.max == ot.max
 	}
 	return false
 }
 
-func (t *TimespanType) Get(key string) (eval.Value, bool) {
+func (t *TimespanType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `from`:
-		v := eval.Undef
+		v := px.Undef
 		if t.min != TimespanMin {
 			v = WrapTimespan(t.min)
 		}
 		return v, true
 	case `to`:
-		v := eval.Undef
+		v := px.Undef
 		if t.max != TimespanMax {
 			v = WrapTimespan(t.max)
 		}
@@ -253,24 +253,24 @@ func (t *TimespanType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *TimespanType) MetaType() eval.ObjectType {
+func (t *TimespanType) MetaType() px.ObjectType {
 	return TimespanMetaType
 }
 
-func (t *TimespanType) Parameters() []eval.Value {
+func (t *TimespanType) Parameters() []px.Value {
 	if t.max == math.MaxInt64 {
 		if t.min == math.MinInt64 {
-			return eval.EmptyValues
+			return px.EmptyValues
 		}
-		return []eval.Value{stringValue(t.min.String())}
+		return []px.Value{stringValue(t.min.String())}
 	}
 	if t.min == math.MinInt64 {
-		return []eval.Value{WrapDefault(), stringValue(t.max.String())}
+		return []px.Value{WrapDefault(), stringValue(t.max.String())}
 	}
-	return []eval.Value{stringValue(t.min.String()), stringValue(t.max.String())}
+	return []px.Value{stringValue(t.min.String()), stringValue(t.max.String())}
 }
 
-func (t *TimespanType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *TimespanType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return reflect.TypeOf(time.Duration(0)), true
 }
 
@@ -283,22 +283,22 @@ func (t *TimespanType) SerializationString() string {
 }
 
 func (t *TimespanType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *TimespanType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *TimespanType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *TimespanType) PType() eval.Type {
+func (t *TimespanType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func (t *TimespanType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *TimespanType) IsInstance(o px.Value, g px.Guard) bool {
 	return t.IsAssignable(o.PType(), g)
 }
 
-func (t *TimespanType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *TimespanType) IsAssignable(o px.Type, g px.Guard) bool {
 	if ot, ok := o.(*TimespanType); ok {
 		return t.min <= ot.min && t.max >= ot.max
 	}
@@ -324,7 +324,7 @@ func ParseTimespan(str string, formats []*TimespanFormat) TimespanValue {
 		}
 		fs.WriteString(f.fmt)
 	}
-	panic(eval.Error(eval.CannotBeParsed, issue.H{`str`: str, `formats`: fs.String()}))
+	panic(px.Error(px.CannotBeParsed, issue.H{`str`: str, `formats`: fs.String()}))
 }
 
 func fromFields(negative bool, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds int64) time.Duration {
@@ -375,7 +375,7 @@ func fromStringHash(hash *HashValue) (time.Duration, bool) {
 		} else {
 			if fsa, ok := fmtStrings.(*ArrayValue); ok {
 				formats = make([]*TimespanFormat, fsa.Len())
-				fsa.EachWithIndex(func(fs eval.Value, i int) {
+				fsa.EachWithIndex(func(fs px.Value, i int) {
 					formats[i] = DefaultTimespanFormatParser.ParseFormat(fs.String())
 				})
 			}
@@ -400,7 +400,7 @@ func parseDuration(str string, formats []*TimespanFormat) (time.Duration, bool) 
 	return 0, false
 }
 
-func (tv TimespanValue) Abs() eval.NumericValue {
+func (tv TimespanValue) Abs() px.NumericValue {
 	if tv < 0 {
 		return TimespanValue(-tv)
 	}
@@ -421,7 +421,7 @@ func (tv TimespanValue) Hours() int64 {
 	return tv.totalHours() % 24
 }
 
-func (tv TimespanValue) Equals(o interface{}, g eval.Guard) bool {
+func (tv TimespanValue) Equals(o interface{}, g px.Guard) bool {
 	if ov, ok := o.(TimespanValue); ok {
 		return tv.Int() == ov.Int()
 	}
@@ -447,14 +447,14 @@ func (tv TimespanValue) Minutes() int64 {
 	return tv.totalMinutes() % 60
 }
 
-func (tv TimespanValue) Reflect(c eval.Context) reflect.Value {
+func (tv TimespanValue) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf(time.Duration(tv))
 }
 
-func (tv TimespanValue) ReflectTo(c eval.Context, dest reflect.Value) {
+func (tv TimespanValue) ReflectTo(c px.Context, dest reflect.Value) {
 	rv := tv.Reflect(c)
 	if !rv.Type().AssignableTo(dest.Type()) {
-		panic(eval.Error(eval.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
+		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
 	}
 	dest.Set(rv)
 }
@@ -519,11 +519,11 @@ func (tv TimespanValue) totalNanoseconds() int64 {
 	return time.Duration(tv).Nanoseconds()
 }
 
-func (tv TimespanValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (tv TimespanValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	DefaultTimespanFormats[0].format2(b, tv)
 }
 
-func (tv TimespanValue) PType() eval.Type {
+func (tv TimespanValue) PType() px.Type {
 	t := time.Duration(tv)
 	return &TimespanType{t, t}
 }
@@ -746,7 +746,7 @@ func appendLiteral(bld []segment, c rune) []segment {
 }
 
 func badFormatSpecifier(str string, start, pos int) issue.Reported {
-	return eval.Error(eval.TimespanBadFormatSpec, issue.H{`expression`: str[start:pos], `format`: str, `position`: pos})
+	return px.Error(px.TimespanBadFormatSpec, issue.H{`expression`: str[start:pos], `format`: str, `position`: pos})
 }
 
 func newTimespanFormat(format string, segments []segment) *TimespanFormat {
@@ -1027,7 +1027,7 @@ func (s *fragmentSegment) createFormat() string {
 
 func (s *fragmentSegment) nanoseconds(group string, multiplier int) int64 {
 	if s.useTotal {
-		panic(eval.Error(eval.TimespanFormatSpecNotHigher, issue.NO_ARGS))
+		panic(px.Error(px.TimespanFormatSpecNotHigher, issue.NO_ARGS))
 	}
 	n := s.valueSegment.nanoseconds(group, multiplier)
 	p := int64(9 - len(group))
@@ -1104,12 +1104,12 @@ func (s *nanosecondSegment) ordinal() int {
 	return nsecMax
 }
 
-func toTimespanFormats(f eval.Value) []*TimespanFormat {
+func toTimespanFormats(f px.Value) []*TimespanFormat {
 	fs := DefaultTimespanFormats
 	switch f := f.(type) {
 	case *ArrayValue:
 		fs = make([]*TimespanFormat, f.Len())
-		f.EachWithIndex(func(f eval.Value, i int) {
+		f.EachWithIndex(func(f px.Value, i int) {
 			fs[i] = DefaultTimespanFormatParser.ParseFormat(f.String())
 		})
 	case stringValue:

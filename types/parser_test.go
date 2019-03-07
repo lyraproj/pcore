@@ -2,18 +2,16 @@ package types_test
 
 import (
 	"fmt"
-	"github.com/lyraproj/pcore/eval"
-	"github.com/lyraproj/pcore/types"
 	"os"
 
-	// Initialize pcore
-	_ "github.com/lyraproj/pcore/pcore"
+	"github.com/lyraproj/pcore/px"
+	"github.com/lyraproj/pcore/types"
 )
 
 func ExampleParse_qName() {
 	t, err := types.Parse(`Foo::Bar`)
 	if err == nil {
-		t.ToString(os.Stdout, eval.PrettyExpanded, nil)
+		t.ToString(os.Stdout, px.PrettyExpanded, nil)
 		fmt.Println()
 	} else {
 		fmt.Println(err)
@@ -38,7 +36,7 @@ func ExampleParse_entry() {
   `
 	v, err := types.Parse(src)
 	if err == nil {
-		v.ToString(os.Stdout, eval.PrettyExpanded, nil)
+		v.ToString(os.Stdout, px.PrettyExpanded, nil)
 		fmt.Println()
 	} else {
 		fmt.Println(err)

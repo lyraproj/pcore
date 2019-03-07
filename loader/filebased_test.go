@@ -1,20 +1,19 @@
 package loader_test
 
 import (
-	"github.com/lyraproj/pcore/eval"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
-	// Initialize pcore
-	_ "github.com/lyraproj/pcore/pcore"
+	"github.com/lyraproj/pcore/pcore"
+	"github.com/lyraproj/pcore/px"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFileBasedAlias(t *testing.T) {
-	eval.Puppet.Do(func(c eval.Context) {
-		c.DoWithLoader(eval.NewFileBasedLoader(c.Loader(), `testdata`, ``, eval.PuppetDataTypePath), func() {
-			v, ok := eval.Load(c, eval.NewTypedName(eval.NsType, `MyType`))
+	pcore.Do(func(c px.Context) {
+		c.DoWithLoader(px.NewFileBasedLoader(c.Loader(), `testdata`, ``, px.PuppetDataTypePath), func() {
+			v, ok := px.Load(c, px.NewTypedName(px.NsType, `MyType`))
 			assert.True(t, ok, `failed to load type`)
-			tp, ok := v.(eval.Type)
+			tp, ok := v.(px.Type)
 			assert.True(t, ok, `loaded element is not a type`)
 			assert.Equal(t, `MyType`, tp.Name())
 		})

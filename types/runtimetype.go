@@ -7,7 +7,7 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
@@ -28,7 +28,7 @@ type (
 
 var runtimeTypeDefault = &RuntimeType{``, ``, nil, nil}
 
-var RuntimeMetaType eval.ObjectType
+var RuntimeMetaType px.ObjectType
 
 func init() {
 	RuntimeMetaType = newObjectType(`Pcore::RuntimeType`,
@@ -43,7 +43,7 @@ func init() {
       value => undef
     }
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newRuntimeType2(args...)
 		})
 }
@@ -57,12 +57,12 @@ func NewRuntimeType(runtimeName string, name string, pattern *RegexpType) *Runti
 		return DefaultRuntimeType()
 	}
 	if runtimeName == `go` && name != `` {
-		panic(eval.Error(eval.GoRuntimeTypeWithoutGoType, issue.H{`name`: name}))
+		panic(px.Error(px.GoRuntimeTypeWithoutGoType, issue.H{`name`: name}))
 	}
 	return &RuntimeType{runtime: runtimeName, name: name, pattern: pattern}
 }
 
-func newRuntimeType2(args ...eval.Value) *RuntimeType {
+func newRuntimeType2(args ...px.Value) *RuntimeType {
 	top := len(args)
 	if top > 3 {
 		panic(errors.NewIllegalArgumentCount(`Runtime[]`, `0 - 3`, len(args)))
@@ -77,9 +77,9 @@ func newRuntimeType2(args ...eval.Value) *RuntimeType {
 	}
 
 	var pattern *RegexpType
-	var name eval.Value
+	var name px.Value
 	if top == 1 {
-		name = eval.EmptyString
+		name = px.EmptyString
 	} else {
 		var rv stringValue
 		rv, ok = args[1].(stringValue)
@@ -112,15 +112,15 @@ func NewGoRuntimeType(value interface{}) *RuntimeType {
 	return &RuntimeType{runtime: `go`, name: goType.String(), goType: goType}
 }
 
-func (t *RuntimeType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *RuntimeType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *RuntimeType) Default() eval.Type {
+func (t *RuntimeType) Default() px.Type {
 	return runtimeTypeDefault
 }
 
-func (t *RuntimeType) Equals(o interface{}, g eval.Guard) bool {
+func (t *RuntimeType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*RuntimeType); ok && t.runtime == ot.runtime && t.name == ot.name {
 		if t.pattern == nil {
 			return ot.pattern == nil
@@ -130,11 +130,11 @@ func (t *RuntimeType) Equals(o interface{}, g eval.Guard) bool {
 	return false
 }
 
-func (t *RuntimeType) Generic() eval.Type {
+func (t *RuntimeType) Generic() px.Type {
 	return runtimeTypeDefault
 }
 
-func (t *RuntimeType) Get(key string) (eval.Value, bool) {
+func (t *RuntimeType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `runtime`:
 		if t.runtime == `` {
@@ -154,7 +154,7 @@ func (t *RuntimeType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *RuntimeType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *RuntimeType) IsAssignable(o px.Type, g px.Guard) bool {
 	if rt, ok := o.(*RuntimeType); ok {
 		if t.goType != nil && rt.goType != nil {
 			return rt.goType.AssignableTo(t.goType)
@@ -178,7 +178,7 @@ func (t *RuntimeType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	return false
 }
 
-func (t *RuntimeType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *RuntimeType) IsInstance(o px.Value, g px.Guard) bool {
 	rt, ok := o.(*RuntimeValue)
 	if !ok {
 		return false
@@ -198,7 +198,7 @@ func (t *RuntimeType) IsInstance(o eval.Value, g eval.Guard) bool {
 	return t.name == fmt.Sprintf(`%T`, rt.Interface())
 }
 
-func (t *RuntimeType) MetaType() eval.ObjectType {
+func (t *RuntimeType) MetaType() px.ObjectType {
 	return RuntimeMetaType
 }
 
@@ -206,11 +206,11 @@ func (t *RuntimeType) Name() string {
 	return `Runtime`
 }
 
-func (t *RuntimeType) Parameters() []eval.Value {
+func (t *RuntimeType) Parameters() []px.Value {
 	if t.runtime == `` {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
-	ps := make([]eval.Value, 0, 2)
+	ps := make([]px.Value, 0, 2)
 	ps = append(ps, stringValue(t.runtime))
 	if t.name != `` {
 		ps = append(ps, stringValue(t.name))
@@ -221,7 +221,7 @@ func (t *RuntimeType) Parameters() []eval.Value {
 	return ps
 }
 
-func (t *RuntimeType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *RuntimeType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return t.goType, t.goType != nil
 }
 
@@ -234,14 +234,14 @@ func (t *RuntimeType) SerializationString() string {
 }
 
 func (t *RuntimeType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *RuntimeType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *RuntimeType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *RuntimeType) PType() eval.Type {
+func (t *RuntimeType) PType() px.Type {
 	return &TypeType{t}
 }
 
@@ -250,12 +250,12 @@ func WrapRuntime(value interface{}) *RuntimeValue {
 	return &RuntimeValue{&RuntimeType{runtime: `go`, name: goType.String(), goType: goType}, value}
 }
 
-func (rv *RuntimeValue) Equals(o interface{}, g eval.Guard) bool {
+func (rv *RuntimeValue) Equals(o interface{}, g px.Guard) bool {
 	if ov, ok := o.(*RuntimeValue); ok {
-		var re eval.Equality
-		if re, ok = rv.value.(eval.Equality); ok {
-			var oe eval.Equality
-			if oe, ok = ov.value.(eval.Equality); ok {
+		var re px.Equality
+		if re, ok = rv.value.(px.Equality); ok {
+			var oe px.Equality
+			if oe, ok = ov.value.(px.Equality); ok {
 				return re.Equals(oe, g)
 			}
 			return false
@@ -265,34 +265,34 @@ func (rv *RuntimeValue) Equals(o interface{}, g eval.Guard) bool {
 	return false
 }
 
-func (rv *RuntimeValue) Reflect(c eval.Context) reflect.Value {
+func (rv *RuntimeValue) Reflect(c px.Context) reflect.Value {
 	gt := rv.puppetType.goType
 	if gt == nil {
-		panic(eval.Error(eval.InvalidSourceForGet, issue.H{`type`: rv.PType().String()}))
+		panic(px.Error(px.InvalidSourceForGet, issue.H{`type`: rv.PType().String()}))
 	}
 	return reflect.ValueOf(rv.value)
 }
 
-func (rv *RuntimeValue) ReflectTo(c eval.Context, dest reflect.Value) {
+func (rv *RuntimeValue) ReflectTo(c px.Context, dest reflect.Value) {
 	gt := rv.puppetType.goType
 	if gt == nil {
-		panic(eval.Error(eval.InvalidSourceForGet, issue.H{`type`: rv.PType().String()}))
+		panic(px.Error(px.InvalidSourceForGet, issue.H{`type`: rv.PType().String()}))
 	}
 	if !gt.AssignableTo(dest.Type()) {
-		panic(eval.Error(eval.AttemptToSetWrongKind, issue.H{`expected`: gt.String(), `actual`: dest.Type().String()}))
+		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: gt.String(), `actual`: dest.Type().String()}))
 	}
 	dest.Set(reflect.ValueOf(rv.value))
 }
 
 func (rv *RuntimeValue) String() string {
-	return eval.ToString2(rv, None)
+	return px.ToString2(rv, None)
 }
 
-func (rv *RuntimeValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (rv *RuntimeValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	utils.PuppetQuote(b, fmt.Sprintf(`%v`, rv.value))
 }
 
-func (rv *RuntimeValue) PType() eval.Type {
+func (rv *RuntimeValue) PType() px.Type {
 	return rv.puppetType
 }
 

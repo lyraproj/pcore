@@ -4,16 +4,16 @@ import (
 	"io"
 	"math"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type TupleType struct {
 	size              *IntegerType
 	givenOrActualSize *IntegerType
-	types             []eval.Type
+	types             []px.Type
 }
 
-var TupleMetaType eval.ObjectType
+var TupleMetaType px.ObjectType
 
 func init() {
 	TupleMetaType = newObjectType(`Pcore::TupleType`,
@@ -25,7 +25,7 @@ func init() {
       value => undef
     }
   }
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newTupleType2(args...)
 		})
 
@@ -40,7 +40,7 @@ func EmptyTupleType() *TupleType {
 	return tupleTypeEmpty
 }
 
-func NewTupleType(types []eval.Type, size *IntegerType) *TupleType {
+func NewTupleType(types []px.Type, size *IntegerType) *TupleType {
 	var givenOrActualSize *IntegerType
 	sz := int64(len(types))
 	if size == nil {
@@ -59,11 +59,11 @@ func NewTupleType(types []eval.Type, size *IntegerType) *TupleType {
 	return &TupleType{size, givenOrActualSize, types}
 }
 
-func newTupleType2(args ...eval.Value) *TupleType {
+func newTupleType2(args ...px.Value) *TupleType {
 	return tupleFromArgs(false, WrapValues(args))
 }
 
-func tupleFromArgs(callable bool, args eval.List) *TupleType {
+func tupleFromArgs(callable bool, args px.List) *TupleType {
 	argc := args.Len()
 	if argc == 0 {
 		return tupleTypeDefault
@@ -71,7 +71,7 @@ func tupleFromArgs(callable bool, args eval.List) *TupleType {
 
 	if argc == 1 || argc == 2 {
 		if ar, ok := args.At(0).(*ArrayValue); ok {
-			tupleArgs := ar.AppendTo(make([]eval.Value, 0, ar.Len()+argc-1))
+			tupleArgs := ar.AppendTo(make([]px.Value, 0, ar.Len()+argc-1))
 			if argc == 2 {
 				tupleArgs = append(tupleArgs, args.At(1).(*IntegerType).Parameters()...)
 			}
@@ -114,15 +114,15 @@ func tupleFromArgs(callable bool, args eval.List) *TupleType {
 			return tupleTypeEmpty
 		}
 		if callable {
-			return &TupleType{rng, rng, []eval.Type{DefaultUnitType()}}
+			return &TupleType{rng, rng, []px.Type{DefaultUnitType()}}
 		}
 		if rng != nil && *rng == *IntegerTypePositive {
 			return tupleTypeDefault
 		}
-		return &TupleType{rng, rng, []eval.Type{}}
+		return &TupleType{rng, rng, []px.Type{}}
 	}
 
-	var tupleTypes []eval.Type
+	var tupleTypes []px.Type
 	ok = false
 	var failIdx int
 	if argc == 1 {
@@ -144,7 +144,7 @@ func tupleFromArgs(callable bool, args eval.List) *TupleType {
 	return &TupleType{rng, givenOrActualRng, tupleTypes}
 }
 
-func (t *TupleType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *TupleType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	t.size.Accept(v, g)
 	for _, c := range t.types {
@@ -152,7 +152,7 @@ func (t *TupleType) Accept(v eval.Visitor, g eval.Guard) {
 	}
 }
 
-func (t *TupleType) At(i int) eval.Value {
+func (t *TupleType) At(i int) px.Value {
 	if i >= 0 {
 		if i < len(t.types) {
 			return t.types[i]
@@ -164,7 +164,7 @@ func (t *TupleType) At(i int) eval.Value {
 	return undef
 }
 
-func (t *TupleType) CommonElementType() eval.Type {
+func (t *TupleType) CommonElementType() px.Type {
 	top := len(t.types)
 	if top == 0 {
 		return anyTypeDefault
@@ -176,12 +176,12 @@ func (t *TupleType) CommonElementType() eval.Type {
 	return cet
 }
 
-func (t *TupleType) Default() eval.Type {
+func (t *TupleType) Default() px.Type {
 	return tupleTypeDefault
 }
 
-func (t *TupleType) Equals(o interface{}, g eval.Guard) bool {
-	if ot, ok := o.(*TupleType); ok && len(t.types) == len(ot.types) && eval.GuardedEquals(t.size, ot.size, g) {
+func (t *TupleType) Equals(o interface{}, g px.Guard) bool {
+	if ot, ok := o.(*TupleType); ok && len(t.types) == len(ot.types) && px.GuardedEquals(t.size, ot.size, g) {
 		for idx, col := range t.types {
 			if !col.Equals(ot.types[idx], g) {
 				return false
@@ -192,14 +192,14 @@ func (t *TupleType) Equals(o interface{}, g eval.Guard) bool {
 	return false
 }
 
-func (t *TupleType) Generic() eval.Type {
+func (t *TupleType) Generic() px.Type {
 	return NewTupleType(alterTypes(t.types, generalize), t.size)
 }
 
-func (t *TupleType) Get(key string) (value eval.Value, ok bool) {
+func (t *TupleType) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `types`:
-		tps := make([]eval.Value, len(t.types))
+		tps := make([]px.Value, len(t.types))
 		for i, t := range t.types {
 			tps[i] = t
 		}
@@ -213,7 +213,7 @@ func (t *TupleType) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (t *TupleType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *TupleType) IsAssignable(o px.Type, g px.Guard) bool {
 	switch o := o.(type) {
 	case *ArrayType:
 		if !GuardedIsInstance(t.givenOrActualSize, integerValue(o.size.Min()), g) {
@@ -260,14 +260,14 @@ func (t *TupleType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	}
 }
 
-func (t *TupleType) IsInstance(v eval.Value, g eval.Guard) bool {
+func (t *TupleType) IsInstance(v px.Value, g px.Guard) bool {
 	if iv, ok := v.(*ArrayValue); ok {
 		return t.IsInstance2(iv, g)
 	}
 	return false
 }
 
-func (t *TupleType) IsInstance2(vs eval.List, g eval.Guard) bool {
+func (t *TupleType) IsInstance2(vs px.List, g px.Guard) bool {
 	osz := vs.Len()
 	if !t.givenOrActualSize.IsInstance3(osz) {
 		return false
@@ -290,7 +290,7 @@ func (t *TupleType) IsInstance2(vs eval.List, g eval.Guard) bool {
 	return true
 }
 
-func (t *TupleType) IsInstance3(vs []eval.Value, g eval.Guard) bool {
+func (t *TupleType) IsInstance3(vs []px.Value, g px.Guard) bool {
 	osz := len(vs)
 	if !t.givenOrActualSize.IsInstance3(osz) {
 		return false
@@ -313,7 +313,7 @@ func (t *TupleType) IsInstance3(vs []eval.Value, g eval.Guard) bool {
 	return true
 }
 
-func (t *TupleType) MetaType() eval.ObjectType {
+func (t *TupleType) MetaType() px.ObjectType {
 	return TupleMetaType
 }
 
@@ -321,8 +321,8 @@ func (t *TupleType) Name() string {
 	return `Tuple`
 }
 
-func (t *TupleType) Resolve(c eval.Context) eval.Type {
-	rts := make([]eval.Type, len(t.types))
+func (t *TupleType) Resolve(c px.Context) px.Type {
+	rts := make([]px.Type, len(t.types))
 	for i, ts := range t.types {
 		rts[i] = resolve(c, ts)
 	}
@@ -348,12 +348,12 @@ func (t *TupleType) Size() *IntegerType {
 }
 
 func (t *TupleType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *TupleType) Parameters() []eval.Value {
+func (t *TupleType) Parameters() []px.Value {
 	top := len(t.types)
-	params := make([]eval.Value, 0, top+2)
+	params := make([]px.Value, 0, top+2)
 	for _, c := range t.types {
 		params = append(params, c)
 	}
@@ -363,17 +363,17 @@ func (t *TupleType) Parameters() []eval.Value {
 	return params
 }
 
-func (t *TupleType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *TupleType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *TupleType) PType() eval.Type {
+func (t *TupleType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func (t *TupleType) Types() []eval.Type {
+func (t *TupleType) Types() []px.Type {
 	return t.types
 }
 
-var tupleTypeDefault = &TupleType{IntegerTypePositive, IntegerTypePositive, []eval.Type{}}
-var tupleTypeEmpty = &TupleType{IntegerTypeZero, IntegerTypeZero, []eval.Type{}}
+var tupleTypeDefault = &TupleType{IntegerTypePositive, IntegerTypePositive, []px.Type{}}
+var tupleTypeEmpty = &TupleType{IntegerTypeZero, IntegerTypeZero, []px.Type{}}

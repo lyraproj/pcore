@@ -11,7 +11,7 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type (
@@ -20,7 +20,7 @@ type (
 		max int64
 	}
 
-	// integerValue represents int64 as a eval.Value
+	// integerValue represents int64 as a pcore.Value
 	integerValue int64
 )
 
@@ -39,7 +39,7 @@ var integerTypeU16 = &IntegerType{0, math.MaxUint16}
 var integerTypeU32 = &IntegerType{0, math.MaxUint32}
 var integerTypeU64 = IntegerTypePositive // MaxUInt64 isn't supported at this time
 
-var IntegerMetaType eval.ObjectType
+var IntegerMetaType px.ObjectType
 
 func init() {
 	IntegerMetaType = newObjectType(`Pcore::IntegerType`,
@@ -48,22 +48,22 @@ func init() {
     from => { type => Optional[Integer], value => undef },
     to => { type => Optional[Integer], value => undef }
   }
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newIntegerType2(args...)
 		})
 
 	newGoConstructor2(`Integer`,
-		func(t eval.LocalTypes) {
+		func(t px.LocalTypes) {
 			t.Type(`Radix`, `Variant[Default, Integer[2,2], Integer[8,8], Integer[10,10], Integer[16,16]]`)
 			t.Type(`Convertible`, `Variant[Numeric, Boolean, Pattern[/`+IntegerPattern+`/], Timespan, Timestamp]`)
 			t.Type(`NamedArgs`, `Struct[{from => Convertible, Optional[radix] => Radix, Optional[abs] => Boolean}]`)
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Convertible`)
 			d.OptionalParam(`Radix`)
 			d.OptionalParam(`Boolean`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				r := 10
 				abs := false
 				if len(args) > 1 {
@@ -82,9 +82,9 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`NamedArgs`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				h := args[0].(*HashValue)
 				r := 10
 				abs := false
@@ -106,7 +106,7 @@ func init() {
 	)
 }
 
-func intFromConvertible(from eval.Value, radix int) int64 {
+func intFromConvertible(from px.Value, radix int) int64 {
 	switch from := from.(type) {
 	case integerValue:
 		return from.Int()
@@ -123,7 +123,7 @@ func intFromConvertible(from eval.Value, radix int) int64 {
 		if err == nil {
 			return i
 		}
-		panic(eval.Error(eval.NotInteger, issue.H{`value`: from}))
+		panic(px.Error(px.NotInteger, issue.H{`value`: from}))
 	}
 }
 
@@ -155,7 +155,7 @@ func NewIntegerType(min int64, max int64) *IntegerType {
 	return &IntegerType{min, max}
 }
 
-func newIntegerType2(limits ...eval.Value) *IntegerType {
+func newIntegerType2(limits ...px.Value) *IntegerType {
 	argc := len(limits)
 	if argc == 0 {
 		return integerTypeDefault
@@ -186,35 +186,35 @@ func newIntegerType2(limits ...eval.Value) *IntegerType {
 	return NewIntegerType(min, max)
 }
 
-func (t *IntegerType) Default() eval.Type {
+func (t *IntegerType) Default() px.Type {
 	return integerTypeDefault
 }
 
-func (t *IntegerType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *IntegerType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *IntegerType) Equals(o interface{}, g eval.Guard) bool {
+func (t *IntegerType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*IntegerType); ok {
 		return t.min == ot.min && t.max == ot.max
 	}
 	return false
 }
 
-func (t *IntegerType) Generic() eval.Type {
+func (t *IntegerType) Generic() px.Type {
 	return integerTypeDefault
 }
 
-func (t *IntegerType) Get(key string) (eval.Value, bool) {
+func (t *IntegerType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `from`:
-		v := eval.Undef
+		v := px.Undef
 		if t.min != math.MinInt64 {
 			v = integerValue(t.min)
 		}
 		return v, true
 	case `to`:
-		v := eval.Undef
+		v := px.Undef
 		if t.max != math.MaxInt64 {
 			v = integerValue(t.max)
 		}
@@ -224,14 +224,14 @@ func (t *IntegerType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *IntegerType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *IntegerType) IsAssignable(o px.Type, g px.Guard) bool {
 	if it, ok := o.(*IntegerType); ok {
 		return t.min <= it.min && t.max >= it.max
 	}
 	return false
 }
 
-func (t *IntegerType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *IntegerType) IsInstance(o px.Value, g px.Guard) bool {
 	if n, ok := toInt(o); ok {
 		return t.IsInstance2(n)
 	}
@@ -258,7 +258,7 @@ func (t *IntegerType) Max() int64 {
 	return t.max
 }
 
-func (t *IntegerType) MetaType() eval.ObjectType {
+func (t *IntegerType) MetaType() px.ObjectType {
 	return IntegerMetaType
 }
 
@@ -266,25 +266,25 @@ func (t *IntegerType) Name() string {
 	return `Integer`
 }
 
-func (t *IntegerType) Parameters() []eval.Value {
+func (t *IntegerType) Parameters() []px.Value {
 	if t.min == math.MinInt64 {
 		if t.max == math.MaxInt64 {
-			return eval.EmptyValues
+			return px.EmptyValues
 		}
-		return []eval.Value{WrapDefault(), integerValue(t.max)}
+		return []px.Value{WrapDefault(), integerValue(t.max)}
 	}
 	if t.max == math.MaxInt64 {
-		return []eval.Value{integerValue(t.min)}
+		return []px.Value{integerValue(t.min)}
 	}
-	return []eval.Value{integerValue(t.min), integerValue(t.max)}
+	return []px.Value{integerValue(t.min), integerValue(t.max)}
 }
 
-func (t *IntegerType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *IntegerType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return reflect.TypeOf(int64(0)), true
 }
 
-func (t *IntegerType) SizeParameters() []eval.Value {
-	params := make([]eval.Value, 2)
+func (t *IntegerType) SizeParameters() []px.Value {
+	params := make([]px.Value, 2)
 	params[0] = integerValue(t.min)
 	if t.max == math.MaxInt64 {
 		params[1] = WrapDefault()
@@ -303,18 +303,18 @@ func (t *IntegerType) SerializationString() string {
 }
 
 func (t *IntegerType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *IntegerType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *IntegerType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *IntegerType) PType() eval.Type {
+func (t *IntegerType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func WrapInteger(val int64) eval.IntegerValue {
+func WrapInteger(val int64) px.IntegerValue {
 	return integerValue(val)
 }
 
@@ -325,7 +325,7 @@ func (iv integerValue) Abs() int64 {
 	return int64(iv)
 }
 
-func (iv integerValue) Equals(o interface{}, g eval.Guard) bool {
+func (iv integerValue) Equals(o interface{}, g px.Guard) bool {
 	if ov, ok := o.(integerValue); ok {
 		return iv == ov
 	}
@@ -340,13 +340,13 @@ func (iv integerValue) Int() int64 {
 	return int64(iv)
 }
 
-func (iv integerValue) Reflect(c eval.Context) reflect.Value {
+func (iv integerValue) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf(int64(iv))
 }
 
-func (iv integerValue) ReflectTo(c eval.Context, value reflect.Value) {
+func (iv integerValue) ReflectTo(c px.Context, value reflect.Value) {
 	if !value.CanSet() {
-		panic(eval.Error(eval.AttemptToSetUnsettable, issue.H{`kind`: reflect.Int.String()}))
+		panic(px.Error(px.AttemptToSetUnsettable, issue.H{`kind`: reflect.Int.String()}))
 	}
 	ok := true
 	switch value.Kind() {
@@ -395,7 +395,7 @@ func (iv integerValue) ReflectTo(c eval.Context, value reflect.Value) {
 		ok = false
 	}
 	if !ok {
-		panic(eval.Error(eval.AttemptToSetWrongKind, issue.H{`expected`: reflect.Int.String(), `actual`: value.Kind().String()}))
+		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: reflect.Int.String(), `actual`: value.Kind().String()}))
 	}
 }
 
@@ -417,8 +417,8 @@ func (iv integerValue) ToKey(b *bytes.Buffer) {
 	b.WriteByte(byte(n))
 }
 
-func (iv integerValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
-	f := eval.GetFormat(s.FormatMap(), iv.PType())
+func (iv integerValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+	f := px.GetFormat(s.FormatMap(), iv.PType())
 	var err error
 	switch f.FormatChar() {
 	case 'x', 'X', 'o', 'd':
@@ -477,7 +477,7 @@ func (iv integerValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetec
 			_, err = io.WriteString(b, intString)
 		}
 	case 'e', 'E', 'f', 'g', 'G', 'a', 'A':
-		floatValue(iv.Float()).ToString(b, eval.NewFormatContext(DefaultFloatType(), f, s.Indentation()), g)
+		floatValue(iv.Float()).ToString(b, px.NewFormatContext(DefaultFloatType(), f, s.Indentation()), g)
 	case 'c':
 		bld := bytes.NewBufferString(``)
 		bld.WriteRune(rune(int64(iv)))
@@ -530,7 +530,7 @@ func integerPrefixRadix(c byte) string {
 	}
 }
 
-func (iv integerValue) PType() eval.Type {
+func (iv integerValue) PType() px.Type {
 	v := int64(iv)
 	return &IntegerType{v, v}
 }

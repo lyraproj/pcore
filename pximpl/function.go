@@ -1,4 +1,4 @@
-package impl
+package pximpl
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/lyraproj/pcore/utils"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 )
 
@@ -16,7 +16,7 @@ type (
 	typeDecl struct {
 		name string
 		decl string
-		tp   eval.Type
+		tp   px.Type
 	}
 
 	functionBuilder struct {
@@ -33,17 +33,17 @@ type (
 		fb            *functionBuilder
 		min           int64
 		max           int64
-		types         []eval.Type
-		blockType     eval.Type
+		types         []px.Type
+		blockType     px.Type
 		optionalBlock bool
-		returnType    eval.Type
-		function      eval.DispatchFunction
-		function2     eval.DispatchFunctionWithBlock
+		returnType    px.Type
+		function      px.DispatchFunction
+		function2     px.DispatchFunctionWithBlock
 	}
 
 	goFunction struct {
 		name        string
-		dispatchers []eval.Lambda
+		dispatchers []px.Lambda
 	}
 
 	lambda struct {
@@ -52,16 +52,16 @@ type (
 
 	goLambda struct {
 		lambda
-		function eval.DispatchFunction
+		function px.DispatchFunction
 	}
 
 	goLambdaWithBlock struct {
 		lambda
-		function eval.DispatchFunctionWithBlock
+		function px.DispatchFunctionWithBlock
 	}
 )
 
-func parametersFromSignature(s eval.Signature) []eval.Parameter {
+func parametersFromSignature(s px.Signature) []px.Parameter {
 	paramNames := s.ParameterNames()
 	count := len(paramNames)
 	tuple := s.ParametersType().(*types.TupleType)
@@ -71,14 +71,14 @@ func parametersFromSignature(s eval.Signature) []eval.Parameter {
 		capture = count - 1
 	}
 	paramTypes := s.ParametersType().(*types.TupleType).Types()
-	ps := make([]eval.Parameter, len(paramNames))
+	ps := make([]px.Parameter, len(paramNames))
 	for i, paramName := range paramNames {
-		ps[i] = NewParameter(paramName, paramTypes[i], nil, i == capture)
+		ps[i] = newParameter(paramName, paramTypes[i], nil, i == capture)
 	}
 	return ps
 }
 
-func (l *lambda) Equals(other interface{}, guard eval.Guard) bool {
+func (l *lambda) Equals(other interface{}, guard px.Guard) bool {
 	if ol, ok := other.(*lambda); ok {
 		return l.signature.Equals(ol.signature, guard)
 	}
@@ -89,37 +89,37 @@ func (l *lambda) String() string {
 	return `lambda`
 }
 
-func (l *lambda) ToString(bld io.Writer, format eval.FormatContext, g eval.RDetect) {
+func (l *lambda) ToString(bld io.Writer, format px.FormatContext, g px.RDetect) {
 	utils.WriteString(bld, `lambda`)
 }
 
-func (l *lambda) PType() eval.Type {
+func (l *lambda) PType() px.Type {
 	return l.signature
 }
 
-func (l *lambda) Signature() eval.Signature {
+func (l *lambda) Signature() px.Signature {
 	return l.signature
 }
 
-func (l *goLambda) Call(c eval.Context, block eval.Lambda, args ...eval.Value) eval.Value {
+func (l *goLambda) Call(c px.Context, block px.Lambda, args ...px.Value) px.Value {
 	return l.function(c, args)
 }
 
-func (l *goLambda) Parameters() []eval.Parameter {
+func (l *goLambda) Parameters() []px.Parameter {
 	return parametersFromSignature(l.signature)
 }
 
-func (l *goLambdaWithBlock) Call(c eval.Context, block eval.Lambda, args ...eval.Value) eval.Value {
+func (l *goLambdaWithBlock) Call(c px.Context, block px.Lambda, args ...px.Value) px.Value {
 	return l.function(c, args, block)
 }
 
-func (l *goLambdaWithBlock) Parameters() []eval.Parameter {
+func (l *goLambdaWithBlock) Parameters() []px.Parameter {
 	return parametersFromSignature(l.signature)
 }
 
 var emptyTypeBuilder = &localTypeBuilder{[]*typeDecl{}}
 
-func buildFunction(name string, localTypes eval.LocalTypesCreator, creators []eval.DispatchCreator) eval.ResolvableFunction {
+func buildFunction(name string, localTypes px.LocalTypesCreator, creators []px.DispatchCreator) px.ResolvableFunction {
 	lt := emptyTypeBuilder
 	if localTypes != nil {
 		lt = &localTypeBuilder{make([]*typeDecl, 0, 8)}
@@ -137,20 +137,20 @@ func buildFunction(name string, localTypes eval.LocalTypesCreator, creators []ev
 }
 
 func (fb *functionBuilder) newDispatchBuilder() *dispatchBuilder {
-	return &dispatchBuilder{fb: fb, types: make([]eval.Type, 0, 8), min: 0, max: 0, optionalBlock: false, blockType: nil, returnType: nil}
+	return &dispatchBuilder{fb: fb, types: make([]px.Type, 0, 8), min: 0, max: 0, optionalBlock: false, blockType: nil, returnType: nil}
 }
 
 func (fb *functionBuilder) Name() string {
 	return fb.name
 }
 
-func (fb *functionBuilder) Resolve(c eval.Context) eval.Function {
-	ds := make([]eval.Lambda, len(fb.dispatchers))
+func (fb *functionBuilder) Resolve(c px.Context) px.Function {
+	ds := make([]px.Lambda, len(fb.dispatchers))
 
 	if tl := len(fb.localTypeBuilder.localTypes); tl > 0 {
-		localLoader := eval.NewParentedLoader(c.Loader())
+		localLoader := px.NewParentedLoader(c.Loader())
 		c.DoWithLoader(localLoader, func() {
-			te := make([]eval.Type, 0, tl)
+			te := make([]px.Type, 0, tl)
 			for _, td := range fb.localTypeBuilder.localTypes {
 				if td.tp == nil {
 					v, err := types.Parse(td.decl)
@@ -158,15 +158,15 @@ func (fb *functionBuilder) Resolve(c eval.Context) eval.Function {
 						panic(err)
 					}
 					if dt, ok := v.(*types.DeferredType); ok {
-						te = append(te, types.NamedType(eval.RuntimeNameAuthority, td.name, dt))
+						te = append(te, types.NamedType(px.RuntimeNameAuthority, td.name, dt))
 					}
 				} else {
-					localLoader.SetEntry(eval.NewTypedName(eval.NsType, td.name), eval.NewLoaderEntry(td.tp, nil))
+					localLoader.SetEntry(px.NewTypedName(px.NsType, td.name), px.NewLoaderEntry(td.tp, nil))
 				}
 			}
 
 			if len(te) > 0 {
-				eval.AddTypes(c, te...)
+				px.AddTypes(c, te...)
 			}
 			for i, d := range fb.dispatchers {
 				ds[i] = d.createDispatch(c)
@@ -184,11 +184,11 @@ func (tb *localTypeBuilder) Type(name string, decl string) {
 	tb.localTypes = append(tb.localTypes, &typeDecl{name, decl, nil})
 }
 
-func (tb *localTypeBuilder) Type2(name string, tp eval.Type) {
+func (tb *localTypeBuilder) Type2(name string, tp px.Type) {
 	tb.localTypes = append(tb.localTypes, &typeDecl{name, ``, tp})
 }
 
-func (db *dispatchBuilder) createDispatch(c eval.Context) eval.Lambda {
+func (db *dispatchBuilder) createDispatch(c px.Context) px.Lambda {
 	for idx, tp := range db.types {
 		if trt, ok := tp.(*types.TypeReferenceType); ok {
 			db.types[idx] = c.ParseType2(trt.TypeString())
@@ -217,7 +217,7 @@ func (db *dispatchBuilder) Param(tp string) {
 	db.Param2(types.NewTypeReferenceType(tp))
 }
 
-func (db *dispatchBuilder) Param2(tp eval.Type) {
+func (db *dispatchBuilder) Param2(tp px.Type) {
 	db.assertNotAfterRepeated()
 	if db.min < db.max {
 		panic(`Required parameters must not come after optional parameters in a dispatch`)
@@ -231,7 +231,7 @@ func (db *dispatchBuilder) OptionalParam(tp string) {
 	db.OptionalParam2(types.NewTypeReferenceType(tp))
 }
 
-func (db *dispatchBuilder) OptionalParam2(tp eval.Type) {
+func (db *dispatchBuilder) OptionalParam2(tp px.Type) {
 	db.assertNotAfterRepeated()
 	db.types = append(db.types, tp)
 	db.max++
@@ -241,7 +241,7 @@ func (db *dispatchBuilder) RepeatedParam(tp string) {
 	db.RepeatedParam2(types.NewTypeReferenceType(tp))
 }
 
-func (db *dispatchBuilder) RepeatedParam2(tp eval.Type) {
+func (db *dispatchBuilder) RepeatedParam2(tp px.Type) {
 	db.assertNotAfterRepeated()
 	db.types = append(db.types, tp)
 	db.max = math.MaxInt64
@@ -251,7 +251,7 @@ func (db *dispatchBuilder) RequiredRepeatedParam(tp string) {
 	db.RequiredRepeatedParam2(types.NewTypeReferenceType(tp))
 }
 
-func (db *dispatchBuilder) RequiredRepeatedParam2(tp eval.Type) {
+func (db *dispatchBuilder) RequiredRepeatedParam2(tp px.Type) {
 	db.assertNotAfterRepeated()
 	db.types = append(db.types, tp)
 	db.min++
@@ -262,7 +262,7 @@ func (db *dispatchBuilder) Block(tp string) {
 	db.Block2(types.NewTypeReferenceType(tp))
 }
 
-func (db *dispatchBuilder) Block2(tp eval.Type) {
+func (db *dispatchBuilder) Block2(tp px.Type) {
 	if db.returnType != nil {
 		panic(`Block specified more than once`)
 	}
@@ -273,7 +273,7 @@ func (db *dispatchBuilder) OptionalBlock(tp string) {
 	db.OptionalBlock2(types.NewTypeReferenceType(tp))
 }
 
-func (db *dispatchBuilder) OptionalBlock2(tp eval.Type) {
+func (db *dispatchBuilder) OptionalBlock2(tp px.Type) {
 	db.Block2(tp)
 	db.optionalBlock = true
 }
@@ -282,21 +282,21 @@ func (db *dispatchBuilder) Returns(tp string) {
 	db.Returns2(types.NewTypeReferenceType(tp))
 }
 
-func (db *dispatchBuilder) Returns2(tp eval.Type) {
+func (db *dispatchBuilder) Returns2(tp px.Type) {
 	if db.returnType != nil {
 		panic(`Returns specified more than once`)
 	}
 	db.returnType = tp
 }
 
-func (db *dispatchBuilder) Function(df eval.DispatchFunction) {
+func (db *dispatchBuilder) Function(df px.DispatchFunction) {
 	if _, ok := db.blockType.(*types.CallableType); ok {
 		panic(`Dispatch requires a block. Use FunctionWithBlock`)
 	}
 	db.function = df
 }
 
-func (db *dispatchBuilder) Function2(df eval.DispatchFunctionWithBlock) {
+func (db *dispatchBuilder) Function2(df px.DispatchFunctionWithBlock) {
 	if db.blockType == nil {
 		panic(`Dispatch does not expect a block. Use Function instead of FunctionWithBlock`)
 	}
@@ -309,24 +309,24 @@ func (db *dispatchBuilder) assertNotAfterRepeated() {
 	}
 }
 
-func (f *goFunction) Call(c eval.Context, block eval.Lambda, args ...eval.Value) eval.Value {
+func (f *goFunction) Call(c px.Context, block px.Lambda, args ...px.Value) px.Value {
 	for _, d := range f.dispatchers {
 		if d.Signature().CallableWith(args, block) {
 			return d.Call(c, block, args...)
 		}
 	}
-	panic(errors.NewArgumentsError(f.name, eval.DescribeSignatures(signatures(f.dispatchers), types.WrapValues(args).DetailedType(), block)))
+	panic(errors.NewArgumentsError(f.name, px.DescribeSignatures(signatures(f.dispatchers), types.WrapValues(args).DetailedType(), block)))
 }
 
-func signatures(lambdas []eval.Lambda) []eval.Signature {
-	s := make([]eval.Signature, len(lambdas))
+func signatures(lambdas []px.Lambda) []px.Signature {
+	s := make([]px.Signature, len(lambdas))
 	for i, l := range lambdas {
 		s[i] = l.Signature()
 	}
 	return s
 }
 
-func (f *goFunction) Dispatchers() []eval.Lambda {
+func (f *goFunction) Dispatchers() []px.Lambda {
 	return f.dispatchers
 }
 
@@ -334,7 +334,7 @@ func (f *goFunction) Name() string {
 	return f.name
 }
 
-func (f *goFunction) Equals(other interface{}, g eval.Guard) bool {
+func (f *goFunction) Equals(other interface{}, g px.Guard) bool {
 	dc := len(f.dispatchers)
 	if of, ok := other.(*goFunction); ok && f.name == of.name && dc == len(of.dispatchers) {
 		for i := 0; i < dc; i++ {
@@ -351,14 +351,14 @@ func (f *goFunction) String() string {
 	return fmt.Sprintf(`function %s`, f.name)
 }
 
-func (f *goFunction) ToString(bld io.Writer, format eval.FormatContext, g eval.RDetect) {
+func (f *goFunction) ToString(bld io.Writer, format px.FormatContext, g px.RDetect) {
 	utils.WriteString(bld, `function `)
 	utils.WriteString(bld, f.name)
 }
 
-func (f *goFunction) PType() eval.Type {
+func (f *goFunction) PType() px.Type {
 	top := len(f.dispatchers)
-	variants := make([]eval.Type, top)
+	variants := make([]px.Type, top)
 	for idx := 0; idx < top; idx++ {
 		variants[idx] = f.dispatchers[idx].PType()
 	}
@@ -366,25 +366,25 @@ func (f *goFunction) PType() eval.Type {
 }
 
 func init() {
-	eval.BuildFunction = buildFunction
+	px.BuildFunction = buildFunction
 
-	eval.NewGoFunction = func(name string, creators ...eval.DispatchCreator) {
-		eval.RegisterGoFunction(buildFunction(name, nil, creators))
+	px.NewGoFunction = func(name string, creators ...px.DispatchCreator) {
+		px.RegisterGoFunction(buildFunction(name, nil, creators))
 	}
 
-	eval.NewGoFunction2 = func(name string, localTypes eval.LocalTypesCreator, creators ...eval.DispatchCreator) {
-		eval.RegisterGoFunction(buildFunction(name, localTypes, creators))
+	px.NewGoFunction2 = func(name string, localTypes px.LocalTypesCreator, creators ...px.DispatchCreator) {
+		px.RegisterGoFunction(buildFunction(name, localTypes, creators))
 	}
 
-	eval.MakeGoAllocator = func(allocFunc eval.DispatchFunction) eval.Lambda {
+	px.MakeGoAllocator = func(allocFunc px.DispatchFunction) px.Lambda {
 		return &goLambda{lambda{types.NewCallableType(types.EmptyTupleType(), nil, nil)}, allocFunc}
 	}
 
-	eval.MakeGoConstructor = func(typeName string, creators ...eval.DispatchCreator) eval.ResolvableFunction {
+	px.MakeGoConstructor = func(typeName string, creators ...px.DispatchCreator) px.ResolvableFunction {
 		return buildFunction(typeName, nil, creators)
 	}
 
-	eval.MakeGoConstructor2 = func(typeName string, localTypes eval.LocalTypesCreator, creators ...eval.DispatchCreator) eval.ResolvableFunction {
+	px.MakeGoConstructor2 = func(typeName string, localTypes px.LocalTypesCreator, creators ...px.DispatchCreator) px.ResolvableFunction {
 		return buildFunction(typeName, localTypes, creators)
 	}
 }

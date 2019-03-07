@@ -4,14 +4,14 @@ import (
 	"io"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type IterableType struct {
-	typ eval.Type
+	typ px.Type
 }
 
-var IterableMetaType eval.ObjectType
+var IterableMetaType px.ObjectType
 
 func init() {
 	IterableMetaType = newObjectType(`Pcore::IterableType`,
@@ -22,7 +22,7 @@ func init() {
 					value => Any
 				},
 			}
-		}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+		}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newIterableType2(args...)
 		})
 }
@@ -31,19 +31,19 @@ func DefaultIterableType() *IterableType {
 	return iterableTypeDefault
 }
 
-func NewIterableType(elementType eval.Type) *IterableType {
+func NewIterableType(elementType px.Type) *IterableType {
 	if elementType == nil || elementType == anyTypeDefault {
 		return DefaultIterableType()
 	}
 	return &IterableType{elementType}
 }
 
-func newIterableType2(args ...eval.Value) *IterableType {
+func newIterableType2(args ...px.Value) *IterableType {
 	switch len(args) {
 	case 0:
 		return DefaultIterableType()
 	case 1:
-		containedType, ok := args[0].(eval.Type)
+		containedType, ok := args[0].(px.Type)
 		if !ok {
 			panic(NewIllegalArgumentType(`Iterable[]`, 0, `Type`, args[0]))
 		}
@@ -53,27 +53,27 @@ func newIterableType2(args ...eval.Value) *IterableType {
 	}
 }
 
-func (t *IterableType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *IterableType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	t.typ.Accept(v, g)
 }
 
-func (t *IterableType) Default() eval.Type {
+func (t *IterableType) Default() px.Type {
 	return iterableTypeDefault
 }
 
-func (t *IterableType) Equals(o interface{}, g eval.Guard) bool {
+func (t *IterableType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*IterableType); ok {
 		return t.typ.Equals(ot.typ, g)
 	}
 	return false
 }
 
-func (t *IterableType) Generic() eval.Type {
-	return NewIterableType(eval.GenericType(t.typ))
+func (t *IterableType) Generic() px.Type {
+	return NewIterableType(px.GenericType(t.typ))
 }
 
-func (t *IterableType) Get(key string) (value eval.Value, ok bool) {
+func (t *IterableType) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `type`:
 		return t.typ, true
@@ -81,8 +81,8 @@ func (t *IterableType) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (t *IterableType) IsAssignable(o eval.Type, g eval.Guard) bool {
-	var et eval.Type
+func (t *IterableType) IsAssignable(o px.Type, g px.Guard) bool {
+	var et px.Type
 	switch o := o.(type) {
 	case *ArrayType:
 		et = o.ElementType()
@@ -100,14 +100,14 @@ func (t *IterableType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	return GuardedIsAssignable(t.typ, et, g)
 }
 
-func (t *IterableType) IsInstance(o eval.Value, g eval.Guard) bool {
-	if iv, ok := o.(eval.IterableValue); ok {
+func (t *IterableType) IsInstance(o px.Value, g px.Guard) bool {
+	if iv, ok := o.(px.IterableValue); ok {
 		return GuardedIsAssignable(t.typ, iv.ElementType(), g)
 	}
 	return false
 }
 
-func (t *IterableType) MetaType() eval.ObjectType {
+func (t *IterableType) MetaType() px.ObjectType {
 	return IterableMetaType
 }
 
@@ -115,14 +115,14 @@ func (t *IterableType) Name() string {
 	return `Iterable`
 }
 
-func (t *IterableType) Parameters() []eval.Value {
+func (t *IterableType) Parameters() []px.Value {
 	if t.typ == DefaultAnyType() {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
-	return []eval.Value{t.typ}
+	return []px.Value{t.typ}
 }
 
-func (t *IterableType) Resolve(c eval.Context) eval.Type {
+func (t *IterableType) Resolve(c px.Context) px.Type {
 	t.typ = resolve(c, t.typ)
 	return t
 }
@@ -136,18 +136,18 @@ func (t *IterableType) SerializationString() string {
 }
 
 func (t *IterableType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *IterableType) ElementType() eval.Type {
+func (t *IterableType) ElementType() px.Type {
 	return t.typ
 }
 
-func (t *IterableType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *IterableType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *IterableType) PType() eval.Type {
+func (t *IterableType) PType() px.Type {
 	return &TypeType{t}
 }
 

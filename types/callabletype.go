@@ -4,16 +4,16 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type CallableType struct {
-	paramsType eval.Type
-	returnType eval.Type
-	blockType  eval.Type // Callable or Optional[Callable]
+	paramsType px.Type
+	returnType px.Type
+	blockType  px.Type // Callable or Optional[Callable]
 }
 
-var CallableMetaType eval.ObjectType
+var CallableMetaType px.ObjectType
 
 func init() {
 	CallableMetaType = newObjectType(`Pcore::CallableType`,
@@ -32,7 +32,7 @@ func init() {
       value => undef
     }
   }
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newCallableType2(args...)
 		})
 }
@@ -41,15 +41,15 @@ func DefaultCallableType() *CallableType {
 	return callableTypeDefault
 }
 
-func NewCallableType(paramsType eval.Type, returnType eval.Type, blockType eval.Type) *CallableType {
+func NewCallableType(paramsType px.Type, returnType px.Type, blockType px.Type) *CallableType {
 	return &CallableType{paramsType, returnType, blockType}
 }
 
-func newCallableType2(args ...eval.Value) *CallableType {
+func newCallableType2(args ...px.Value) *CallableType {
 	return newCallableType3(WrapValues(args))
 }
 
-func newCallableType3(args eval.List) *CallableType {
+func newCallableType3(args px.List) *CallableType {
 	argc := args.Len()
 	if argc == 0 {
 		return DefaultCallableType()
@@ -57,12 +57,12 @@ func newCallableType3(args eval.List) *CallableType {
 
 	first := args.At(0)
 	if tv, ok := first.(*TupleType); ok {
-		var returnType eval.Type
-		var blockType eval.Type
+		var returnType px.Type
+		var blockType px.Type
 		if argc > 1 {
-			returnType, ok = args.At(1).(eval.Type)
+			returnType, ok = args.At(1).(px.Type)
 			if argc > 2 {
-				blockType, ok = args.At(2).(eval.Type)
+				blockType, ok = args.At(2).(px.Type)
 			}
 		}
 		if ok {
@@ -71,17 +71,17 @@ func newCallableType3(args eval.List) *CallableType {
 	}
 
 	var (
-		rt    eval.Type
-		block eval.Type
+		rt    px.Type
+		block px.Type
 		ok    bool
 	)
 
 	if argc == 1 || argc == 2 {
 		// check for [[params, block], return]
-		var iv eval.List
-		if iv, ok = first.(eval.List); ok {
+		var iv px.List
+		if iv, ok = first.(px.List); ok {
 			if argc == 2 {
-				if rt, ok = args.At(1).(eval.Type); !ok {
+				if rt, ok = args.At(1).(px.Type); !ok {
 					panic(NewIllegalArgumentType(`Callable[]`, 1, `Type`, args.At(1)))
 				}
 			}
@@ -108,14 +108,14 @@ func newCallableType3(args eval.List) *CallableType {
 	return NewCallableType(tupleFromArgs(true, args), rt, block)
 }
 
-func (t *CallableType) BlockType() eval.Type {
+func (t *CallableType) BlockType() px.Type {
 	if t.blockType == nil {
 		return nil // Return untyped nil
 	}
 	return t.blockType
 }
 
-func (t *CallableType) CallableWith(args []eval.Value, block eval.Lambda) bool {
+func (t *CallableType) CallableWith(args []px.Value, block px.Lambda) bool {
 	if block != nil {
 		cb := t.blockType
 		switch ca := cb.(type) {
@@ -140,7 +140,7 @@ func (t *CallableType) CallableWith(args []eval.Value, block eval.Lambda) bool {
 	return true
 }
 
-func (t *CallableType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *CallableType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	if t.paramsType != nil {
 		t.paramsType.Accept(v, g)
@@ -165,34 +165,34 @@ func (t *CallableType) SerializationString() string {
 	return t.String()
 }
 
-func (t *CallableType) Default() eval.Type {
+func (t *CallableType) Default() px.Type {
 	return callableTypeDefault
 }
 
-func (t *CallableType) Equals(o interface{}, g eval.Guard) bool {
+func (t *CallableType) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*CallableType)
 	return ok
 }
 
-func (t *CallableType) Generic() eval.Type {
+func (t *CallableType) Generic() px.Type {
 	return callableTypeDefault
 }
 
-func (t *CallableType) Get(key string) (eval.Value, bool) {
+func (t *CallableType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `param_types`:
 		if t.paramsType == nil {
-			return eval.Undef, true
+			return px.Undef, true
 		}
 		return t.paramsType, true
 	case `return_type`:
 		if t.returnType == nil {
-			return eval.Undef, true
+			return px.Undef, true
 		}
 		return t.returnType, true
 	case `block_type`:
 		if t.blockType == nil {
-			return eval.Undef, true
+			return px.Undef, true
 		}
 		return t.blockType, true
 	default:
@@ -200,7 +200,7 @@ func (t *CallableType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *CallableType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *CallableType) IsAssignable(o px.Type, g px.Guard) bool {
 	oc, ok := o.(*CallableType)
 	if !ok {
 		return false
@@ -234,15 +234,15 @@ func (t *CallableType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	return isAssignable(oc.blockType, t.blockType)
 }
 
-func (t *CallableType) IsInstance(o eval.Value, g eval.Guard) bool {
-	if l, ok := o.(eval.Lambda); ok {
+func (t *CallableType) IsInstance(o px.Value, g px.Guard) bool {
+	if l, ok := o.(px.Lambda); ok {
 		return isAssignable(t, l.PType())
 	}
 	// TODO: Maybe check Go func using reflection
 	return false
 }
 
-func (t *CallableType) MetaType() eval.ObjectType {
+func (t *CallableType) MetaType() px.ObjectType {
 	return CallableMetaType
 }
 
@@ -263,37 +263,37 @@ func (t *CallableType) ParameterNames() []string {
 	return []string{}
 }
 
-func (t *CallableType) Parameters() (params []eval.Value) {
+func (t *CallableType) Parameters() (params []px.Value) {
 	if *t == *callableTypeDefault {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
 	if pt, ok := t.paramsType.(*TupleType); ok {
 		tupleParams := pt.Parameters()
 		if len(tupleParams) == 0 {
-			params = make([]eval.Value, 0)
+			params = make([]px.Value, 0)
 		} else {
-			params = eval.Select1(tupleParams, func(p eval.Value) bool { _, ok := p.(*UnitType); return !ok })
+			params = px.Select1(tupleParams, func(p px.Value) bool { _, ok := p.(*UnitType); return !ok })
 		}
 	} else {
-		params = make([]eval.Value, 0)
+		params = make([]px.Value, 0)
 	}
 	if t.blockType != nil {
 		params = append(params, t.blockType)
 	}
 	if t.returnType != nil {
-		params = []eval.Value{WrapValues(params), t.returnType}
+		params = []px.Value{WrapValues(params), t.returnType}
 	}
 	return params
 }
 
-func (t *CallableType) ParametersType() eval.Type {
+func (t *CallableType) ParametersType() px.Type {
 	if t.paramsType == nil {
 		return nil // Return untyped nil
 	}
 	return t.paramsType
 }
 
-func (t *CallableType) Resolve(c eval.Context) eval.Type {
+func (t *CallableType) Resolve(c px.Context) px.Type {
 	if t.paramsType != nil {
 		t.paramsType = resolve(c, t.paramsType).(*TupleType)
 	}
@@ -306,19 +306,19 @@ func (t *CallableType) Resolve(c eval.Context) eval.Type {
 	return t
 }
 
-func (t *CallableType) ReturnType() eval.Type {
+func (t *CallableType) ReturnType() px.Type {
 	return t.returnType
 }
 
 func (t *CallableType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *CallableType) PType() eval.Type {
+func (t *CallableType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func (t *CallableType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *CallableType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 

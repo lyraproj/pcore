@@ -8,7 +8,7 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 	"github.com/lyraproj/semver/semver"
 )
@@ -23,23 +23,23 @@ type (
 
 var semVerRangeTypeDefault = &SemVerRangeType{}
 
-var SemVerRangeMetaType eval.ObjectType
+var SemVerRangeMetaType px.ObjectType
 
 func init() {
 	SemVerRangeMetaType = newObjectType(`Pcore::SemVerRangeType`, `Pcore::AnyType {}`,
-		func(ctx eval.Context, args []eval.Value) eval.Value {
+		func(ctx px.Context, args []px.Value) px.Value {
 			return DefaultSemVerRangeType()
 		})
 
 	newGoConstructor2(`SemVerRange`,
-		func(t eval.LocalTypes) {
+		func(t px.LocalTypes) {
 			t.Type(`SemVerRangeString`, `String[1]`)
 			t.Type(`SemVerRangeHash`, `Struct[min=>Variant[Default,SemVer],Optional[max]=>Variant[Default,SemVer],Optional[exclude_max]=>Boolean]`)
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`SemVerRangeString`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				v, err := semver.ParseVersionRange(args[0].String())
 				if err != nil {
 					panic(errors.NewIllegalArgument(`SemVerRange`, 0, err.Error()))
@@ -48,11 +48,11 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Variant[Default,SemVer]`)
 			d.Param(`Variant[Default,SemVer]`)
 			d.OptionalParam(`Boolean`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				var start semver.Version
 				if _, ok := args[0].(*DefaultValue); ok {
 					start = semver.Min
@@ -73,9 +73,9 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`SemVerRangeHash`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				hash := args[0].(*HashValue)
 				start := hash.Get5(`min`, nil).(*SemVerValue).Version()
 
@@ -102,16 +102,16 @@ func DefaultSemVerRangeType() *SemVerRangeType {
 	return semVerRangeTypeDefault
 }
 
-func (t *SemVerRangeType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *SemVerRangeType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *SemVerRangeType) Equals(o interface{}, g eval.Guard) bool {
+func (t *SemVerRangeType) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*SemVerRangeType)
 	return ok
 }
 
-func (t *SemVerRangeType) MetaType() eval.ObjectType {
+func (t *SemVerRangeType) MetaType() px.ObjectType {
 	return SemVerRangeMetaType
 }
 
@@ -131,25 +131,25 @@ func (t *SemVerRangeType) String() string {
 	return `SemVerRange`
 }
 
-func (t *SemVerRangeType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *SemVerRangeType) IsAssignable(o px.Type, g px.Guard) bool {
 	_, ok := o.(*SemVerRangeType)
 	return ok
 }
 
-func (t *SemVerRangeType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *SemVerRangeType) IsInstance(o px.Value, g px.Guard) bool {
 	_, ok := o.(*SemVerRangeValue)
 	return ok
 }
 
-func (t *SemVerRangeType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *SemVerRangeType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return reflect.TypeOf(semver.MatchAll), true
 }
 
-func (t *SemVerRangeType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *SemVerRangeType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *SemVerRangeType) PType() eval.Type {
+func (t *SemVerRangeType) PType() px.Type {
 	return &TypeType{t}
 }
 
@@ -161,21 +161,21 @@ func (bv *SemVerRangeValue) VersionRange() semver.VersionRange {
 	return bv.rng
 }
 
-func (bv *SemVerRangeValue) Equals(o interface{}, g eval.Guard) bool {
+func (bv *SemVerRangeValue) Equals(o interface{}, g px.Guard) bool {
 	if ov, ok := o.(*SemVerRangeValue); ok {
 		return bv.rng.Equals(ov.rng)
 	}
 	return false
 }
 
-func (bv *SemVerRangeValue) Reflect(c eval.Context) reflect.Value {
+func (bv *SemVerRangeValue) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf(bv.rng)
 }
 
-func (bv *SemVerRangeValue) ReflectTo(c eval.Context, dest reflect.Value) {
+func (bv *SemVerRangeValue) ReflectTo(c px.Context, dest reflect.Value) {
 	rv := bv.Reflect(c)
 	if !rv.Type().AssignableTo(dest.Type()) {
-		panic(eval.Error(eval.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
+		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
 	}
 	dest.Set(rv)
 }
@@ -189,11 +189,11 @@ func (bv *SemVerRangeValue) SerializationString() string {
 }
 
 func (bv *SemVerRangeValue) String() string {
-	return eval.ToString2(bv, None)
+	return px.ToString2(bv, None)
 }
 
-func (bv *SemVerRangeValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
-	f := eval.GetFormat(s.FormatMap(), bv.PType())
+func (bv *SemVerRangeValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+	f := px.GetFormat(s.FormatMap(), bv.PType())
 	vr := bv.rng
 	switch f.FormatChar() {
 	case 'p':
@@ -221,6 +221,6 @@ func (bv *SemVerRangeValue) ToKey(b *bytes.Buffer) {
 	bv.rng.ToString(b)
 }
 
-func (bv *SemVerRangeValue) PType() eval.Type {
+func (bv *SemVerRangeValue) PType() px.Type {
 	return DefaultSemVerRangeType()
 }

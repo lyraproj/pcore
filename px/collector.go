@@ -1,4 +1,4 @@
-package eval
+package px
 
 // A Collector receives streaming events and produces an Value
 type Collector interface {

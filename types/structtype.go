@@ -7,14 +7,14 @@ import (
 	"github.com/lyraproj/pcore/utils"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type (
 	StructElement struct {
 		name  string
-		key   eval.Type
-		value eval.Type
+		key   px.Type
+		value px.Type
 	}
 
 	StructType struct {
@@ -24,9 +24,9 @@ type (
 	}
 )
 
-var StructElementMeta eval.Type
+var StructElementMeta px.Type
 
-var StructMetaType eval.ObjectType
+var StructMetaType px.ObjectType
 
 func init() {
 	StructElementMeta = newObjectType(`Pcore::StructElement`,
@@ -35,8 +35,8 @@ func init() {
 		key_type => Type,
     value_type => Type
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
-			return NewStructElement(args[0], args[1].(eval.Type))
+}`, func(ctx px.Context, args []px.Value) px.Value {
+			return NewStructElement(args[0], args[1].(px.Type))
 		})
 
 	StructMetaType = newObjectType(`Pcore::StructType`,
@@ -44,18 +44,18 @@ func init() {
 	attributes => {
 		elements => Array[Pcore::StructElement]
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newStructType2(args...)
 		})
 
 	// Go constructor for Struct instances is registered by HashType
 }
 
-func NewStructElement(key eval.Value, value eval.Type) *StructElement {
+func NewStructElement(key px.Value, value px.Type) *StructElement {
 
 	var (
 		name    string
-		keyType eval.Type
+		keyType px.Type
 	)
 
 	switch key := key.(type) {
@@ -81,7 +81,7 @@ func NewStructElement(key eval.Value, value eval.Type) *StructElement {
 	return &StructElement{name, keyType, value}
 }
 
-func newStructElement2(key string, value eval.Type) *StructElement {
+func newStructElement2(key string, value px.Type) *StructElement {
 	return NewStructElement(stringValue(key), value)
 }
 
@@ -96,24 +96,24 @@ func NewStructType(elements []*StructElement) *StructType {
 	return &StructType{elements: elements}
 }
 
-func newStructType2(args ...eval.Value) *StructType {
+func newStructType2(args ...px.Value) *StructType {
 	switch len(args) {
 	case 0:
 		return DefaultStructType()
 	case 1:
 		arg := args[0]
 		if ar, ok := arg.(*ArrayValue); ok {
-			return newStructType2(ar.AppendTo(make([]eval.Value, 0, ar.Len()))...)
+			return newStructType2(ar.AppendTo(make([]px.Value, 0, ar.Len()))...)
 		}
-		hash, ok := arg.(eval.OrderedMap)
+		hash, ok := arg.(px.OrderedMap)
 		if !ok {
 			panic(NewIllegalArgumentType(`Struct[]`, 0, `Hash[Variant[String[1], Optional[String[1]]], Type]`, arg))
 		}
 		top := hash.Len()
 		es := make([]*StructElement, top)
-		hash.EachWithIndex(func(v eval.Value, idx int) {
+		hash.EachWithIndex(func(v px.Value, idx int) {
 			e := v.(*HashEntry)
-			vt, ok := e.Value().(eval.Type)
+			vt, ok := e.Value().(px.Type)
 			if !ok {
 				panic(NewIllegalArgumentType(`StructElement`, 1, `Type`, v))
 			}
@@ -125,19 +125,19 @@ func newStructType2(args ...eval.Value) *StructType {
 	}
 }
 
-func (s *StructElement) Accept(v eval.Visitor, g eval.Guard) {
+func (s *StructElement) Accept(v px.Visitor, g px.Guard) {
 	s.key.Accept(v, g)
 	s.value.Accept(v, g)
 }
 
-func (s *StructElement) ActualKeyType() eval.Type {
+func (s *StructElement) ActualKeyType() px.Type {
 	if ot, ok := s.key.(*OptionalType); ok {
 		return ot.typ
 	}
 	return s.key
 }
 
-func (s *StructElement) Equals(o interface{}, g eval.Guard) bool {
+func (s *StructElement) Equals(o interface{}, g px.Guard) bool {
 	if ose, ok := o.(*StructElement); ok {
 		return s.key.Equals(ose.key, g) && s.value.Equals(ose.value, g)
 	}
@@ -145,14 +145,14 @@ func (s *StructElement) Equals(o interface{}, g eval.Guard) bool {
 }
 
 func (s *StructElement) String() string {
-	return eval.ToString(s)
+	return px.ToString(s)
 }
 
-func (s *StructElement) PType() eval.Type {
+func (s *StructElement) PType() px.Type {
 	return StructElementMeta
 }
 
-func (s *StructElement) Key() eval.Type {
+func (s *StructElement) Key() px.Type {
 	return s.key
 }
 
@@ -165,12 +165,12 @@ func (s *StructElement) Optional() bool {
 	return ok
 }
 
-func (s *StructElement) resolve(c eval.Context) {
+func (s *StructElement) resolve(c px.Context) {
 	s.key = resolve(c, s.key)
 	s.value = resolve(c, s.value)
 }
 
-func (s *StructElement) ToString(bld io.Writer, format eval.FormatContext, g eval.RDetect) {
+func (s *StructElement) ToString(bld io.Writer, format px.FormatContext, g px.RDetect) {
 	optionalValue := isAssignable(s.value, undefTypeDefault)
 	if _, ok := s.key.(*OptionalType); ok {
 		if optionalValue {
@@ -189,22 +189,22 @@ func (s *StructElement) ToString(bld io.Writer, format eval.FormatContext, g eva
 	s.value.ToString(bld, format, g)
 }
 
-func (s *StructElement) Value() eval.Type {
+func (s *StructElement) Value() px.Type {
 	return s.value
 }
 
-func (t *StructType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *StructType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	for _, element := range t.elements {
 		element.Accept(v, g)
 	}
 }
 
-func (t *StructType) Default() eval.Type {
+func (t *StructType) Default() px.Type {
 	return structTypeDefault
 }
 
-func (t *StructType) Equals(o interface{}, g eval.Guard) bool {
+func (t *StructType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*StructType); ok && len(t.elements) == len(ot.elements) {
 		for idx, element := range t.elements {
 			if !element.Equals(ot.elements[idx], g) {
@@ -216,10 +216,10 @@ func (t *StructType) Equals(o interface{}, g eval.Guard) bool {
 	return false
 }
 
-func (t *StructType) Generic() eval.Type {
+func (t *StructType) Generic() px.Type {
 	al := make([]*StructElement, len(t.elements))
 	for idx, e := range t.elements {
-		al[idx] = &StructElement{e.name, eval.GenericType(e.key), eval.GenericType(e.value)}
+		al[idx] = &StructElement{e.name, px.GenericType(e.key), px.GenericType(e.value)}
 	}
 	return NewStructType(al)
 }
@@ -228,10 +228,10 @@ func (t *StructType) Elements() []*StructElement {
 	return t.elements
 }
 
-func (t *StructType) Get(key string) (value eval.Value, ok bool) {
+func (t *StructType) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `elements`:
-		els := make([]eval.Value, len(t.elements))
+		els := make([]px.Value, len(t.elements))
 		for i, e := range t.elements {
 			els[i] = e
 		}
@@ -257,7 +257,7 @@ func (t *StructType) HashedMembersCloned() map[string]*StructElement {
 	return hashedMembers
 }
 
-func (t *StructType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *StructType) IsAssignable(o px.Type, g px.Guard) bool {
 	switch o := o.(type) {
 	case *StructType:
 		hm := o.HashedMembers()
@@ -295,7 +295,7 @@ func (t *StructType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	}
 }
 
-func (t *StructType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *StructType) IsInstance(o px.Value, g px.Guard) bool {
 	ov, ok := o.(*HashValue)
 	if !ok {
 		return false
@@ -318,7 +318,7 @@ func (t *StructType) IsInstance(o eval.Value, g eval.Guard) bool {
 	return matched == ov.Len()
 }
 
-func (t *StructType) MetaType() eval.ObjectType {
+func (t *StructType) MetaType() px.ObjectType {
 	return StructMetaType
 }
 
@@ -326,15 +326,15 @@ func (t *StructType) Name() string {
 	return `Struct`
 }
 
-func (t *StructType) Parameters() []eval.Value {
+func (t *StructType) Parameters() []px.Value {
 	top := len(t.elements)
 	if top == 0 {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
 	entries := make([]*HashEntry, top)
 	for idx, s := range t.elements {
 		optionalValue := isAssignable(s.value, undefTypeDefault)
-		var key eval.Value
+		var key px.Value
 		if _, ok := s.key.(*OptionalType); ok {
 			if optionalValue {
 				key = stringValue(s.name)
@@ -350,10 +350,10 @@ func (t *StructType) Parameters() []eval.Value {
 		}
 		entries[idx] = WrapHashEntry(key, s.value)
 	}
-	return []eval.Value{WrapHash(entries)}
+	return []px.Value{WrapHash(entries)}
 }
 
-func (t *StructType) Resolve(c eval.Context) eval.Type {
+func (t *StructType) Resolve(c px.Context) px.Type {
 	for _, e := range t.elements {
 		e.resolve(c)
 	}
@@ -384,14 +384,14 @@ func (t *StructType) Size() *IntegerType {
 }
 
 func (t *StructType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *StructType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *StructType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *StructType) PType() eval.Type {
+func (t *StructType) PType() px.Type {
 	return &TypeType{t}
 }
 

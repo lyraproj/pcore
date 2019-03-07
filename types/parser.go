@@ -3,10 +3,11 @@ package types
 import (
 	"errors"
 	"fmt"
-	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
-	"github.com/lyraproj/pcore/utils"
 	"strconv"
+
+	"github.com/lyraproj/issue/issue"
+	"github.com/lyraproj/pcore/px"
+	"github.com/lyraproj/pcore/utils"
 )
 
 // States:
@@ -51,12 +52,12 @@ func expect(state int) (s string) {
 	return
 }
 
-func Parse(s string) (eval.Value, error) {
+func Parse(s string) (px.Value, error) {
 	d := NewCollector()
 
 	sr := utils.NewStringReader(s)
 	var sf func(t token) error
-	var tp eval.Value
+	var tp px.Value
 	state := exElement
 	arrayHash := false
 
@@ -94,7 +95,7 @@ func Parse(s string) (eval.Value, error) {
 				err = errors.New(`unexpected end of input`)
 			}
 			if arrayHash {
-				he := d.PopLast().(eval.MapEntry)
+				he := d.PopLast().(px.MapEntry)
 				d.Add(SingletonHash(he.Key(), he.Value()))
 			}
 		case rightCurlyBrace:
@@ -166,7 +167,7 @@ func Parse(s string) (eval.Value, error) {
 				if stp == nil {
 					break
 				}
-				ps := []eval.Value{d.PopLast()}
+				ps := []px.Value{d.PopLast()}
 				if he, ok := stp.(*HashEntry); ok {
 					he.Value().(*DeferredType).params = ps
 				} else {
@@ -204,7 +205,7 @@ func Parse(s string) (eval.Value, error) {
 				} else {
 					dp = stp.(*DeferredType)
 				}
-				dp.params = ll.AppendTo(make([]eval.Value, 0, ll.Len()))
+				dp.params = ll.AppendTo(make([]px.Value, 0, ll.Len()))
 				d.Add(stp)
 			case leftParen:
 				stp := tp
@@ -226,10 +227,10 @@ func Parse(s string) (eval.Value, error) {
 				}
 				ll := d.PopLast().(*ArrayValue)
 				if he, ok := stp.(*HashEntry); ok {
-					params := append(make([]eval.Value, 0, ll.Len()+1), WrapString(he.Value().(*DeferredType).tn))
+					params := append(make([]px.Value, 0, ll.Len()+1), WrapString(he.Value().(*DeferredType).tn))
 					stp = WrapHashEntry(he.Key(), NewDeferred(`new`, ll.AppendTo(params)...))
 				} else {
-					params := append(make([]eval.Value, 0, ll.Len()+1), WrapString(stp.(*DeferredType).tn))
+					params := append(make([]px.Value, 0, ll.Len()+1), WrapString(stp.(*DeferredType).tn))
 					stp = NewDeferred(`new`, ll.AppendTo(params)...)
 				}
 				d.Add(stp)
@@ -279,17 +280,17 @@ func Parse(s string) (eval.Value, error) {
 	}
 	err := scan(sr, sf)
 	if err != nil {
-		err = eval.Error2(issue.NewLocation(``, sr.Line(), sr.Column()), parseError, issue.H{`message`: err.Error()})
+		err = px.Error2(issue.NewLocation(``, sr.Line(), sr.Column()), parseError, issue.H{`message`: err.Error()})
 	}
 	return d.Value(), err
 }
 
 func fixArrayHash(av *ArrayValue) *ArrayValue {
-	es := make([]eval.Value, 0, av.Len())
+	es := make([]px.Value, 0, av.Len())
 
 	// Array may contain hash entries that must be concatenated into a single hash
 	var en []*HashEntry
-	av.Each(func(v eval.Value) {
+	av.Each(func(v px.Value) {
 		if he, ok := v.(*HashEntry); ok {
 			if en == nil {
 				en = []*HashEntry{he}

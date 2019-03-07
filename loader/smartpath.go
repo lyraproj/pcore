@@ -5,22 +5,22 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type (
-	Instantiator func(ctx eval.Context, loader ContentProvidingLoader, tn eval.TypedName, sources []string)
+	Instantiator func(ctx px.Context, loader ContentProvidingLoader, tn px.TypedName, sources []string)
 
 	SmartPath interface {
-		Loader() eval.Loader
+		Loader() px.Loader
 		GenericPath() string
-		EffectivePath(name eval.TypedName) string
+		EffectivePath(name px.TypedName) string
 		Extension() string
 		RelativePath() string
-		Namespace() eval.Namespace
+		Namespace() px.Namespace
 		IsMatchMany() bool
 		PreferredOrigin(i []string) string
-		TypedName(nameAuthority eval.URI, relativePath string) eval.TypedName
+		TypedName(nameAuthority px.URI, relativePath string) px.TypedName
 		Instantiator() Instantiator
 		Indexed() bool
 		SetIndexed()
@@ -28,8 +28,8 @@ type (
 
 	smartPath struct {
 		relativePath string
-		loader       eval.ModuleLoader
-		namespace    eval.Namespace
+		loader       px.ModuleLoader
+		namespace    px.Namespace
 		extension    string
 
 		// Paths are not supposed to contain module name
@@ -41,7 +41,7 @@ type (
 )
 
 func NewSmartPath(relativePath, extension string,
-	loader eval.ModuleLoader, namespace eval.Namespace, moduleNameRelative,
+	loader px.ModuleLoader, namespace px.Namespace, moduleNameRelative,
 	matchMany bool, instantiator Instantiator) SmartPath {
 	return &smartPath{relativePath: relativePath, extension: extension,
 		loader: loader, namespace: namespace, moduleNameRelative: moduleNameRelative,
@@ -56,11 +56,11 @@ func (p *smartPath) SetIndexed() {
 	p.indexed = true
 }
 
-func (p *smartPath) Loader() eval.Loader {
+func (p *smartPath) Loader() px.Loader {
 	return p.loader
 }
 
-func (p *smartPath) EffectivePath(name eval.TypedName) string {
+func (p *smartPath) EffectivePath(name px.TypedName) string {
 	nameParts := name.Parts()
 	if p.moduleNameRelative {
 		if len(nameParts) < 2 || nameParts[0] != p.loader.ModuleName() {
@@ -87,7 +87,7 @@ func (p *smartPath) GenericPath() string {
 	return filepath.Join(parts...)
 }
 
-func (p *smartPath) Namespace() eval.Namespace {
+func (p *smartPath) Namespace() px.Namespace {
 	return p.namespace
 }
 
@@ -107,7 +107,7 @@ func (p *smartPath) PreferredOrigin(origins []string) string {
 	if len(origins) == 1 {
 		return origins[0]
 	}
-	if p.namespace == eval.NsTask {
+	if p.namespace == px.NsTask {
 		// Prefer .json file if present
 		for _, origin := range origins {
 			if strings.HasSuffix(origin, `.json`) {
@@ -120,7 +120,7 @@ func (p *smartPath) PreferredOrigin(origins []string) string {
 
 var dropExtension = regexp.MustCompile(`\.[^\\/]*\z`)
 
-func (p *smartPath) TypedName(nameAuthority eval.URI, relativePath string) eval.TypedName {
+func (p *smartPath) TypedName(nameAuthority px.URI, relativePath string) px.TypedName {
 	parts := strings.Split(relativePath, `/`)
 	l := len(parts) - 1
 	s := parts[l]
@@ -134,7 +134,7 @@ func (p *smartPath) TypedName(nameAuthority eval.URI, relativePath string) eval.
 	if p.moduleNameRelative && !(len(parts) == 1 && (s == `init` || s == `init_typeset`)) {
 		parts = append([]string{p.loader.ModuleName()}, parts...)
 	}
-	return eval.NewTypedName2(p.namespace, strings.Join(parts, `::`), nameAuthority)
+	return px.NewTypedName2(p.namespace, strings.Join(parts, `::`), nameAuthority)
 }
 
 func (p *smartPath) Instantiator() Instantiator {

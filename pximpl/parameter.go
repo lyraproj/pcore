@@ -1,19 +1,24 @@
-package impl
+package pximpl
 
 import (
-	"github.com/lyraproj/pcore/eval"
-	"github.com/lyraproj/pcore/types"
 	"io"
+
+	"github.com/lyraproj/pcore/px"
+	"github.com/lyraproj/pcore/types"
 )
 
 type parameter struct {
 	name     string
-	typ      eval.Type
-	value    eval.Value
+	typ      px.Type
+	value    px.Value
 	captures bool
 }
 
-func NewParameter(name string, typ eval.Type, value eval.Value, capturesRest bool) eval.Parameter {
+func init() {
+	px.NewParameter = newParameter
+}
+
+func newParameter(name string, typ px.Type, value px.Value, capturesRest bool) px.Parameter {
 	return &parameter{name, typ, value, capturesRest}
 }
 
@@ -25,11 +30,11 @@ func (p *parameter) Name() string {
 	return p.name
 }
 
-func (p *parameter) Value() eval.Value {
+func (p *parameter) Value() px.Value {
 	return p.value
 }
 
-func (p *parameter) Type() eval.Type {
+func (p *parameter) Type() px.Type {
 	return p.typ
 }
 
@@ -37,7 +42,7 @@ func (p *parameter) CapturesRest() bool {
 	return p.captures
 }
 
-func (p *parameter) Get(key string) (value eval.Value, ok bool) {
+func (p *parameter) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `name`:
 		return types.WrapString(p.name), true
@@ -53,14 +58,14 @@ func (p *parameter) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (p *parameter) InitHash() eval.OrderedMap {
+func (p *parameter) InitHash() px.OrderedMap {
 	es := make([]*types.HashEntry, 0, 3)
 	es = append(es, types.WrapHashEntry2(`name`, types.WrapString(p.name)))
 	es = append(es, types.WrapHashEntry2(`type`, p.typ))
 	if p.value != nil {
 		es = append(es, types.WrapHashEntry2(`value`, p.value))
 	}
-	if p.value == eval.Undef {
+	if p.value == px.Undef {
 		es = append(es, types.WrapHashEntry2(`has_value`, types.BooleanTrue))
 	}
 	if p.captures {
@@ -69,26 +74,26 @@ func (p *parameter) InitHash() eval.OrderedMap {
 	return types.WrapHash(es)
 }
 
-var ParameterMetaType eval.Type
+var ParameterMetaType px.Type
 
-func (p *parameter) Equals(other interface{}, guard eval.Guard) bool {
+func (p *parameter) Equals(other interface{}, guard px.Guard) bool {
 	return p == other
 }
 
 func (p *parameter) String() string {
-	return eval.ToString(p)
+	return px.ToString(p)
 }
 
-func (p *parameter) ToString(bld io.Writer, format eval.FormatContext, g eval.RDetect) {
+func (p *parameter) ToString(bld io.Writer, format px.FormatContext, g px.RDetect) {
 	types.ObjectToString(p, format, bld, g)
 }
 
-func (p *parameter) PType() eval.Type {
+func (p *parameter) PType() px.Type {
 	return ParameterMetaType
 }
 
 func init() {
-	ParameterMetaType = eval.NewObjectType(`Parameter`, `{
+	ParameterMetaType = px.NewObjectType(`Parameter`, `{
     attributes => {
       'name' => String,
       'type' => Type,
@@ -96,44 +101,44 @@ func init() {
       'value' => { type => Variant[Deferred,Data], value => undef },
       'captures_rest' => { type => Boolean, value => false },
     }
-  }`, func(ctx eval.Context, args []eval.Value) eval.Value {
+  }`, func(ctx px.Context, args []px.Value) px.Value {
 		n := args[0].String()
-		t := args[1].(eval.Type)
+		t := args[1].(px.Type)
 		h := false
 		if len(args) > 2 {
-			h = args[2].(eval.BooleanValue).Bool()
+			h = args[2].(px.BooleanValue).Bool()
 		}
-		var v eval.Value
+		var v px.Value
 		if len(args) > 3 {
 			v = args[3]
 		}
 		c := false
 		if len(args) > 4 {
-			c = args[4].(eval.BooleanValue).Bool()
+			c = args[4].(px.BooleanValue).Bool()
 		}
 		if h && v == nil {
-			v = eval.Undef
+			v = px.Undef
 		}
-		return NewParameter(n, t, v, c)
-	}, func(ctx eval.Context, args []eval.Value) eval.Value {
+		return newParameter(n, t, v, c)
+	}, func(ctx px.Context, args []px.Value) px.Value {
 		h := args[0].(*types.HashValue)
-		n := h.Get5(`name`, eval.EmptyString).String()
-		t := h.Get5(`type`, types.DefaultDataType()).(eval.Type)
-		var v eval.Value
+		n := h.Get5(`name`, px.EmptyString).String()
+		t := h.Get5(`type`, types.DefaultDataType()).(px.Type)
+		var v px.Value
 		if x, ok := h.Get4(`value`); ok {
 			v = x
 		}
 		hv := false
 		if x, ok := h.Get4(`has_value`); ok {
-			hv = x.(eval.BooleanValue).Bool()
+			hv = x.(px.BooleanValue).Bool()
 		}
 		c := false
 		if x, ok := h.Get4(`captures_rest`); ok {
-			c = x.(eval.BooleanValue).Bool()
+			c = x.(px.BooleanValue).Bool()
 		}
 		if hv && v == nil {
-			v = eval.Undef
+			v = px.Undef
 		}
-		return NewParameter(n, t, v, c)
+		return newParameter(n, t, v, c)
 	})
 }

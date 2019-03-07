@@ -4,12 +4,12 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
 // CommonType returns a type that both a and b are assignable to
-func commonType(a eval.Type, b eval.Type) eval.Type {
+func commonType(a px.Type, b px.Type) px.Type {
 	if isAssignable(a, b) {
 		return a
 	}
@@ -26,7 +26,7 @@ func commonType(a eval.Type, b eval.Type) eval.Type {
 			ea := a.(*EnumType)
 			return NewEnumType(utils.Unique(append(ea.values, str)), ea.caseInsensitive)
 
-		case eval.StringType:
+		case px.StringType:
 			return DefaultStringType()
 
 		case *EnumType:
@@ -42,7 +42,7 @@ func commonType(a eval.Type, b eval.Type) eval.Type {
 			bs := b.(*scStringType)
 			return NewStringType(commonType(as.Size(), bs.Size()).(*IntegerType), ``)
 
-		case eval.StringType, *EnumType:
+		case px.StringType, *EnumType:
 			return DefaultStringType()
 		}
 
@@ -53,7 +53,7 @@ func commonType(a eval.Type, b eval.Type) eval.Type {
 			bs := b.(*vcStringType)
 			return NewEnumType([]string{as.value, bs.value}, false)
 
-		case eval.StringType:
+		case px.StringType:
 			return DefaultStringType()
 
 		case *EnumType:
@@ -150,26 +150,26 @@ func commonType(a eval.Type, b eval.Type) eval.Type {
 	return anyTypeDefault
 }
 
-func isCommonNumeric(a eval.Type, b eval.Type) bool {
+func isCommonNumeric(a px.Type, b px.Type) bool {
 	return isAssignable(numericTypeDefault, a) && isAssignable(numericTypeDefault, b)
 }
 
-func isCommonScalarData(a eval.Type, b eval.Type) bool {
+func isCommonScalarData(a px.Type, b px.Type) bool {
 	return isAssignable(scalarDataTypeDefault, a) && isAssignable(scalarDataTypeDefault, b)
 }
 
-func isCommonScalar(a eval.Type, b eval.Type) bool {
+func isCommonScalar(a px.Type, b px.Type) bool {
 	return isAssignable(scalarTypeDefault, a) && isAssignable(scalarTypeDefault, b)
 }
 
-func isCommonData(a eval.Type, b eval.Type) bool {
+func isCommonData(a px.Type, b px.Type) bool {
 	return isAssignable(dataTypeDefault, a) && isAssignable(dataTypeDefault, b)
 }
 
-func isCommonRichData(a eval.Type, b eval.Type) bool {
+func isCommonRichData(a px.Type, b px.Type) bool {
 	return isAssignable(richDataTypeDefault, a) && isAssignable(richDataTypeDefault, b)
 }
 
 func init() {
-	eval.CommonType = commonType
+	px.CommonType = commonType
 }

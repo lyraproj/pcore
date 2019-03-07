@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 )
 
@@ -18,10 +18,10 @@ const afterKey = 4
 
 // JsonToData reads JSON from the given reader and streams the values to the
 // given ValueConsumer
-func JsonToData(path string, in io.Reader, consumer eval.ValueConsumer) {
+func JsonToData(path string, in io.Reader, consumer px.ValueConsumer) {
 	defer func() {
 		if r := recover(); r != nil {
-			panic(eval.Error(eval.InvalidJson, issue.H{`path`: path, `detail`: r}))
+			panic(px.Error(px.InvalidJson, issue.H{`path`: path, `detail`: r}))
 		}
 	}()
 	d := json.NewDecoder(in)
@@ -29,7 +29,7 @@ func JsonToData(path string, in io.Reader, consumer eval.ValueConsumer) {
 	jsonValues(consumer, d)
 }
 
-func jsonValues(c eval.ValueConsumer, d *json.Decoder) {
+func jsonValues(c px.ValueConsumer, d *json.Decoder) {
 	for {
 		t, err := d.Token()
 		if err == io.EOF {
@@ -92,7 +92,7 @@ func jsonValues(c eval.ValueConsumer, d *json.Decoder) {
 	}
 }
 
-func addValue(c eval.ValueConsumer, t json.Token) {
+func addValue(c px.ValueConsumer, t json.Token) {
 	switch t := t.(type) {
 	case bool:
 		c.Add(types.WrapBoolean(t))
@@ -108,6 +108,6 @@ func addValue(c eval.ValueConsumer, t json.Token) {
 	case string:
 		c.Add(types.WrapString(t))
 	case nil:
-		c.Add(eval.Undef)
+		c.Add(px.Undef)
 	}
 }

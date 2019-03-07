@@ -10,28 +10,28 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
 var uriTypeDefault = &UriType{undef}
 
-var URIMetaType eval.ObjectType
+var URIMetaType px.ObjectType
 
 var members = map[string]uriMemberFunc{
-	`scheme`: func(uri *url.URL) eval.Value {
+	`scheme`: func(uri *url.URL) px.Value {
 		if uri.Scheme != `` {
 			return stringValue(strings.ToLower(uri.Scheme))
 		}
 		return undef
 	},
-	`userinfo`: func(uri *url.URL) eval.Value {
+	`userinfo`: func(uri *url.URL) px.Value {
 		if uri.User != nil {
 			return stringValue(uri.User.String())
 		}
 		return undef
 	},
-	`host`: func(uri *url.URL) eval.Value {
+	`host`: func(uri *url.URL) px.Value {
 		if uri.Host != `` {
 			h := uri.Host
 			colon := strings.IndexByte(h, ':')
@@ -42,7 +42,7 @@ var members = map[string]uriMemberFunc{
 		}
 		return undef
 	},
-	`port`: func(uri *url.URL) eval.Value {
+	`port`: func(uri *url.URL) px.Value {
 		port := uri.Port()
 		if port != `` {
 			if pn, err := strconv.Atoi(port); err == nil {
@@ -51,25 +51,25 @@ var members = map[string]uriMemberFunc{
 		}
 		return undef
 	},
-	`path`: func(uri *url.URL) eval.Value {
+	`path`: func(uri *url.URL) px.Value {
 		if uri.Path != `` {
 			return stringValue(uri.Path)
 		}
 		return undef
 	},
-	`query`: func(uri *url.URL) eval.Value {
+	`query`: func(uri *url.URL) px.Value {
 		if uri.RawQuery != `` {
 			return stringValue(uri.RawQuery)
 		}
 		return undef
 	},
-	`fragment`: func(uri *url.URL) eval.Value {
+	`fragment`: func(uri *url.URL) px.Value {
 		if uri.Fragment != `` {
 			return stringValue(uri.Fragment)
 		}
 		return undef
 	},
-	`opaque`: func(uri *url.URL) eval.Value {
+	`opaque`: func(uri *url.URL) px.Value {
 		if uri.Opaque != `` {
 			return stringValue(uri.Opaque)
 		}
@@ -98,15 +98,15 @@ func init() {
       value => undef
     }
   }
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newUriType2(args...)
 		})
 
 	newGoConstructor(`URI`,
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`String[1]`)
 			d.OptionalParam(`Boolean`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				strict := false
 				str := args[0].String()
 				if len(args) > 1 {
@@ -114,15 +114,15 @@ func init() {
 				}
 				u, err := ParseURI2(str, strict)
 				if err != nil {
-					panic(eval.Error(eval.InvalidUri, issue.H{`str`: str, `detail`: err.Error()}))
+					panic(px.Error(px.InvalidUri, issue.H{`str`: str, `detail`: err.Error()}))
 				}
 				return WrapURI(u)
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Hash[String[1],ScalarData]`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				return WrapURI(URIFromHash(args[0].(*HashValue)))
 			})
 		})
@@ -137,14 +137,14 @@ type (
 		UriType
 	}
 
-	uriMemberFunc func(*url.URL) eval.Value
+	uriMemberFunc func(*url.URL) px.Value
 
 	uriMember struct {
 		memberFunc uriMemberFunc
 	}
 )
 
-func (um *uriMember) Call(c eval.Context, receiver eval.Value, block eval.Lambda, args []eval.Value) eval.Value {
+func (um *uriMember) Call(c px.Context, receiver px.Value, block px.Lambda, args []px.Value) px.Value {
 	return um.memberFunc(receiver.(*UriValue).URL())
 }
 
@@ -163,7 +163,7 @@ func newUriType3(parameters *HashValue) *UriType {
 	return &UriType{parameters}
 }
 
-func newUriType2(args ...eval.Value) *UriType {
+func newUriType2(args ...px.Value) *UriType {
 	switch len(args) {
 	case 0:
 		return DefaultUriType()
@@ -187,7 +187,7 @@ func newUriType2(args ...eval.Value) *UriType {
 func ParseURI(str string) *url.URL {
 	uri, err := url.Parse(str)
 	if err != nil {
-		panic(eval.Error(eval.InvalidUri, issue.H{`str`: str, `detail`: err.Error()}))
+		panic(px.Error(px.InvalidUri, issue.H{`str`: str, `detail`: err.Error()}))
 	}
 	return uri
 }
@@ -234,15 +234,15 @@ func URIFromHash(hash *HashValue) *url.URL {
 	return uri
 }
 
-func (t *UriType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *UriType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *UriType) Default() eval.Type {
+func (t *UriType) Default() px.Type {
 	return uriTypeDefault
 }
 
-func (t *UriType) Equals(other interface{}, g eval.Guard) bool {
+func (t *UriType) Equals(other interface{}, g px.Guard) bool {
 	if ot, ok := other.(*UriType); ok {
 		switch t.parameters.(type) {
 		case *UndefValue:
@@ -254,7 +254,7 @@ func (t *UriType) Equals(other interface{}, g eval.Guard) bool {
 				return false
 			}
 			if _, ok := ot.parameters.(*url.URL); ok {
-				return eval.Equals(t.parameters, ot.parameters)
+				return px.Equals(t.parameters, ot.parameters)
 			}
 			return t.paramsAsHash().Equals(ot.paramsAsHash(), g)
 		}
@@ -262,7 +262,7 @@ func (t *UriType) Equals(other interface{}, g eval.Guard) bool {
 	return false
 }
 
-func (t *UriType) Get(key string) (value eval.Value, ok bool) {
+func (t *UriType) Get(key string) (value px.Value, ok bool) {
 	if key == `parameters` {
 		switch t.parameters.(type) {
 		case *UndefValue:
@@ -276,20 +276,20 @@ func (t *UriType) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (t *UriType) IsAssignable(other eval.Type, g eval.Guard) bool {
+func (t *UriType) IsAssignable(other px.Type, g px.Guard) bool {
 	if ot, ok := other.(*UriType); ok {
 		switch t.parameters.(type) {
 		case *UndefValue:
 			return true
 		default:
 			oParams := ot.paramsAsHash()
-			return t.paramsAsHash().AllPairs(func(k, b eval.Value) bool {
+			return t.paramsAsHash().AllPairs(func(k, b px.Value) bool {
 				if a, ok := oParams.Get(k); ok {
-					if at, ok := a.(eval.Type); ok {
-						bt, ok := b.(eval.Type)
+					if at, ok := a.(px.Type); ok {
+						bt, ok := b.(px.Type)
 						return ok && isAssignable(bt, at)
 					}
-					return eval.PuppetMatch(a, b)
+					return px.PuppetMatch(a, b)
 				}
 				return false
 			})
@@ -298,29 +298,29 @@ func (t *UriType) IsAssignable(other eval.Type, g eval.Guard) bool {
 	return false
 }
 
-func (t *UriType) IsInstance(other eval.Value, g eval.Guard) bool {
+func (t *UriType) IsInstance(other px.Value, g px.Guard) bool {
 	if ov, ok := other.(*UriValue); ok {
 		switch t.parameters.(type) {
 		case *UndefValue:
 			return true
 		default:
 			ovUri := ov.URL()
-			return t.paramsAsHash().AllPairs(func(k, v eval.Value) bool {
-				return eval.PuppetMatch(v, getURLField(ovUri, k.String()))
+			return t.paramsAsHash().AllPairs(func(k, v px.Value) bool {
+				return px.PuppetMatch(v, getURLField(ovUri, k.String()))
 			})
 		}
 	}
 	return false
 }
 
-func (t *UriType) Member(name string) (eval.CallableMember, bool) {
+func (t *UriType) Member(name string) (px.CallableMember, bool) {
 	if member, ok := members[name]; ok {
 		return &uriMember{member}, true
 	}
 	return nil, false
 }
 
-func (t *UriType) MetaType() eval.ObjectType {
+func (t *UriType) MetaType() px.ObjectType {
 	return URIMetaType
 }
 
@@ -328,14 +328,14 @@ func (t *UriType) Name() string {
 	return `URI`
 }
 
-func (t *UriType) Parameters() []eval.Value {
+func (t *UriType) Parameters() []px.Value {
 	switch t.parameters.(type) {
 	case *UndefValue:
-		return eval.EmptyValues
+		return px.EmptyValues
 	case *HashValue:
-		return []eval.Value{t.parameters.(*HashValue)}
+		return []px.Value{t.parameters.(*HashValue)}
 	default:
-		return []eval.Value{urlToHash(t.parameters.(*url.URL))}
+		return []px.Value{urlToHash(t.parameters.(*url.URL))}
 	}
 }
 
@@ -348,14 +348,14 @@ func (t *UriType) SerializationString() string {
 }
 
 func (t *UriType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *UriType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *UriType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *UriType) PType() eval.Type {
+func (t *UriType) PType() px.Type {
 	return &TypeType{t}
 }
 
@@ -405,7 +405,7 @@ func urlToHash(uri *url.URL) *HashValue {
 	return WrapHash(entries)
 }
 
-func getURLField(uri *url.URL, key string) eval.Value {
+func getURLField(uri *url.URL, key string) px.Value {
 	if member, ok := members[key]; ok {
 		return member(uri)
 	}
@@ -420,14 +420,14 @@ func WrapURI2(str string) *UriValue {
 	return WrapURI(ParseURI(str))
 }
 
-func (u *UriValue) Equals(other interface{}, guard eval.Guard) bool {
+func (u *UriValue) Equals(other interface{}, guard px.Guard) bool {
 	if ou, ok := other.(*UriValue); ok {
 		return *u.URL() == *ou.URL()
 	}
 	return false
 }
 
-func (u *UriValue) Get(key string) (eval.Value, bool) {
+func (u *UriValue) Get(key string) (px.Value, bool) {
 	if member, ok := members[key]; ok {
 		return member(u.URL()), true
 	}
@@ -443,11 +443,11 @@ func (u *UriValue) SerializationString() string {
 }
 
 func (u *UriValue) String() string {
-	return eval.ToString(u)
+	return px.ToString(u)
 }
 
-func (u *UriValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
-	f := eval.GetFormat(s.FormatMap(), u.PType())
+func (u *UriValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+	f := px.GetFormat(s.FormatMap(), u.PType())
 	val := u.URL().String()
 	switch f.FormatChar() {
 	case 's':
@@ -467,7 +467,7 @@ func (u *UriValue) ToKey(b *bytes.Buffer) {
 	b.Write([]byte(u.URL().String()))
 }
 
-func (u *UriValue) PType() eval.Type {
+func (u *UriValue) PType() px.Type {
 	return &u.UriType
 }
 

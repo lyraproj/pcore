@@ -1,28 +1,28 @@
 package types
 
-import "github.com/lyraproj/pcore/eval"
+import "github.com/lyraproj/pcore/px"
 
 // A BasicCollector is an extendable basic implementation of the Collector interface
 type BasicCollector struct {
-	values []eval.Value
-	stack  [][]eval.Value
+	values []px.Value
+	stack  [][]px.Value
 }
 
 // NewCollector returns a new Collector instance
-func NewCollector() eval.Collector {
+func NewCollector() px.Collector {
 	hm := &BasicCollector{}
 	hm.Init()
 	return hm
 }
 
 func (hm *BasicCollector) Init() {
-	hm.values = make([]eval.Value, 0, 64)
-	hm.stack = make([][]eval.Value, 1, 8)
-	hm.stack[0] = make([]eval.Value, 0, 1)
+	hm.values = make([]px.Value, 0, 64)
+	hm.stack = make([][]px.Value, 1, 8)
+	hm.stack[0] = make([]px.Value, 0, 1)
 }
 
-func (hm *BasicCollector) AddArray(cap int, doer eval.Doer) {
-	BuildArray(cap, func(ar *ArrayValue, elements []eval.Value) []eval.Value {
+func (hm *BasicCollector) AddArray(cap int, doer px.Doer) {
+	BuildArray(cap, func(ar *ArrayValue, elements []px.Value) []px.Value {
 		hm.Add(ar)
 		top := len(hm.stack)
 		hm.stack = append(hm.stack, elements)
@@ -33,11 +33,11 @@ func (hm *BasicCollector) AddArray(cap int, doer eval.Doer) {
 	})
 }
 
-func (hm *BasicCollector) AddHash(cap int, doer eval.Doer) {
+func (hm *BasicCollector) AddHash(cap int, doer px.Doer) {
 	BuildHash(cap, func(ar *HashValue, entries []*HashEntry) []*HashEntry {
 		hm.Add(ar)
 		top := len(hm.stack)
-		hm.stack = append(hm.stack, make([]eval.Value, 0, cap*2))
+		hm.stack = append(hm.stack, make([]px.Value, 0, cap*2))
 		doer()
 		st := hm.stack[top]
 		hm.stack = hm.stack[0:top]
@@ -50,7 +50,7 @@ func (hm *BasicCollector) AddHash(cap int, doer eval.Doer) {
 	})
 }
 
-func (hm *BasicCollector) Add(element eval.Value) {
+func (hm *BasicCollector) Add(element px.Value) {
 	top := len(hm.stack) - 1
 	hm.stack[top] = append(hm.stack[top], element)
 	hm.values = append(hm.values, element)
@@ -69,7 +69,7 @@ func (hm *BasicCollector) CanDoComplexKeys() bool {
 	return true
 }
 
-func (hm *BasicCollector) PopLast() eval.Value {
+func (hm *BasicCollector) PopLast() px.Value {
 	top := len(hm.stack) - 1
 	st := hm.stack[top]
 	l := len(st) - 1
@@ -86,6 +86,6 @@ func (hm *BasicCollector) StringDedupThreshold() int {
 	return 0
 }
 
-func (hm *BasicCollector) Value() eval.Value {
+func (hm *BasicCollector) Value() px.Value {
 	return hm.stack[0][0]
 }

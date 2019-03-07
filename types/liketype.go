@@ -8,16 +8,16 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type LikeType struct {
-	baseType   eval.Type
-	resolved   eval.Type
+	baseType   px.Type
+	resolved   px.Type
 	navigation string
 }
 
-var LikeMetaType eval.ObjectType
+var LikeMetaType px.ObjectType
 
 func init() {
 	LikeMetaType = newObjectType(`Pcore::Like`,
@@ -26,7 +26,7 @@ func init() {
     base_type => Type,
 		navigation => String[1]
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newLikeType2(args...)
 		})
 }
@@ -35,16 +35,16 @@ func DefaultLikeType() *LikeType {
 	return typeOfTypeDefault
 }
 
-func NewLikeType(baseType eval.Type, navigation string) *LikeType {
+func NewLikeType(baseType px.Type, navigation string) *LikeType {
 	return &LikeType{baseType: baseType, navigation: navigation}
 }
 
-func newLikeType2(args ...eval.Value) *LikeType {
+func newLikeType2(args ...px.Value) *LikeType {
 	switch len(args) {
 	case 0:
 		return DefaultLikeType()
 	case 2:
-		if tp, ok := args[0].(eval.Type); ok {
+		if tp, ok := args[0].(px.Type); ok {
 			if an, ok := args[1].(stringValue); ok {
 				return NewLikeType(tp, string(an))
 			} else {
@@ -58,23 +58,23 @@ func newLikeType2(args ...eval.Value) *LikeType {
 	}
 }
 
-func (t *LikeType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *LikeType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	t.baseType.Accept(v, g)
 }
 
-func (t *LikeType) Default() eval.Type {
+func (t *LikeType) Default() px.Type {
 	return typeOfTypeDefault
 }
 
-func (t *LikeType) Equals(o interface{}, g eval.Guard) bool {
+func (t *LikeType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*LikeType); ok {
 		return t.navigation == ot.navigation && t.baseType.Equals(ot.baseType, g)
 	}
 	return false
 }
 
-func (t *LikeType) Get(key string) (eval.Value, bool) {
+func (t *LikeType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `base_type`:
 		return t.baseType, true
@@ -85,15 +85,15 @@ func (t *LikeType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *LikeType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *LikeType) IsAssignable(o px.Type, g px.Guard) bool {
 	return t.Resolve(nil).IsAssignable(o, g)
 }
 
-func (t *LikeType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *LikeType) IsInstance(o px.Value, g px.Guard) bool {
 	return t.Resolve(nil).IsInstance(o, g)
 }
 
-func (t *LikeType) MetaType() eval.ObjectType {
+func (t *LikeType) MetaType() px.ObjectType {
 	return LikeMetaType
 }
 
@@ -102,51 +102,51 @@ func (t *LikeType) Name() string {
 }
 
 func (t *LikeType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *LikeType) Parameters() []eval.Value {
+func (t *LikeType) Parameters() []px.Value {
 	if *t == *typeOfTypeDefault {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
-	return []eval.Value{t.baseType, stringValue(t.navigation)}
+	return []px.Value{t.baseType, stringValue(t.navigation)}
 }
 
-func (t *LikeType) Resolve(c eval.Context) eval.Type {
+func (t *LikeType) Resolve(c px.Context) px.Type {
 	if t.resolved != nil {
 		return t.resolved
 	}
 	bt := t.baseType
-	bv := bt.(eval.Value)
+	bv := bt.(px.Value)
 	var ok bool
 	for _, part := range strings.Split(t.navigation, `.`) {
 		if c, bv, ok = navigate(c, bv, part); !ok {
-			panic(eval.Error(eval.UnresolvedTypeOf, issue.H{`type`: t.baseType, `navigation`: t.navigation}))
+			panic(px.Error(px.UnresolvedTypeOf, issue.H{`type`: t.baseType, `navigation`: t.navigation}))
 		}
 	}
-	if bt, ok = bv.(eval.Type); ok {
+	if bt, ok = bv.(px.Type); ok {
 		t.resolved = bt
 		return bt
 	}
-	panic(eval.Error(eval.UnresolvedTypeOf, issue.H{`type`: t.baseType, `navigation`: t.navigation}))
+	panic(px.Error(px.UnresolvedTypeOf, issue.H{`type`: t.baseType, `navigation`: t.navigation}))
 }
 
-func (t *LikeType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *LikeType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *LikeType) PType() eval.Type {
+func (t *LikeType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func navigate(c eval.Context, value eval.Value, member string) (eval.Context, eval.Value, bool) {
-	if typ, ok := value.(eval.Type); ok {
-		if po, ok := typ.(eval.TypeWithCallableMembers); ok {
+func navigate(c px.Context, value px.Value, member string) (px.Context, px.Value, bool) {
+	if typ, ok := value.(px.Type); ok {
+		if po, ok := typ.(px.TypeWithCallableMembers); ok {
 			if m, ok := po.Member(member); ok {
-				if a, ok := m.(eval.Attribute); ok {
+				if a, ok := m.(px.Attribute); ok {
 					return c, a.Type(), true
 				}
-				if f, ok := m.(eval.Function); ok {
+				if f, ok := m.(px.Function); ok {
 					return c, f.PType().(*CallableType).ReturnType(), true
 				}
 			}
@@ -156,7 +156,7 @@ func navigate(c eval.Context, value eval.Value, member string) (eval.Context, ev
 			}
 		} else if tt, ok := typ.(*TupleType); ok {
 			if n, err := strconv.ParseInt(member, 0, 64); err == nil {
-				if et, ok := tt.At(int(n)).(eval.Type); ok {
+				if et, ok := tt.At(int(n)).(px.Type); ok {
 					return c, et, true
 				}
 			}
@@ -165,18 +165,18 @@ func navigate(c eval.Context, value eval.Value, member string) (eval.Context, ev
 		} else {
 			if m, ok := typ.MetaType().Member(member); ok {
 				if c == nil {
-					c = eval.CurrentContext()
+					c = px.CurrentContext()
 				}
-				return c, m.Call(c, typ, nil, []eval.Value{}), true
+				return c, m.Call(c, typ, nil, []px.Value{}), true
 			}
 		}
 	} else {
-		if po, ok := value.PType().(eval.TypeWithCallableMembers); ok {
+		if po, ok := value.PType().(px.TypeWithCallableMembers); ok {
 			if m, ok := po.Member(member); ok {
 				if c == nil {
-					c = eval.CurrentContext()
+					c = px.CurrentContext()
 				}
-				return c, m.Call(c, value, nil, []eval.Value{}), true
+				return c, m.Call(c, value, nil, []px.Value{}), true
 			}
 		}
 	}

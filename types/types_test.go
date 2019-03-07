@@ -5,38 +5,35 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
-
-	// Ensure that pcore is initialized
-	_ "github.com/lyraproj/pcore/pcore"
 )
 
 func ExampleUniqueValues() {
 	x := types.WrapString(`hello`)
 	y := types.WrapInteger(32)
-	types.UniqueValues([]eval.Value{x, y})
+	types.UniqueValues([]px.Value{x, y})
 
 	z := types.WrapString(`hello`)
-	sv := []eval.StringValue{x, z}
-	fmt.Println(types.UniqueValues([]eval.Value{sv[0], sv[1]}))
+	sv := []px.StringValue{x, z}
+	fmt.Println(types.UniqueValues([]px.Value{sv[0], sv[1]}))
 	// Output: [hello]
 }
 
 func ExampleNewCallableType() {
-	cc := types.NewCallableType(types.NewTupleType([]eval.Type{types.DefaultUnitType()}, types.PositiveIntegerType()), nil, nil)
+	cc := types.NewCallableType(types.NewTupleType([]px.Type{types.DefaultUnitType()}, types.PositiveIntegerType()), nil, nil)
 	fmt.Println(cc)
 	// Output: Callable[0, default]
 }
 
 func ExampleNewTupleType() {
-	tuple := types.NewTupleType([]eval.Type{types.DefaultStringType(), types.DefaultIntegerType()}, nil)
+	tuple := types.NewTupleType([]px.Type{types.DefaultStringType(), types.DefaultIntegerType()}, nil)
 	fmt.Println(tuple)
 	// Output: Tuple[String, Integer]
 }
 
 func ExampleWrapHash() {
-	a := eval.Wrap(nil, map[string]interface{}{
+	a := px.Wrap(nil, map[string]interface{}{
 		`foo`: 23,
 		`fee`: `hello`,
 		`fum`: map[string]interface{}{
@@ -49,18 +46,18 @@ func ExampleWrapHash() {
 		types.WrapHashEntry2(`fee`, types.WrapString(`hello`)),
 		types.WrapHashEntry2(`fum`, types.WrapHash([]*types.HashEntry{
 			types.WrapHashEntry2(`x`, types.WrapString(`1`)),
-			types.WrapHashEntry2(`y`, types.WrapValues([]eval.Value{
+			types.WrapHashEntry2(`y`, types.WrapValues([]px.Value{
 				types.WrapInteger(1), types.WrapInteger(2), types.WrapInteger(3)})),
 			types.WrapHashEntry2(`z`, types.WrapRegexp(`^[a-z]+$`))}))})
 
-	fmt.Println(eval.Equals(e, a))
+	fmt.Println(px.Equals(e, a))
 	// Output: true
 }
 
 func TestIsAssignable(t *testing.T) {
 	t1 := &types.AnyType{}
 	t2 := &types.UnitType{}
-	if !eval.IsAssignable(t1, t2) {
+	if !px.IsAssignable(t1, t2) {
 		t.Error(`Unit not assignable to Any`)
 	}
 }

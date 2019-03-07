@@ -3,16 +3,16 @@ package types
 import (
 	"io"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type ScalarDataType struct{}
 
-var ScalarDataMetaType eval.ObjectType
+var ScalarDataMetaType px.ObjectType
 
 func init() {
 	ScalarDataMetaType = newObjectType(`Pcore::ScalarDataType`, `Pcore::ScalarType{}`,
-		func(ctx eval.Context, args []eval.Value) eval.Value {
+		func(ctx px.Context, args []px.Value) px.Value {
 			return DefaultScalarDataType()
 		})
 }
@@ -21,16 +21,16 @@ func DefaultScalarDataType() *ScalarDataType {
 	return scalarDataTypeDefault
 }
 
-func (t *ScalarDataType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *ScalarDataType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *ScalarDataType) Equals(o interface{}, g eval.Guard) bool {
+func (t *ScalarDataType) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*ScalarDataType)
 	return ok
 }
 
-func (t *ScalarDataType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *ScalarDataType) IsAssignable(o px.Type, g px.Guard) bool {
 	switch o.(type) {
 	case *ScalarDataType:
 		return true
@@ -42,7 +42,7 @@ func (t *ScalarDataType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	}
 }
 
-func (t *ScalarDataType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *ScalarDataType) IsInstance(o px.Value, g px.Guard) bool {
 	switch o.(type) {
 	case booleanValue, floatValue, integerValue, stringValue:
 		return true
@@ -50,7 +50,7 @@ func (t *ScalarDataType) IsInstance(o eval.Value, g eval.Guard) bool {
 	return false
 }
 
-func (t *ScalarDataType) MetaType() eval.ObjectType {
+func (t *ScalarDataType) MetaType() px.ObjectType {
 	return ScalarDataMetaType
 }
 
@@ -70,11 +70,11 @@ func (t *ScalarDataType) String() string {
 	return `ScalarData`
 }
 
-func (t *ScalarDataType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *ScalarDataType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *ScalarDataType) PType() eval.Type {
+func (t *ScalarDataType) PType() px.Type {
 	return &TypeType{t}
 }
 

@@ -3,14 +3,14 @@ package types
 import (
 	"io"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type VariantType struct {
-	types []eval.Type
+	types []px.Type
 }
 
-var VariantMetaType eval.ObjectType
+var VariantMetaType px.ObjectType
 
 func init() {
 	VariantMetaType = newObjectType(`Pcore::VariantType`,
@@ -18,7 +18,7 @@ func init() {
 	attributes => {
 		types => Array[Type]
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newVariantType2(args...)
 		})
 }
@@ -27,7 +27,7 @@ func DefaultVariantType() *VariantType {
 	return variantTypeDefault
 }
 
-func NewVariantType(types ...eval.Type) eval.Type {
+func NewVariantType(types ...px.Type) px.Type {
 	switch len(types) {
 	case 0:
 		return DefaultVariantType()
@@ -38,12 +38,12 @@ func NewVariantType(types ...eval.Type) eval.Type {
 	}
 }
 
-func newVariantType2(args ...eval.Value) eval.Type {
+func newVariantType2(args ...px.Value) px.Type {
 	return newVariantType3(WrapValues(args))
 }
 
-func newVariantType3(args eval.List) eval.Type {
-	var variants []eval.Type
+func newVariantType3(args px.List) px.Type {
+	var variants []px.Type
 	var failIdx int
 
 	switch args.Len() {
@@ -52,7 +52,7 @@ func newVariantType3(args eval.List) eval.Type {
 	case 1:
 		first := args.At(0)
 		switch first := first.(type) {
-		case eval.Type:
+		case px.Type:
 			return first
 		case *ArrayValue:
 			return newVariantType3(first)
@@ -68,27 +68,27 @@ func newVariantType3(args eval.List) eval.Type {
 	return &VariantType{variants}
 }
 
-func (t *VariantType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *VariantType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	for _, c := range t.types {
 		c.Accept(v, g)
 	}
 }
 
-func (t *VariantType) Equals(o interface{}, g eval.Guard) bool {
+func (t *VariantType) Equals(o interface{}, g px.Guard) bool {
 	ot, ok := o.(*VariantType)
-	return ok && len(t.types) == len(ot.types) && eval.GuardedIncludesAll(eval.EqSlice(t.types), eval.EqSlice(ot.types), g)
+	return ok && len(t.types) == len(ot.types) && px.GuardedIncludesAll(px.EqSlice(t.types), px.EqSlice(ot.types), g)
 }
 
-func (t *VariantType) Generic() eval.Type {
+func (t *VariantType) Generic() px.Type {
 	return &VariantType{UniqueTypes(alterTypes(t.types, generalize))}
 }
 
-func (t *VariantType) Default() eval.Type {
+func (t *VariantType) Default() px.Type {
 	return variantTypeDefault
 }
 
-func (t *VariantType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *VariantType) IsAssignable(o px.Type, g px.Guard) bool {
 	for _, v := range t.types {
 		if GuardedIsAssignable(v, o, g) {
 			return true
@@ -97,7 +97,7 @@ func (t *VariantType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	return false
 }
 
-func (t *VariantType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *VariantType) IsInstance(o px.Value, g px.Guard) bool {
 	for _, v := range t.types {
 		if GuardedIsInstance(v, o, g) {
 			return true
@@ -106,7 +106,7 @@ func (t *VariantType) IsInstance(o eval.Value, g eval.Guard) bool {
 	return false
 }
 
-func (t *VariantType) MetaType() eval.ObjectType {
+func (t *VariantType) MetaType() px.ObjectType {
 	return VariantMetaType
 }
 
@@ -114,19 +114,19 @@ func (t *VariantType) Name() string {
 	return `Variant`
 }
 
-func (t *VariantType) Parameters() []eval.Value {
+func (t *VariantType) Parameters() []px.Value {
 	if len(t.types) == 0 {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
-	ps := make([]eval.Value, len(t.types))
+	ps := make([]px.Value, len(t.types))
 	for idx, t := range t.types {
 		ps[idx] = t
 	}
 	return ps
 }
 
-func (t *VariantType) Resolve(c eval.Context) eval.Type {
-	rts := make([]eval.Type, len(t.types))
+func (t *VariantType) Resolve(c px.Context) px.Type {
+	rts := make([]px.Type, len(t.types))
 	for i, ts := range t.types {
 		rts[i] = resolve(c, ts)
 	}
@@ -148,28 +148,28 @@ func (t *VariantType) SerializationString() string {
 }
 
 func (t *VariantType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *VariantType) Types() []eval.Type {
+func (t *VariantType) Types() []px.Type {
 	return t.types
 }
 
-func (t *VariantType) allAssignableTo(o eval.Type, g eval.Guard) bool {
+func (t *VariantType) allAssignableTo(o px.Type, g px.Guard) bool {
 	return allAssignableTo(t.types, o, g)
 }
 
-func (t *VariantType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *VariantType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *VariantType) PType() eval.Type {
+func (t *VariantType) PType() px.Type {
 	return &TypeType{t}
 }
 
-var variantTypeDefault = &VariantType{types: []eval.Type{}}
+var variantTypeDefault = &VariantType{types: []px.Type{}}
 
-func allAssignableTo(types []eval.Type, o eval.Type, g eval.Guard) bool {
+func allAssignableTo(types []px.Type, o px.Type, g px.Guard) bool {
 	for _, v := range types {
 		if !GuardedIsAssignable(o, v, g) {
 			return false

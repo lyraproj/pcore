@@ -3,16 +3,16 @@ package types
 import (
 	"io"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type ScalarType struct{}
 
-var ScalarMetaType eval.ObjectType
+var ScalarMetaType px.ObjectType
 
 func init() {
 	ScalarMetaType = newObjectType(`Pcore::ScalarType`, `Pcore::AnyType{}`,
-		func(ctx eval.Context, args []eval.Value) eval.Value {
+		func(ctx px.Context, args []px.Value) px.Value {
 			return DefaultScalarType()
 		})
 }
@@ -21,16 +21,16 @@ func DefaultScalarType() *ScalarType {
 	return scalarTypeDefault
 }
 
-func (t *ScalarType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *ScalarType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *ScalarType) Equals(o interface{}, g eval.Guard) bool {
+func (t *ScalarType) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*ScalarType)
 	return ok
 }
 
-func (t *ScalarType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *ScalarType) IsAssignable(o px.Type, g px.Guard) bool {
 	switch o.(type) {
 	case *ScalarType, *ScalarDataType:
 		return true
@@ -42,7 +42,7 @@ func (t *ScalarType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	}
 }
 
-func (t *ScalarType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *ScalarType) IsInstance(o px.Value, g px.Guard) bool {
 	switch o.(type) {
 	case stringValue, integerValue, floatValue, booleanValue, TimespanValue, *TimestampValue, *SemVerValue, *RegexpValue:
 		return true
@@ -50,7 +50,7 @@ func (t *ScalarType) IsInstance(o eval.Value, g eval.Guard) bool {
 	return false
 }
 
-func (t *ScalarType) MetaType() eval.ObjectType {
+func (t *ScalarType) MetaType() px.ObjectType {
 	return ScalarMetaType
 }
 
@@ -70,11 +70,11 @@ func (t *ScalarType) String() string {
 	return `Scalar`
 }
 
-func (t *ScalarType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *ScalarType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *ScalarType) PType() eval.Type {
+func (t *ScalarType) PType() px.Type {
 	return &TypeType{t}
 }
 

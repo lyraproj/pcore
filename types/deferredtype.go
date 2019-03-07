@@ -4,11 +4,11 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
-var deferredMetaType eval.ObjectType
+var deferredMetaType px.ObjectType
 
 func init() {
 	deferredMetaType = newGoObjectType(`DeferredType`, reflect.TypeOf(&DeferredType{}), `{}`)
@@ -16,26 +16,26 @@ func init() {
 
 type DeferredType struct {
 	tn       string
-	params   []eval.Value
-	resolved eval.Type
+	params   []px.Value
+	resolved px.Type
 }
 
-func NewDeferredType(name string, params ...eval.Value) *DeferredType {
+func NewDeferredType(name string, params ...px.Value) *DeferredType {
 	return &DeferredType{tn: name, params: params}
 }
 
 func (dt *DeferredType) String() string {
-	return eval.ToString(dt)
+	return px.ToString(dt)
 }
 
-func (dt *DeferredType) Equals(other interface{}, guard eval.Guard) bool {
+func (dt *DeferredType) Equals(other interface{}, guard px.Guard) bool {
 	if ot, ok := other.(*DeferredType); ok {
 		return dt.tn == ot.tn
 	}
 	return false
 }
 
-func (dt *DeferredType) ToString(bld io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (dt *DeferredType) ToString(bld io.Writer, s px.FormatContext, g px.RDetect) {
 	utils.WriteString(bld, `DeferredType(`)
 	utils.WriteString(bld, dt.tn)
 	if dt.params != nil {
@@ -45,7 +45,7 @@ func (dt *DeferredType) ToString(bld io.Writer, s eval.FormatContext, g eval.RDe
 	utils.WriteByte(bld, ')')
 }
 
-func (dt *DeferredType) PType() eval.Type {
+func (dt *DeferredType) PType() px.Type {
 	return deferredMetaType
 }
 
@@ -53,16 +53,16 @@ func (dt *DeferredType) Name() string {
 	return dt.tn
 }
 
-func (dt *DeferredType) Resolve(c eval.Context) eval.Type {
+func (dt *DeferredType) Resolve(c px.Context) px.Type {
 	if dt.resolved == nil {
 		if dt.params != nil {
 			if dt.Name() == `TypeSet` && len(dt.params) == 1 {
-				if ih, ok := dt.params[0].(eval.OrderedMap); ok {
+				if ih, ok := dt.params[0].(px.OrderedMap); ok {
 					dt.resolved = newTypeSetType2(ih, c.Loader())
 				}
 			} else {
 				ar := resolveValue(c, WrapValues(dt.params)).(*ArrayValue)
-				dt.resolved = ResolveWithParams(c, dt.tn, ar.AppendTo(make([]eval.Value, 0, ar.Len())))
+				dt.resolved = ResolveWithParams(c, dt.tn, ar.AppendTo(make([]px.Value, 0, ar.Len())))
 			}
 		} else {
 			dt.resolved = Resolve(c, dt.tn)
@@ -71,28 +71,28 @@ func (dt *DeferredType) Resolve(c eval.Context) eval.Type {
 	return dt.resolved
 }
 
-func (dt *DeferredType) Parameters() []eval.Value {
+func (dt *DeferredType) Parameters() []px.Value {
 	return dt.params
 }
 
-func resolveValue(c eval.Context, v eval.Value) (rv eval.Value) {
+func resolveValue(c px.Context, v px.Value) (rv px.Value) {
 	switch v := v.(type) {
 	case *DeferredType:
 		rv = v.Resolve(c)
 	case Deferred:
 		rv = v.Resolve(c)
 	case *ArrayValue:
-		rv = v.Map(func(e eval.Value) eval.Value { return resolveValue(c, e) })
+		rv = v.Map(func(e px.Value) px.Value { return resolveValue(c, e) })
 	case *HashEntry:
 		rv = resolveEntry(c, v)
 	case *HashValue:
-		rv = v.MapEntries(func(he eval.MapEntry) eval.MapEntry { return resolveEntry(c, he) })
+		rv = v.MapEntries(func(he px.MapEntry) px.MapEntry { return resolveEntry(c, he) })
 	default:
 		rv = v
 	}
 	return
 }
 
-func resolveEntry(c eval.Context, he eval.MapEntry) eval.MapEntry {
+func resolveEntry(c px.Context, he px.MapEntry) px.MapEntry {
 	return WrapHashEntry(resolveValue(c, he.Key()), resolveValue(c, he.Value()))
 }

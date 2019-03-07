@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
@@ -15,7 +15,7 @@ type EnumType struct {
 	values          []string
 }
 
-var EnumMetaType eval.ObjectType
+var EnumMetaType px.ObjectType
 
 func init() {
 	EnumMetaType = newObjectType(`Pcore::EnumType`,
@@ -27,7 +27,7 @@ func init() {
 			value => false
 		}
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newEnumType2(args...)
 		})
 }
@@ -50,11 +50,11 @@ func NewEnumType(enums []string, caseInsensitive bool) *EnumType {
 	return &EnumType{caseInsensitive, enums}
 }
 
-func newEnumType2(args ...eval.Value) *EnumType {
+func newEnumType2(args ...px.Value) *EnumType {
 	return newEnumType3(WrapValues(args))
 }
 
-func newEnumType3(args eval.List) *EnumType {
+func newEnumType3(args px.List) *EnumType {
 	if args.Len() == 0 {
 		return DefaultEnumType()
 	}
@@ -73,7 +73,7 @@ func newEnumType3(args eval.List) *EnumType {
 		}
 	} else {
 		if ar, ok := first.(*ArrayValue); ok {
-			enumArgs := ar.AppendTo(make([]eval.Value, 0, ar.Len()+top-1))
+			enumArgs := ar.AppendTo(make([]px.Value, 0, ar.Len()+top-1))
 			for i := 1; i < top; i++ {
 				enumArgs = append(enumArgs, args.At(i))
 			}
@@ -85,7 +85,7 @@ func newEnumType3(args eval.List) *EnumType {
 		}
 
 		enums = make([]string, top)
-		args.EachWithIndex(func(arg eval.Value, idx int) {
+		args.EachWithIndex(func(arg px.Value, idx int) {
 			str, ok := arg.(stringValue)
 			if !ok {
 				if ci, ok := arg.(booleanValue); ok && idx == top-1 {
@@ -100,26 +100,26 @@ func newEnumType3(args eval.List) *EnumType {
 	return NewEnumType(enums, caseInsensitive)
 }
 
-func (t *EnumType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *EnumType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *EnumType) Default() eval.Type {
+func (t *EnumType) Default() px.Type {
 	return enumTypeDefault
 }
 
-func (t *EnumType) Equals(o interface{}, g eval.Guard) bool {
+func (t *EnumType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*EnumType); ok {
 		return t.caseInsensitive == ot.caseInsensitive && len(t.values) == len(ot.values) && utils.ContainsAllStrings(t.values, ot.values)
 	}
 	return false
 }
 
-func (t *EnumType) Generic() eval.Type {
+func (t *EnumType) Generic() px.Type {
 	return enumTypeDefault
 }
 
-func (t *EnumType) Get(key string) (eval.Value, bool) {
+func (t *EnumType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `values`:
 		return WrapValues(t.enums()), true
@@ -130,7 +130,7 @@ func (t *EnumType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *EnumType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *EnumType) IsAssignable(o px.Type, g px.Guard) bool {
 	if len(t.values) == 0 {
 		switch o.(type) {
 		case *stringType, *vcStringType, *scStringType, *EnumType, *PatternType:
@@ -140,14 +140,14 @@ func (t *EnumType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	}
 
 	if st, ok := o.(*vcStringType); ok {
-		return eval.IsInstance(t, stringValue(st.value))
+		return px.IsInstance(t, stringValue(st.value))
 	}
 
 	if en, ok := o.(*EnumType); ok {
 		oEnums := en.values
 		if len(oEnums) > 0 && (t.caseInsensitive || !en.caseInsensitive) {
 			for _, v := range en.values {
-				if !eval.IsInstance(t, stringValue(v)) {
+				if !px.IsInstance(t, stringValue(v)) {
 					return false
 				}
 			}
@@ -157,7 +157,7 @@ func (t *EnumType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	return false
 }
 
-func (t *EnumType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *EnumType) IsInstance(o px.Value, g px.Guard) bool {
 	if str, ok := o.(stringValue); ok {
 		if len(t.values) == 0 {
 			return true
@@ -175,7 +175,7 @@ func (t *EnumType) IsInstance(o eval.Value, g eval.Guard) bool {
 	return false
 }
 
-func (t *EnumType) MetaType() eval.ObjectType {
+func (t *EnumType) MetaType() px.ObjectType {
 	return EnumMetaType
 }
 
@@ -183,15 +183,15 @@ func (t *EnumType) Name() string {
 	return `Enum`
 }
 
-func (t *EnumType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *EnumType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return reflect.TypeOf(`x`), true
 }
 
 func (t *EnumType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *EnumType) Parameters() []eval.Value {
+func (t *EnumType) Parameters() []px.Value {
 	result := t.enums()
 	if t.caseInsensitive {
 		result = append(result, BooleanTrue)
@@ -207,20 +207,20 @@ func (t *EnumType) SerializationString() string {
 	return t.String()
 }
 
-func (t *EnumType) ToString(b io.Writer, f eval.FormatContext, g eval.RDetect) {
+func (t *EnumType) ToString(b io.Writer, f px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, f, g)
 }
 
-func (t *EnumType) PType() eval.Type {
+func (t *EnumType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func (t *EnumType) enums() []eval.Value {
+func (t *EnumType) enums() []px.Value {
 	top := len(t.values)
 	if top == 0 {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
-	v := make([]eval.Value, top)
+	v := make([]px.Value, top)
 	for idx, e := range t.values {
 		v[idx] = stringValue(e)
 	}

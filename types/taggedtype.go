@@ -1,27 +1,28 @@
 package types
 
 import (
-	"github.com/lyraproj/pcore/eval"
 	"reflect"
+
+	"github.com/lyraproj/pcore/px"
 )
 
 type taggedType struct {
 	typ         reflect.Type
 	puppetTags  map[string]string
-	annotations eval.OrderedMap
+	annotations px.OrderedMap
 }
 
 func init() {
-	eval.NewTaggedType = func(typ reflect.Type, puppetTags map[string]string) eval.AnnotatedType {
+	px.NewTaggedType = func(typ reflect.Type, puppetTags map[string]string) px.AnnotatedType {
 		return &taggedType{typ, puppetTags, emptyMap}
 	}
 
-	eval.NewAnnotatedType = func(typ reflect.Type, puppetTags map[string]string, annotations eval.OrderedMap) eval.AnnotatedType {
+	px.NewAnnotatedType = func(typ reflect.Type, puppetTags map[string]string, annotations px.OrderedMap) px.AnnotatedType {
 		return &taggedType{typ, puppetTags, annotations}
 	}
 }
 
-func (tg *taggedType) Annotations() eval.OrderedMap {
+func (tg *taggedType) Annotations() px.OrderedMap {
 	return tg.annotations
 }
 
@@ -29,10 +30,10 @@ func (tg *taggedType) Type() reflect.Type {
 	return tg.typ
 }
 
-func (tg *taggedType) Tags() map[string]eval.OrderedMap {
+func (tg *taggedType) Tags() map[string]px.OrderedMap {
 	fs := Fields(tg.typ)
 	nf := len(fs)
-	tags := make(map[string]eval.OrderedMap, 7)
+	tags := make(map[string]px.OrderedMap, 7)
 	if nf > 0 {
 		for i, f := range fs {
 			if i == 0 && f.Anonymous {

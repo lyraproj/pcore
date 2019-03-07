@@ -6,14 +6,14 @@ import (
 	"reflect"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type NotUndefType struct {
-	typ eval.Type
+	typ px.Type
 }
 
-var NotUndefMetaType eval.ObjectType
+var NotUndefMetaType px.ObjectType
 
 func init() {
 	NotUndefMetaType = newObjectType(`Pcore::NotUndefType`,
@@ -24,7 +24,7 @@ func init() {
 					value => Any
 				},
 			}
-		}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+		}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newNotUndefType2(args...)
 		})
 }
@@ -33,19 +33,19 @@ func DefaultNotUndefType() *NotUndefType {
 	return notUndefTypeDefault
 }
 
-func NewNotUndefType(containedType eval.Type) *NotUndefType {
+func NewNotUndefType(containedType px.Type) *NotUndefType {
 	if containedType == nil || containedType == anyTypeDefault {
 		return DefaultNotUndefType()
 	}
 	return &NotUndefType{containedType}
 }
 
-func newNotUndefType2(args ...eval.Value) *NotUndefType {
+func newNotUndefType2(args ...px.Value) *NotUndefType {
 	switch len(args) {
 	case 0:
 		return DefaultNotUndefType()
 	case 1:
-		if containedType, ok := args[0].(eval.Type); ok {
+		if containedType, ok := args[0].(px.Type); ok {
 			return NewNotUndefType(containedType)
 		}
 		if containedType, ok := args[0].(stringValue); ok {
@@ -61,31 +61,31 @@ func newNotUndefType3(str string) *NotUndefType {
 	return &NotUndefType{NewStringType(nil, str)}
 }
 
-func (t *NotUndefType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *NotUndefType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	t.typ.Accept(v, g)
 }
 
-func (t *NotUndefType) ContainedType() eval.Type {
+func (t *NotUndefType) ContainedType() px.Type {
 	return t.typ
 }
 
-func (t *NotUndefType) Default() eval.Type {
+func (t *NotUndefType) Default() px.Type {
 	return notUndefTypeDefault
 }
 
-func (t *NotUndefType) Equals(o interface{}, g eval.Guard) bool {
+func (t *NotUndefType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*NotUndefType); ok {
 		return t.typ.Equals(ot.typ, g)
 	}
 	return false
 }
 
-func (t *NotUndefType) Generic() eval.Type {
-	return NewNotUndefType(eval.GenericType(t.typ))
+func (t *NotUndefType) Generic() px.Type {
+	return NewNotUndefType(px.GenericType(t.typ))
 }
 
-func (t *NotUndefType) Get(key string) (value eval.Value, ok bool) {
+func (t *NotUndefType) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `type`:
 		return t.typ, true
@@ -93,15 +93,15 @@ func (t *NotUndefType) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (t *NotUndefType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *NotUndefType) IsAssignable(o px.Type, g px.Guard) bool {
 	return !GuardedIsAssignable(o, undefTypeDefault, g) && GuardedIsAssignable(t.typ, o, g)
 }
 
-func (t *NotUndefType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *NotUndefType) IsInstance(o px.Value, g px.Guard) bool {
 	return o != undef && GuardedIsInstance(t.typ, o, g)
 }
 
-func (t *NotUndefType) MetaType() eval.ObjectType {
+func (t *NotUndefType) MetaType() px.ObjectType {
 	return NotUndefMetaType
 }
 
@@ -109,22 +109,22 @@ func (t *NotUndefType) Name() string {
 	return `NotUndef`
 }
 
-func (t *NotUndefType) Parameters() []eval.Value {
+func (t *NotUndefType) Parameters() []px.Value {
 	if t.typ == DefaultAnyType() {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
 	if str, ok := t.typ.(*vcStringType); ok && str.value != `` {
-		return []eval.Value{stringValue(str.value)}
+		return []px.Value{stringValue(str.value)}
 	}
-	return []eval.Value{t.typ}
+	return []px.Value{t.typ}
 }
 
-func (t *NotUndefType) Resolve(c eval.Context) eval.Type {
+func (t *NotUndefType) Resolve(c px.Context) px.Type {
 	t.typ = resolve(c, t.typ)
 	return t
 }
 
-func (t *NotUndefType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *NotUndefType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return ReflectType(c, t.typ)
 }
 
@@ -137,14 +137,14 @@ func (t *NotUndefType) SerializationString() string {
 }
 
 func (t *NotUndefType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *NotUndefType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *NotUndefType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *NotUndefType) PType() eval.Type {
+func (t *NotUndefType) PType() px.Type {
 	return &TypeType{t}
 }
 

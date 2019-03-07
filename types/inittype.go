@@ -4,16 +4,16 @@ import (
 	"io"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type InitType struct {
-	typ      eval.Type
+	typ      px.Type
 	initArgs *ArrayValue
-	ctor     eval.Function
+	ctor     px.Function
 }
 
-var InitMetaType eval.ObjectType
+var InitMetaType px.ObjectType
 
 func init() {
 	InitMetaType = newObjectType(`Pcore::Init`, `Pcore::AnyType {
@@ -21,7 +21,7 @@ func init() {
     type => { type => Optional[Type], value => undef },
 		init_args => { type => Array, value => [] }
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 		return newInitType2(args...)
 	})
 }
@@ -30,8 +30,8 @@ func DefaultInitType() *InitType {
 	return initTypeDefault
 }
 
-func NewInitType(typ eval.Value, args eval.Value) *InitType {
-	tp, ok := typ.(eval.Type)
+func NewInitType(typ px.Value, args px.Value) *InitType {
+	tp, ok := typ.(px.Type)
 	if !ok {
 		tp = nil
 	}
@@ -45,7 +45,7 @@ func NewInitType(typ eval.Value, args eval.Value) *InitType {
 	return &InitType{typ: tp, initArgs: aa}
 }
 
-func newInitType2(args ...eval.Value) *InitType {
+func newInitType2(args ...px.Value) *InitType {
 	switch len(args) {
 	case 0:
 		return DefaultInitType()
@@ -56,7 +56,7 @@ func newInitType2(args ...eval.Value) *InitType {
 	}
 }
 
-func (t *InitType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *InitType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	t.typ.Accept(v, g)
 }
@@ -69,18 +69,18 @@ func (t *InitType) SerializationString() string {
 	return t.String()
 }
 
-func (t *InitType) Default() eval.Type {
+func (t *InitType) Default() px.Type {
 	return initTypeDefault
 }
 
-func (t *InitType) Equals(o interface{}, g eval.Guard) bool {
+func (t *InitType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*InitType); ok {
-		return eval.Equals(t.typ, ot.typ) && eval.Equals(t.initArgs, ot.initArgs)
+		return px.Equals(t.typ, ot.typ) && px.Equals(t.initArgs, ot.initArgs)
 	}
 	return false
 }
 
-func (t *InitType) Get(key string) (eval.Value, bool) {
+func (t *InitType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `type`:
 		if t.typ == nil {
@@ -94,7 +94,7 @@ func (t *InitType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *InitType) EachSignature(doer func(signature eval.Signature)) {
+func (t *InitType) EachSignature(doer func(signature px.Signature)) {
 	t.assertInitialized()
 	if t.ctor != nil {
 		for _, lambda := range t.ctor.Dispatchers() {
@@ -103,7 +103,7 @@ func (t *InitType) EachSignature(doer func(signature eval.Signature)) {
 	}
 }
 
-func (t *InitType) anySignature(doer func(signature eval.Signature) bool) bool {
+func (t *InitType) anySignature(doer func(signature px.Signature) bool) bool {
 	t.assertInitialized()
 	if t.ctor != nil {
 		for _, lambda := range t.ctor.Dispatchers() {
@@ -117,26 +117,26 @@ func (t *InitType) anySignature(doer func(signature eval.Signature) bool) bool {
 
 // IsAssignable answers the question if a value of the given type can be used when
 // instantiating an instance of the contained type
-func (t *InitType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *InitType) IsAssignable(o px.Type, g px.Guard) bool {
 	if t.typ == nil {
 		return richDataTypeDefault.IsAssignable(o, g)
 	}
 
 	if !t.initArgs.IsEmpty() {
-		ts := append(make([]eval.Type, 0, t.initArgs.Len()+1), o)
-		t.initArgs.Each(func(v eval.Value) { ts = append(ts, v.PType()) })
+		ts := append(make([]px.Type, 0, t.initArgs.Len()+1), o)
+		t.initArgs.Each(func(v px.Value) { ts = append(ts, v.PType()) })
 		tp := NewTupleType(ts, nil)
-		return t.anySignature(func(s eval.Signature) bool { return s.IsAssignable(tp, g) })
+		return t.anySignature(func(s px.Signature) bool { return s.IsAssignable(tp, g) })
 	}
 
 	// First test if the given value matches a single value constructor
-	tp := NewTupleType([]eval.Type{o}, nil)
-	return t.anySignature(func(s eval.Signature) bool { return s.IsAssignable(tp, g) })
+	tp := NewTupleType([]px.Type{o}, nil)
+	return t.anySignature(func(s px.Signature) bool { return s.IsAssignable(tp, g) })
 }
 
 // IsInstance answers the question if the given value can be used when
 // instantiating an instance of the contained type
-func (t *InitType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *InitType) IsInstance(o px.Value, g px.Guard) bool {
 	if t.typ == nil {
 		return richDataTypeDefault.IsInstance(o, g)
 	}
@@ -144,26 +144,26 @@ func (t *InitType) IsInstance(o eval.Value, g eval.Guard) bool {
 	if !t.initArgs.IsEmpty() {
 		// The init arguments must be combined with the given value in an array. Here, it doesn't
 		// matter if the given value is an array or not. It must match as a single value regardless.
-		vs := append(make([]eval.Value, 0, t.initArgs.Len()+1), o)
+		vs := append(make([]px.Value, 0, t.initArgs.Len()+1), o)
 		vs = t.initArgs.AppendTo(vs)
-		return t.anySignature(func(s eval.Signature) bool { return s.CallableWith(vs, nil) })
+		return t.anySignature(func(s px.Signature) bool { return s.CallableWith(vs, nil) })
 	}
 
 	// First test if the given value matches a single value constructor.
-	vs := []eval.Value{o}
-	if t.anySignature(func(s eval.Signature) bool { return s.CallableWith(vs, nil) }) {
+	vs := []px.Value{o}
+	if t.anySignature(func(s px.Signature) bool { return s.CallableWith(vs, nil) }) {
 		return true
 	}
 
 	// If the given value is an array, expand it and check if it matches.
 	if a, ok := o.(*ArrayValue); ok {
-		vs = a.AppendTo(make([]eval.Value, 0, a.Len()))
-		return t.anySignature(func(s eval.Signature) bool { return s.CallableWith(vs, nil) })
+		vs = a.AppendTo(make([]px.Value, 0, a.Len()))
+		return t.anySignature(func(s px.Signature) bool { return s.CallableWith(vs, nil) })
 	}
 	return false
 }
 
-func (t *InitType) MetaType() eval.ObjectType {
+func (t *InitType) MetaType() px.ObjectType {
 	return InitMetaType
 }
 
@@ -171,22 +171,22 @@ func (t *InitType) Name() string {
 	return `Init`
 }
 
-func (t *InitType) New(c eval.Context, args []eval.Value) eval.Value {
+func (t *InitType) New(c px.Context, args []px.Value) px.Value {
 	t.Resolve(c)
 	if t.ctor == nil {
-		panic(eval.Error(eval.InstanceDoesNotRespond, issue.H{`type`: t, `message`: `new`}))
+		panic(px.Error(px.InstanceDoesNotRespond, issue.H{`type`: t, `message`: `new`}))
 	}
 
 	if !t.initArgs.IsEmpty() {
 		// The init arguments must be combined with the given value in an array. Here, it doesn't
 		// matter if the given value is an array or not. It must match as a single value regardless.
-		vs := append(make([]eval.Value, 0, t.initArgs.Len()+len(args)), args...)
+		vs := append(make([]px.Value, 0, t.initArgs.Len()+len(args)), args...)
 		vs = t.initArgs.AppendTo(vs)
 		return t.ctor.Call(c, nil, vs...)
 	}
 
 	// First test if the given value matches a single value constructor.
-	if t.anySignature(func(s eval.Signature) bool { return s.CallableWith(args, nil) }) {
+	if t.anySignature(func(s px.Signature) bool { return s.CallableWith(args, nil) }) {
 		return t.ctor.Call(c, nil, args...)
 	}
 
@@ -194,7 +194,7 @@ func (t *InitType) New(c eval.Context, args []eval.Value) eval.Value {
 	if len(args) == 1 {
 		arg := args[0]
 		if a, ok := arg.(*ArrayValue); ok {
-			vs := a.AppendTo(make([]eval.Value, 0, a.Len()))
+			vs := a.AppendTo(make([]px.Value, 0, a.Len()))
 			return t.ctor.Call(c, nil, vs...)
 		}
 	}
@@ -203,51 +203,51 @@ func (t *InitType) New(c eval.Context, args []eval.Value) eval.Value {
 	return t.ctor.Call(c, nil, args...)
 }
 
-func (t *InitType) Resolve(c eval.Context) eval.Type {
+func (t *InitType) Resolve(c px.Context) px.Type {
 	if t.typ != nil && t.ctor == nil {
-		if ctor, ok := eval.Load(c, NewTypedName(eval.NsConstructor, t.typ.Name())); ok {
-			t.ctor = ctor.(eval.Function)
+		if ctor, ok := px.Load(c, NewTypedName(px.NsConstructor, t.typ.Name())); ok {
+			t.ctor = ctor.(px.Function)
 		} else {
-			panic(eval.Error(eval.CtorNotFound, issue.H{`type`: t.typ.Name()}))
+			panic(px.Error(px.CtorNotFound, issue.H{`type`: t.typ.Name()}))
 		}
 	}
 	return t
 }
 
 func (t *InitType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *InitType) Parameters() []eval.Value {
+func (t *InitType) Parameters() []px.Value {
 	t.assertInitialized()
 	if t.initArgs.Len() == 0 {
 		if t.typ == nil {
-			return eval.EmptyValues
+			return px.EmptyValues
 		}
-		return []eval.Value{t.typ}
+		return []px.Value{t.typ}
 	}
-	ps := []eval.Value{undef, t.initArgs}
+	ps := []px.Value{undef, t.initArgs}
 	if t.typ != nil {
 		ps[1] = t.typ
 	}
 	return ps
 }
 
-func (t *InitType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *InitType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *InitType) Type() eval.Type {
+func (t *InitType) Type() px.Type {
 	return t.typ
 }
 
-func (t *InitType) PType() eval.Type {
+func (t *InitType) PType() px.Type {
 	return &TypeType{t}
 }
 
 func (t *InitType) assertInitialized() {
 	if t.typ != nil && t.ctor == nil {
-		t.Resolve(eval.CurrentContext())
+		t.Resolve(px.CurrentContext())
 	}
 }
 

@@ -3,23 +3,23 @@ package types
 import (
 	"io"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type UnitType struct{}
 
-var UnitMetaType eval.ObjectType
+var UnitMetaType px.ObjectType
 
 func init() {
 	UnitMetaType = newObjectType(`Pcore::UnitType`, `Pcore::AnyType{}`,
-		func(ctx eval.Context, args []eval.Value) eval.Value {
+		func(ctx px.Context, args []px.Value) px.Value {
 			return DefaultUnitType()
 		})
 
 	newGoConstructor(`Unit`,
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Any`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				return args[0]
 			})
 		},
@@ -30,24 +30,24 @@ func DefaultUnitType() *UnitType {
 	return unitTypeDefault
 }
 
-func (t *UnitType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *UnitType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *UnitType) Equals(o interface{}, g eval.Guard) bool {
+func (t *UnitType) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*UnitType)
 	return ok
 }
 
-func (t *UnitType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *UnitType) IsAssignable(o px.Type, g px.Guard) bool {
 	return true
 }
 
-func (t *UnitType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *UnitType) IsInstance(o px.Value, g px.Guard) bool {
 	return true
 }
 
-func (t *UnitType) MetaType() eval.ObjectType {
+func (t *UnitType) MetaType() px.ObjectType {
 	return UnitMetaType
 }
 
@@ -67,11 +67,11 @@ func (t *UnitType) String() string {
 	return `Unit`
 }
 
-func (t *UnitType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *UnitType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *UnitType) PType() eval.Type {
+func (t *UnitType) PType() px.Type {
 	return &TypeType{t}
 }
 

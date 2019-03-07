@@ -1,13 +1,13 @@
 package types
 
 import (
-	"github.com/lyraproj/pcore/eval"
 	"github.com/lyraproj/pcore/hash"
+	"github.com/lyraproj/pcore/px"
 )
 
 var annotationTypeDefault = &objectType{
 	annotatable:         annotatable{annotations: emptyMap},
-	hashKey:             eval.HashKey("\x00tAnnotation"),
+	hashKey:             px.HashKey("\x00tAnnotation"),
 	name:                `Annotation`,
 	parameters:          hash.EmptyStringHash,
 	attributes:          hash.EmptyStringHash,
@@ -15,7 +15,7 @@ var annotationTypeDefault = &objectType{
 	equalityIncludeType: true,
 	equality:            nil}
 
-func DefaultAnnotationType() eval.Type {
+func DefaultAnnotationType() px.Type {
 	return annotationTypeDefault
 }
 
@@ -26,16 +26,16 @@ type annotatable struct {
 	resolvedAnnotations *HashValue
 }
 
-func (a *annotatable) Annotations(c eval.Context) eval.OrderedMap {
+func (a *annotatable) Annotations(c px.Context) px.OrderedMap {
 	if a.resolvedAnnotations == nil {
 		ah := a.annotations
 		if ah.IsEmpty() {
 			a.resolvedAnnotations = emptyMap
 		} else {
 			as := make([]*HashEntry, 0, ah.Len())
-			ah.EachPair(func(k, v eval.Value) {
-				at := k.(eval.ObjectType)
-				as = append(as, WrapHashEntry(k, eval.New(c, at, v)))
+			ah.EachPair(func(k, v px.Value) {
+				at := k.(px.ObjectType)
+				as = append(as, WrapHashEntry(k, px.New(c, at, v)))
 			})
 			a.resolvedAnnotations = WrapHash(as)
 		}

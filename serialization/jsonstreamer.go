@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/lyraproj/pcore/pcore"
+
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 )
 
 // NewJsonStreamer creates a new streamer that will produce JSON when
 // receiving values
-func NewJsonStreamer(out io.Writer) eval.ValueConsumer {
+func NewJsonStreamer(out io.Writer) px.ValueConsumer {
 	return &jsonStreamer{out, firstInArray}
 }
 
@@ -24,14 +26,14 @@ type jsonStreamer struct {
 // DataToJson streams the given value to a Json ValueConsumer using a
 // Serializer. This function is deprecated Use a Serializer directly with
 // NewJsonStreamer
-func DataToJson(value eval.Value, out io.Writer) {
+func DataToJson(value px.Value, out io.Writer) {
 	he := make([]*types.HashEntry, 0, 2)
 	he = append(he, types.WrapHashEntry2(`rich_data`, types.BooleanFalse))
-	NewSerializer(eval.Puppet.RootContext(), types.WrapHash(he)).Convert(value, NewJsonStreamer(out))
+	NewSerializer(pcore.RootContext(), types.WrapHash(he)).Convert(value, NewJsonStreamer(out))
 	assertOk(out.Write([]byte("\n")))
 }
 
-func (j *jsonStreamer) AddArray(len int, doer eval.Doer) {
+func (j *jsonStreamer) AddArray(len int, doer px.Doer) {
 	j.delimit(func() {
 		j.state = firstInArray
 		assertOk(j.out.Write([]byte{'['}))
@@ -40,7 +42,7 @@ func (j *jsonStreamer) AddArray(len int, doer eval.Doer) {
 	})
 }
 
-func (j *jsonStreamer) AddHash(len int, doer eval.Doer) {
+func (j *jsonStreamer) AddHash(len int, doer px.Doer) {
 	j.delimit(func() {
 		assertOk(j.out.Write([]byte{'{'}))
 		j.state = firstInObject
@@ -49,7 +51,7 @@ func (j *jsonStreamer) AddHash(len int, doer eval.Doer) {
 	})
 }
 
-func (j *jsonStreamer) Add(element eval.Value) {
+func (j *jsonStreamer) Add(element px.Value) {
 	j.delimit(func() {
 		j.write(element)
 	})
@@ -73,7 +75,7 @@ func (j *jsonStreamer) StringDedupThreshold() int {
 	return 20
 }
 
-func (j *jsonStreamer) delimit(doer eval.Doer) {
+func (j *jsonStreamer) delimit(doer px.Doer) {
 	switch j.state {
 	case firstInArray:
 		doer()
@@ -95,17 +97,17 @@ func (j *jsonStreamer) delimit(doer eval.Doer) {
 	}
 }
 
-func (j *jsonStreamer) write(e eval.Value) {
+func (j *jsonStreamer) write(e px.Value) {
 	var v []byte
 	var err error
 	switch e := e.(type) {
-	case eval.StringValue:
+	case px.StringValue:
 		v, err = json.Marshal(e.String())
-	case eval.FloatValue:
+	case px.FloatValue:
 		v, err = json.Marshal(e.Float())
-	case eval.IntegerValue:
+	case px.IntegerValue:
 		v, err = json.Marshal(e.Int())
-	case eval.BooleanValue:
+	case px.BooleanValue:
 		v, err = json.Marshal(e.Bool())
 	default:
 		v = []byte(`null`)
@@ -116,6 +118,6 @@ func (j *jsonStreamer) write(e eval.Value) {
 
 func assertOk(_ int, err error) {
 	if err != nil {
-		panic(eval.Error(eval.Failure, issue.H{`message`: err}))
+		panic(px.Error(px.Failure, issue.H{`message`: err}))
 	}
 }

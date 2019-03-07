@@ -1,4 +1,4 @@
-package eval
+package px
 
 import (
 	"bytes"
@@ -56,7 +56,7 @@ type (
 		IssueCode() string
 
 		// PartialResult returns the optional partial result. It returns
-		// eval.UNDEF if no partial result exists
+		// pcore.UNDEF if no partial result exists
 		PartialResult() Value
 
 		// Details returns the optional details. It returns

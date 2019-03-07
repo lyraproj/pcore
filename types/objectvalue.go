@@ -7,29 +7,29 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type typedObject struct {
-	typ eval.ObjectType
+	typ px.ObjectType
 }
 
-func (o *typedObject) PType() eval.Type {
+func (o *typedObject) PType() px.Type {
 	return o.typ
 }
 
-func (o *typedObject) valuesFromHash(c eval.Context, hash eval.OrderedMap) []eval.Value {
+func (o *typedObject) valuesFromHash(c px.Context, hash px.OrderedMap) []px.Value {
 	typ := o.typ.(*objectType)
 	va := typ.AttributesInfo().PositionalFromHash(hash)
 	if len(va) > 0 && typ.IsParameterized() {
 		params := make([]*HashEntry, 0)
 		typ.typeParameters(true).EachPair(func(k string, v interface{}) {
-			if pv, ok := hash.Get4(k); ok && eval.IsInstance(v.(*typeParameter).typ, pv) {
+			if pv, ok := hash.Get4(k); ok && px.IsInstance(v.(*typeParameter).typ, pv) {
 				params = append(params, WrapHashEntry2(k, pv))
 			}
 		})
 		if len(params) > 0 {
-			o.typ = NewObjectTypeExtension(c, typ, []eval.Value{WrapHash(params)})
+			o.typ = NewObjectTypeExtension(c, typ, []px.Value{WrapHash(params)})
 		}
 	}
 	return va
@@ -37,10 +37,10 @@ func (o *typedObject) valuesFromHash(c eval.Context, hash eval.OrderedMap) []eva
 
 type attributeSlice struct {
 	typedObject
-	values []eval.Value
+	values []px.Value
 }
 
-func AllocObjectValue(typ eval.ObjectType) eval.Object {
+func AllocObjectValue(typ px.ObjectType) px.Object {
 	if typ.IsMetaType() {
 		return AllocObjectType()
 	}
@@ -50,43 +50,43 @@ func AllocObjectValue(typ eval.ObjectType) eval.Object {
 		}
 		return &reflectedObject{typedObject{typ}, reflect.New(rf).Elem()}
 	}
-	return &attributeSlice{typedObject{typ}, eval.EmptyValues}
+	return &attributeSlice{typedObject{typ}, px.EmptyValues}
 }
 
-func NewReflectedValue(typ eval.ObjectType, value reflect.Value) eval.Object {
+func NewReflectedValue(typ px.ObjectType, value reflect.Value) px.Object {
 	if value.Kind() == reflect.Func {
 		return &reflectedFunc{typedObject{typ}, value}
 	}
 	return &reflectedObject{typedObject{typ}, value}
 }
 
-func NewObjectValue(c eval.Context, typ eval.ObjectType, values []eval.Value) (ov eval.Object) {
+func NewObjectValue(c px.Context, typ px.ObjectType, values []px.Value) (ov px.Object) {
 	ov = AllocObjectValue(typ)
 	ov.Initialize(c, values)
 	return ov
 }
 
-func newObjectValue2(c eval.Context, typ eval.ObjectType, hash *HashValue) (ov eval.Object) {
+func newObjectValue2(c px.Context, typ px.ObjectType, hash *HashValue) (ov px.Object) {
 	ov = AllocObjectValue(typ)
 	ov.InitFromHash(c, hash)
 	return ov
 }
 
-func (o *attributeSlice) Reflect(c eval.Context) reflect.Value {
-	ot := o.PType().(eval.ReflectedType)
+func (o *attributeSlice) Reflect(c px.Context) reflect.Value {
+	ot := o.PType().(px.ReflectedType)
 	if v, ok := ot.ReflectType(c); ok {
 		rv := reflect.New(v.Elem())
 		o.ReflectTo(c, rv.Elem())
 		return rv
 	}
-	panic(eval.Error(eval.UnreflectableValue, issue.H{`type`: o.PType()}))
+	panic(px.Error(px.UnreflectableValue, issue.H{`type`: o.PType()}))
 }
 
-func (o *attributeSlice) ReflectTo(c eval.Context, value reflect.Value) {
+func (o *attributeSlice) ReflectTo(c px.Context, value reflect.Value) {
 	o.typ.ToReflectedValue(c, o, value)
 }
 
-func (o *attributeSlice) Initialize(c eval.Context, values []eval.Value) {
+func (o *attributeSlice) Initialize(c px.Context, values []px.Value) {
 	if len(values) > 0 && o.typ.IsParameterized() {
 		o.InitFromHash(c, makeValueHash(o.typ.AttributesInfo(), values))
 		return
@@ -95,12 +95,12 @@ func (o *attributeSlice) Initialize(c eval.Context, values []eval.Value) {
 	o.values = values
 }
 
-func (o *attributeSlice) InitFromHash(c eval.Context, hash eval.OrderedMap) {
+func (o *attributeSlice) InitFromHash(c px.Context, hash px.OrderedMap) {
 	o.values = o.valuesFromHash(c, hash)
 }
 
 // Ensure that all entries in the value slice that are nil receive default values from the given attributes
-func fillValueSlice(values []eval.Value, attrs []eval.Attribute) {
+func fillValueSlice(values []px.Value, attrs []px.Attribute) {
 	for ix, v := range values {
 		if v == nil {
 			at := attrs[ix]
@@ -108,7 +108,7 @@ func fillValueSlice(values []eval.Value, attrs []eval.Attribute) {
 				values[ix] = undef
 			} else {
 				if !at.HasValue() {
-					panic(eval.Error(eval.MissingRequiredAttribute, issue.H{`label`: at.Label()}))
+					panic(px.Error(px.MissingRequiredAttribute, issue.H{`label`: at.Label()}))
 				}
 				values[ix] = at.Value()
 			}
@@ -116,7 +116,7 @@ func fillValueSlice(values []eval.Value, attrs []eval.Attribute) {
 	}
 }
 
-func (o *attributeSlice) Get(key string) (eval.Value, bool) {
+func (o *attributeSlice) Get(key string) (px.Value, bool) {
 	pi := o.typ.AttributesInfo()
 	if idx, ok := pi.NameToPos()[key]; ok {
 		if idx < len(o.values) {
@@ -131,42 +131,42 @@ func (o *attributeSlice) Get(key string) (eval.Value, bool) {
 	return nil, false
 }
 
-func (o *attributeSlice) Call(c eval.Context, method eval.ObjFunc, args []eval.Value, block eval.Lambda) (result eval.Value, ok bool) {
-	if v, ok := eval.Load(c, NewTypedName(eval.NsFunction, strings.ToLower(o.typ.Name())+`::`+method.Name())); ok {
-		if f, ok := v.(eval.Function); ok {
+func (o *attributeSlice) Call(c px.Context, method px.ObjFunc, args []px.Value, block px.Lambda) (result px.Value, ok bool) {
+	if v, ok := px.Load(c, NewTypedName(px.NsFunction, strings.ToLower(o.typ.Name())+`::`+method.Name())); ok {
+		if f, ok := v.(px.Function); ok {
 			return f.Call(c, block, args...), true
 		}
 	}
 	return nil, false
 }
 
-func (o *attributeSlice) Equals(other interface{}, g eval.Guard) bool {
+func (o *attributeSlice) Equals(other interface{}, g px.Guard) bool {
 	if ov, ok := other.(*attributeSlice); ok {
-		return o.typ.Equals(ov.typ, g) && eval.GuardedEquals(o.values, ov.values, g)
+		return o.typ.Equals(ov.typ, g) && px.GuardedEquals(o.values, ov.values, g)
 	}
 	return false
 }
 
 func (o *attributeSlice) String() string {
-	return eval.ToString(o)
+	return px.ToString(o)
 }
 
-func (o *attributeSlice) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (o *attributeSlice) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	ObjectToString(o, s, b, g)
 }
 
-func (o *attributeSlice) InitHash() eval.OrderedMap {
+func (o *attributeSlice) InitHash() px.OrderedMap {
 	return makeValueHash(o.typ.AttributesInfo(), o.values)
 }
 
 // Turn a positional argument list into a hash. The hash will exclude all values
 // that are equal to the default value of the corresponding attribute
-func makeValueHash(pi eval.AttributesInfo, values []eval.Value) *HashValue {
+func makeValueHash(pi px.AttributesInfo, values []px.Value) *HashValue {
 	at := pi.Attributes()
 	entries := make([]*HashEntry, 0, len(at))
 	for i, v := range values {
 		attr := at[i]
-		if !(attr.HasValue() && eval.Equals(v, attr.Value()) || attr.Kind() == givenOrDerived && v.Equals(undef, nil)) {
+		if !(attr.HasValue() && px.Equals(v, attr.Value()) || attr.Kind() == givenOrDerived && v.Equals(undef, nil)) {
 			entries = append(entries, WrapHashEntry2(attr.Name(), v))
 		}
 	}
@@ -178,7 +178,7 @@ type reflectedObject struct {
 	value reflect.Value
 }
 
-func (o *reflectedObject) Call(c eval.Context, method eval.ObjFunc, args []eval.Value, block eval.Lambda) (result eval.Value, ok bool) {
+func (o *reflectedObject) Call(c px.Context, method px.ObjFunc, args []px.Value, block px.Lambda) (result px.Value, ok bool) {
 	m, ok := o.value.Type().MethodByName(method.GoName())
 	if !ok {
 		return nil, false
@@ -225,7 +225,7 @@ func (o *reflectedObject) Call(c eval.Context, method eval.ObjFunc, args []eval.
 		rfArgs[pn] = av
 	}
 
-	rr := method.(eval.CallableGoMember).CallGoReflected(c, rfArgs)
+	rr := method.(px.CallableGoMember).CallGoReflected(c, rfArgs)
 
 	switch len(rr) {
 	case 0:
@@ -238,7 +238,7 @@ func (o *reflectedObject) Call(c eval.Context, method eval.ObjFunc, args []eval.
 			return undef, true
 		}
 	default:
-		rs := make([]eval.Value, len(rr))
+		rs := make([]px.Value, len(rr))
 		for i, r := range rr {
 			if r.IsValid() {
 				rs[i] = wrapReflected(c, r)
@@ -250,11 +250,11 @@ func (o *reflectedObject) Call(c eval.Context, method eval.ObjFunc, args []eval.
 	}
 }
 
-func (o *reflectedObject) Reflect(c eval.Context) reflect.Value {
+func (o *reflectedObject) Reflect(c px.Context) reflect.Value {
 	return o.value
 }
 
-func (o *reflectedObject) ReflectTo(c eval.Context, value reflect.Value) {
+func (o *reflectedObject) ReflectTo(c px.Context, value reflect.Value) {
 	if o.value.Kind() == reflect.Struct && value.Kind() == reflect.Ptr {
 		value.Set(o.value.Addr())
 	} else {
@@ -262,7 +262,7 @@ func (o *reflectedObject) ReflectTo(c eval.Context, value reflect.Value) {
 	}
 }
 
-func (o *reflectedObject) Initialize(c eval.Context, values []eval.Value) {
+func (o *reflectedObject) Initialize(c px.Context, values []px.Value) {
 	if len(values) > 0 && o.typ.IsParameterized() {
 		o.InitFromHash(c, makeValueHash(o.typ.AttributesInfo(), values))
 		return
@@ -274,15 +274,15 @@ func (o *reflectedObject) Initialize(c eval.Context, values []eval.Value) {
 		fillValueSlice(values, attrs)
 		o.setValues(c, values)
 	} else if len(values) == 1 {
-		values[0].(eval.Reflected).ReflectTo(c, o.value)
+		values[0].(px.Reflected).ReflectTo(c, o.value)
 	}
 }
 
-func (o *reflectedObject) InitFromHash(c eval.Context, hash eval.OrderedMap) {
+func (o *reflectedObject) InitFromHash(c px.Context, hash px.OrderedMap) {
 	o.setValues(c, o.valuesFromHash(c, hash))
 }
 
-func (o *reflectedObject) setValues(c eval.Context, values []eval.Value) {
+func (o *reflectedObject) setValues(c px.Context, values []px.Value) {
 	attrs := o.typ.AttributesInfo().Attributes()
 	rf := c.Reflector()
 	if len(attrs) == 1 && attrs[0].GoName() == keyValue {
@@ -290,7 +290,7 @@ func (o *reflectedObject) setValues(c eval.Context, values []eval.Value) {
 	} else {
 		oe := o.structVal()
 		for i, a := range attrs {
-			var v eval.Value
+			var v px.Value
 			if i < len(values) {
 				v = values[i]
 			} else {
@@ -305,7 +305,7 @@ func (o *reflectedObject) setValues(c eval.Context, values []eval.Value) {
 	}
 }
 
-func (o *reflectedObject) Get(key string) (eval.Value, bool) {
+func (o *reflectedObject) Get(key string) (px.Value, bool) {
 	pi := o.typ.AttributesInfo()
 	if idx, ok := pi.NameToPos()[key]; ok {
 		attr := pi.Attributes()[idx]
@@ -325,7 +325,7 @@ func (o *reflectedObject) Get(key string) (eval.Value, bool) {
 	return nil, false
 }
 
-func (o *reflectedObject) Equals(other interface{}, g eval.Guard) bool {
+func (o *reflectedObject) Equals(other interface{}, g px.Guard) bool {
 	if ov, ok := other.(*reflectedObject); ok {
 		return o.typ.Equals(ov.typ, g) && reflect.DeepEqual(o.value.Interface(), ov.value.Interface())
 	}
@@ -333,19 +333,19 @@ func (o *reflectedObject) Equals(other interface{}, g eval.Guard) bool {
 }
 
 func (o *reflectedObject) String() string {
-	return eval.ToString(o)
+	return px.ToString(o)
 }
 
-func (o *reflectedObject) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (o *reflectedObject) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	ObjectToString(o, s, b, g)
 }
 
-func (o *reflectedObject) InitHash() eval.OrderedMap {
+func (o *reflectedObject) InitHash() px.OrderedMap {
 	pi := o.typ.AttributesInfo()
 	at := pi.Attributes()
 	nc := len(at)
 	if nc == 0 {
-		return eval.EmptyMap
+		return px.EmptyMap
 	}
 
 	if nc == 1 {
@@ -358,12 +358,12 @@ func (o *reflectedObject) InitHash() eval.OrderedMap {
 
 	entries := make([]*HashEntry, 0, nc)
 	oe := o.structVal()
-	c := eval.CurrentContext()
+	c := px.CurrentContext()
 	for _, attr := range pi.Attributes() {
 		gn := attr.GoName()
 		if gn != `` {
 			v := wrapReflected(c, oe.FieldByName(gn))
-			if !(attr.HasValue() && eval.Equals(v, attr.Value()) || attr.Kind() == givenOrDerived && v.Equals(undef, nil)) {
+			if !(attr.HasValue() && px.Equals(v, attr.Value()) || attr.Kind() == givenOrDerived && v.Equals(undef, nil)) {
 				entries = append(entries, WrapHashEntry2(attr.Name(), v))
 			}
 		}
@@ -384,7 +384,7 @@ type reflectedFunc struct {
 	function reflect.Value
 }
 
-func (o *reflectedFunc) Call(c eval.Context, method eval.ObjFunc, args []eval.Value, block eval.Lambda) (result eval.Value, ok bool) {
+func (o *reflectedFunc) Call(c px.Context, method px.ObjFunc, args []px.Value, block px.Lambda) (result px.Value, ok bool) {
 	mt := o.function.Type()
 	rf := c.Reflector()
 	rfArgs := make([]reflect.Value, len(args))
@@ -396,8 +396,8 @@ func (o *reflectedFunc) Call(c eval.Context, method eval.ObjFunc, args []eval.Va
 
 	pc := mt.NumIn()
 	if pc != len(args) {
-		panic(eval.Error(eval.TypeMismatch, issue.H{`detail`: eval.DescribeSignatures(
-			[]eval.Signature{method.CallableType().(*CallableType)}, NewTupleType([]eval.Type{}, NewIntegerType(int64(pc-1), int64(pc-1))), nil)}))
+		panic(px.Error(px.TypeMismatch, issue.H{`detail`: px.DescribeSignatures(
+			[]px.Signature{method.CallableType().(*CallableType)}, NewTupleType([]px.Type{}, NewIntegerType(int64(pc-1), int64(pc-1))), nil)}))
 	}
 	rr := o.function.Call(rfArgs)
 
@@ -410,7 +410,7 @@ func (o *reflectedFunc) Call(c eval.Context, method eval.ObjFunc, args []eval.Va
 			if re, ok := err.(issue.Reported); ok {
 				panic(re)
 			}
-			panic(eval.Error(eval.GoFunctionError, issue.H{`name`: mt.Name(), `error`: err}))
+			panic(px.Error(px.GoFunctionError, issue.H{`name`: mt.Name(), `error`: err}))
 		}
 		rr = rr[:oc]
 	}
@@ -426,7 +426,7 @@ func (o *reflectedFunc) Call(c eval.Context, method eval.ObjFunc, args []eval.Va
 			return undef, true
 		}
 	default:
-		rs := make([]eval.Value, len(rr))
+		rs := make([]px.Value, len(rr))
 		for i, r := range rr {
 			if r.IsValid() {
 				rs[i] = wrap(c, r)
@@ -438,25 +438,25 @@ func (o *reflectedFunc) Call(c eval.Context, method eval.ObjFunc, args []eval.Va
 	}
 }
 
-func (o *reflectedFunc) Reflect(c eval.Context) reflect.Value {
+func (o *reflectedFunc) Reflect(c px.Context) reflect.Value {
 	return o.function
 }
 
-func (o *reflectedFunc) ReflectTo(c eval.Context, value reflect.Value) {
+func (o *reflectedFunc) ReflectTo(c px.Context, value reflect.Value) {
 	value.Set(o.function)
 }
 
-func (o *reflectedFunc) Initialize(c eval.Context, arguments []eval.Value) {
+func (o *reflectedFunc) Initialize(c px.Context, arguments []px.Value) {
 }
 
-func (o *reflectedFunc) InitFromHash(c eval.Context, hash eval.OrderedMap) {
+func (o *reflectedFunc) InitFromHash(c px.Context, hash px.OrderedMap) {
 }
 
-func (o *reflectedFunc) Get(key string) (eval.Value, bool) {
+func (o *reflectedFunc) Get(key string) (px.Value, bool) {
 	return nil, false
 }
 
-func (o *reflectedFunc) Equals(other interface{}, g eval.Guard) bool {
+func (o *reflectedFunc) Equals(other interface{}, g px.Guard) bool {
 	if ov, ok := other.(*reflectedFunc); ok {
 		return o.typ.Equals(ov.typ, g) && o.function == ov.function
 	}
@@ -464,13 +464,13 @@ func (o *reflectedFunc) Equals(other interface{}, g eval.Guard) bool {
 }
 
 func (o *reflectedFunc) String() string {
-	return eval.ToString(o)
+	return px.ToString(o)
 }
 
-func (o *reflectedFunc) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (o *reflectedFunc) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	ObjectToString(o, s, b, g)
 }
 
-func (o *reflectedFunc) InitHash() eval.OrderedMap {
-	return eval.EmptyMap
+func (o *reflectedFunc) InitHash() px.OrderedMap {
+	return px.EmptyMap
 }

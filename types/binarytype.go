@@ -13,30 +13,30 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 var binaryTypeDefault = &BinaryType{}
 
-var BinaryMetaType eval.ObjectType
+var BinaryMetaType px.ObjectType
 
 func init() {
-	BinaryMetaType = newObjectType(`Pcore::BinaryType`, `Pcore::AnyType{}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+	BinaryMetaType = newObjectType(`Pcore::BinaryType`, `Pcore::AnyType{}`, func(ctx px.Context, args []px.Value) px.Value {
 		return DefaultBinaryType()
 	})
 
 	newGoConstructor2(`Binary`,
-		func(t eval.LocalTypes) {
+		func(t px.LocalTypes) {
 			t.Type(`ByteInteger`, `Integer[0,255]`)
 			t.Type(`Encoding`, `Enum['%b', '%u', '%B', '%s', '%r']`)
 			t.Type(`StringHash`, `Struct[value => String, format => Optional[Encoding]]`)
 			t.Type(`ArrayHash`, `Struct[value => Array[ByteInteger]]`)
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`String`)
 			d.OptionalParam(`Encoding`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				str := args[0].String()
 				f := `%B`
 				if len(args) > 1 {
@@ -46,25 +46,25 @@ func init() {
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Array[ByteInteger]`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
-				return BinaryFromArray(args[0].(eval.List))
+			d.Function(func(c px.Context, args []px.Value) px.Value {
+				return BinaryFromArray(args[0].(px.List))
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`StringHash`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
-				hv := args[0].(eval.OrderedMap)
-				return BinaryFromString(hv.Get5(`value`, eval.Undef).String(), hv.Get5(`format`, eval.Undef).String())
+			d.Function(func(c px.Context, args []px.Value) px.Value {
+				hv := args[0].(px.OrderedMap)
+				return BinaryFromString(hv.Get5(`value`, px.Undef).String(), hv.Get5(`format`, px.Undef).String())
 			})
 		},
 
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`ArrayHash`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
-				return BinaryFromArray(args[0].(eval.List))
+			d.Function(func(c px.Context, args []px.Value) px.Value {
+				return BinaryFromArray(args[0].(px.List))
 			})
 		},
 	)
@@ -83,26 +83,26 @@ func DefaultBinaryType() *BinaryType {
 	return binaryTypeDefault
 }
 
-func (t *BinaryType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *BinaryType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *BinaryType) Equals(o interface{}, g eval.Guard) bool {
+func (t *BinaryType) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*BinaryType)
 	return ok
 }
 
-func (t *BinaryType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *BinaryType) IsAssignable(o px.Type, g px.Guard) bool {
 	_, ok := o.(*BinaryType)
 	return ok
 }
 
-func (t *BinaryType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *BinaryType) IsInstance(o px.Value, g px.Guard) bool {
 	_, ok := o.(*BinaryValue)
 	return ok
 }
 
-func (t *BinaryType) MetaType() eval.ObjectType {
+func (t *BinaryType) MetaType() px.ObjectType {
 	return BinaryMetaType
 }
 
@@ -110,7 +110,7 @@ func (t *BinaryType) Name() string {
 	return `Binary`
 }
 
-func (t *BinaryType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *BinaryType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return reflect.TypeOf([]byte{}), true
 }
 
@@ -126,11 +126,11 @@ func (t *BinaryType) String() string {
 	return `Binary`
 }
 
-func (t *BinaryType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *BinaryType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *BinaryType) PType() eval.Type {
+func (t *BinaryType) PType() px.Type {
 	return &TypeType{t}
 }
 
@@ -145,7 +145,7 @@ func BinaryFromFile(path string) *BinaryValue {
 	if bf, ok := BinaryFromFile2(path); ok {
 		return bf
 	}
-	panic(eval.Error(eval.FileNotFound, issue.H{`path`: path}))
+	panic(px.Error(px.FileNotFound, issue.H{`path`: path}))
 }
 
 // BinaryFromFile2 opens file appointed by the given path for reading and returns
@@ -163,14 +163,14 @@ func BinaryFromFile2(path string) (*BinaryValue, bool) {
 				return nil, false
 			}
 			if os.IsPermission(statErr) {
-				panic(eval.Error(eval.FileReadDenied, issue.H{`path`: path}))
+				panic(px.Error(px.FileReadDenied, issue.H{`path`: path}))
 			}
 		} else {
 			if stat.IsDir() {
-				panic(eval.Error(eval.IsDirectory, issue.H{`path`: path}))
+				panic(px.Error(px.IsDirectory, issue.H{`path`: path}))
 			}
 		}
-		panic(eval.Error(eval.Failure, issue.H{`message`: err.Error()}))
+		panic(px.Error(px.Failure, issue.H{`message`: err.Error()}))
 	}
 	return WrapBinary(bs), true
 }
@@ -202,7 +202,7 @@ func BinaryFromString(str string, f string) *BinaryValue {
 	panic(errors.NewIllegalArgument(`BinaryFromString`, 0, err.Error()))
 }
 
-func BinaryFromArray(array eval.List) *BinaryValue {
+func BinaryFromArray(array px.List) *BinaryValue {
 	top := array.Len()
 	result := make([]byte, top)
 	for idx := 0; idx < top; idx++ {
@@ -215,33 +215,33 @@ func BinaryFromArray(array eval.List) *BinaryValue {
 	return WrapBinary(result)
 }
 
-func (bv *BinaryValue) AsArray() eval.List {
-	vs := make([]eval.Value, len(bv.bytes))
+func (bv *BinaryValue) AsArray() px.List {
+	vs := make([]px.Value, len(bv.bytes))
 	for i, b := range bv.bytes {
 		vs[i] = integerValue(int64(b))
 	}
 	return WrapValues(vs)
 }
 
-func (bv *BinaryValue) Equals(o interface{}, g eval.Guard) bool {
+func (bv *BinaryValue) Equals(o interface{}, g px.Guard) bool {
 	if ov, ok := o.(*BinaryValue); ok {
 		return bytes.Equal(bv.bytes, ov.bytes)
 	}
 	return false
 }
 
-func (bv *BinaryValue) Reflect(c eval.Context) reflect.Value {
+func (bv *BinaryValue) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf(bv.bytes)
 }
 
-func (bv *BinaryValue) ReflectTo(c eval.Context, value reflect.Value) {
+func (bv *BinaryValue) ReflectTo(c px.Context, value reflect.Value) {
 	switch value.Type().Elem().Kind() {
 	case reflect.Int8, reflect.Uint8:
 		value.SetBytes(bv.bytes)
 	case reflect.Interface:
 		value.Set(reflect.ValueOf(bv.bytes))
 	default:
-		panic(eval.Error(eval.AttemptToSetWrongKind, issue.H{`expected`: `[]byte`, `actual`: fmt.Sprintf(`[]%s`, value.Kind())}))
+		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: `[]byte`, `actual`: fmt.Sprintf(`[]%s`, value.Kind())}))
 	}
 }
 
@@ -254,7 +254,7 @@ func (bv *BinaryValue) SerializationString() string {
 }
 
 func (bv *BinaryValue) String() string {
-	return eval.ToString2(bv, None)
+	return px.ToString2(bv, None)
 }
 
 func (bv *BinaryValue) ToKey(b *bytes.Buffer) {
@@ -263,8 +263,8 @@ func (bv *BinaryValue) ToKey(b *bytes.Buffer) {
 	b.Write(bv.bytes)
 }
 
-func (bv *BinaryValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
-	f := eval.GetFormat(s.FormatMap(), bv.PType())
+func (bv *BinaryValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+	f := px.GetFormat(s.FormatMap(), bv.PType())
 	var str string
 	switch f.FormatChar() {
 	case 's':
@@ -290,7 +290,7 @@ func (bv *BinaryValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetec
 	f.ApplyStringFlags(b, str, f.IsAlt())
 }
 
-func (bv *BinaryValue) PType() eval.Type {
+func (bv *BinaryValue) PType() px.Type {
 	return DefaultBinaryType()
 }
 

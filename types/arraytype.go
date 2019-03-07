@@ -8,24 +8,24 @@ import (
 	"sort"
 
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
 type (
 	ArrayType struct {
 		size *IntegerType
-		typ  eval.Type
+		typ  px.Type
 	}
 
 	ArrayValue struct {
 		reducedType  *ArrayType
-		detailedType eval.Type
-		elements     []eval.Value
+		detailedType px.Type
+		elements     []px.Value
 	}
 )
 
-var ArrayMetaType eval.ObjectType
+var ArrayMetaType px.ObjectType
 
 func init() {
 	ArrayMetaType = newObjectType(`Pcore::ArrayType`,
@@ -34,10 +34,10 @@ func init() {
     'element_type' => { type => Type, value => Any }
   },
   serialization => [ 'element_type', 'size_type' ]
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newArrayType2(args...)
 		},
-		func(ctx eval.Context, args []eval.Value) eval.Value {
+		func(ctx px.Context, args []px.Value) px.Value {
 			h := args[0].(*HashValue)
 			et := h.Get5(`element_type`, DefaultAnyType())
 			st := h.Get5(`size_type`, PositiveIntegerType())
@@ -45,10 +45,10 @@ func init() {
 		})
 
 	newGoConstructor3([]string{`Array`, `Tuple`}, nil,
-		func(d eval.Dispatch) {
+		func(d px.Dispatch) {
 			d.Param(`Variant[Array,Hash,Binary,Iterable]`)
 			d.OptionalParam(`Boolean`)
-			d.Function(func(c eval.Context, args []eval.Value) eval.Value {
+			d.Function(func(c px.Context, args []px.Value) px.Value {
 				switch arg := args[0].(type) {
 				case *ArrayValue:
 					if len(args) > 1 && args[1].(booleanValue).Bool() {
@@ -61,7 +61,7 @@ func init() {
 				case *BinaryValue:
 					return arg.AsArray()
 				default:
-					return arg.(eval.IterableValue).Iterator().AsArray()
+					return arg.(px.IterableValue).Iterator().AsArray()
 				}
 			})
 		},
@@ -76,7 +76,7 @@ func EmptyArrayType() *ArrayType {
 	return arrayTypeEmpty
 }
 
-func NewArrayType(element eval.Type, rng *IntegerType) *ArrayType {
+func NewArrayType(element px.Type, rng *IntegerType) *ArrayType {
 	if element == nil {
 		element = anyTypeDefault
 	}
@@ -92,14 +92,14 @@ func NewArrayType(element eval.Type, rng *IntegerType) *ArrayType {
 	return &ArrayType{rng, element}
 }
 
-func newArrayType2(args ...eval.Value) *ArrayType {
+func newArrayType2(args ...px.Value) *ArrayType {
 	argc := len(args)
 	if argc == 0 {
 		return DefaultArrayType()
 	}
 
 	offset := 0
-	element, ok := args[0].(eval.Type)
+	element, ok := args[0].(px.Type)
 	if ok {
 		offset++
 	} else {
@@ -144,31 +144,31 @@ func newArrayType2(args ...eval.Value) *ArrayType {
 	return NewArrayType(element, rng)
 }
 
-func (t *ArrayType) ElementType() eval.Type {
+func (t *ArrayType) ElementType() px.Type {
 	return t.typ
 }
 
-func (t *ArrayType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *ArrayType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	t.size.Accept(v, g)
 	t.typ.Accept(v, g)
 }
 
-func (t *ArrayType) Equals(o interface{}, g eval.Guard) bool {
+func (t *ArrayType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*ArrayType); ok {
 		return t.typ.Equals(ot.typ, g)
 	}
 	return false
 }
 
-func (t *ArrayType) Generic() eval.Type {
+func (t *ArrayType) Generic() px.Type {
 	if t.typ == anyTypeDefault {
 		return arrayTypeDefault
 	}
-	return NewArrayType(eval.Generalize(t.typ), nil)
+	return NewArrayType(px.Generalize(t.typ), nil)
 }
 
-func (t *ArrayType) Get(key string) (value eval.Value, ok bool) {
+func (t *ArrayType) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `element_type`:
 		return t.typ, true
@@ -178,11 +178,11 @@ func (t *ArrayType) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (t *ArrayType) Default() eval.Type {
+func (t *ArrayType) Default() px.Type {
 	return arrayTypeDefault
 }
 
-func (t *ArrayType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *ArrayType) IsAssignable(o px.Type, g px.Guard) bool {
 	switch o := o.(type) {
 	case *ArrayType:
 		return t.size.IsAssignable(o.size, g) && GuardedIsAssignable(t.typ, o.typ, g)
@@ -193,7 +193,7 @@ func (t *ArrayType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	}
 }
 
-func (t *ArrayType) IsInstance(v eval.Value, g eval.Guard) bool {
+func (t *ArrayType) IsInstance(v px.Value, g px.Guard) bool {
 	iv, ok := v.(*ArrayValue)
 	if !ok {
 		return false
@@ -216,7 +216,7 @@ func (t *ArrayType) IsInstance(v eval.Value, g eval.Guard) bool {
 	return true
 }
 
-func (t *ArrayType) MetaType() eval.ObjectType {
+func (t *ArrayType) MetaType() px.ObjectType {
 	return ArrayMetaType
 }
 
@@ -224,7 +224,7 @@ func (t *ArrayType) Name() string {
 	return `Array`
 }
 
-func (t *ArrayType) Resolve(c eval.Context) eval.Type {
+func (t *ArrayType) Resolve(c px.Context) px.Type {
 	t.typ = resolve(c, t.typ)
 	return t
 }
@@ -234,19 +234,19 @@ func (t *ArrayType) Size() *IntegerType {
 }
 
 func (t *ArrayType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *ArrayType) PType() eval.Type {
+func (t *ArrayType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func (t *ArrayType) Parameters() []eval.Value {
+func (t *ArrayType) Parameters() []px.Value {
 	if t.typ.Equals(unitTypeDefault, nil) && *t.size == *IntegerTypeZero {
 		return t.size.SizeParameters()
 	}
 
-	params := make([]eval.Value, 0)
+	params := make([]px.Value, 0)
 	if !t.typ.Equals(DefaultAnyType(), nil) {
 		params = append(params, t.typ)
 	}
@@ -256,7 +256,7 @@ func (t *ArrayType) Parameters() []eval.Value {
 	return params
 }
 
-func (t *ArrayType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *ArrayType) ReflectType(c px.Context) (reflect.Type, bool) {
 	if et, ok := ReflectType(c, t.ElementType()); ok {
 		return reflect.SliceOf(et), true
 	}
@@ -271,37 +271,37 @@ func (t *ArrayType) SerializationString() string {
 	return t.String()
 }
 
-func (t *ArrayType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *ArrayType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
 var arrayTypeDefault = &ArrayType{IntegerTypePositive, anyTypeDefault}
 var arrayTypeEmpty = &ArrayType{IntegerTypeZero, unitTypeDefault}
 
-func BuildArray(len int, bld func(*ArrayValue, []eval.Value) []eval.Value) *ArrayValue {
-	ar := &ArrayValue{elements: make([]eval.Value, 0, len)}
+func BuildArray(len int, bld func(*ArrayValue, []px.Value) []px.Value) *ArrayValue {
+	ar := &ArrayValue{elements: make([]px.Value, 0, len)}
 	ar.elements = bld(ar, ar.elements)
 	return ar
 }
 
-func SingletonArray(element eval.Value) *ArrayValue {
-	return &ArrayValue{elements: []eval.Value{element}}
+func SingletonArray(element px.Value) *ArrayValue {
+	return &ArrayValue{elements: []px.Value{element}}
 }
 
-func WrapTypes(elements []eval.Type) *ArrayValue {
-	els := make([]eval.Value, len(elements))
+func WrapTypes(elements []px.Type) *ArrayValue {
+	els := make([]px.Value, len(elements))
 	for i, e := range elements {
 		els[i] = e
 	}
 	return &ArrayValue{elements: els}
 }
 
-func WrapValues(elements []eval.Value) *ArrayValue {
+func WrapValues(elements []px.Value) *ArrayValue {
 	return &ArrayValue{elements: elements}
 }
 
-func WrapInterfaces(c eval.Context, elements []interface{}) *ArrayValue {
-	els := make([]eval.Value, len(elements))
+func WrapInterfaces(c px.Context, elements []interface{}) *ArrayValue {
+	els := make([]px.Value, len(elements))
 	for i, e := range elements {
 		els[i] = wrap(c, e)
 	}
@@ -309,7 +309,7 @@ func WrapInterfaces(c eval.Context, elements []interface{}) *ArrayValue {
 }
 
 func WrapInts(ints []int) *ArrayValue {
-	els := make([]eval.Value, len(ints))
+	els := make([]px.Value, len(ints))
 	for i, e := range ints {
 		els[i] = integerValue(int64(e))
 	}
@@ -317,32 +317,32 @@ func WrapInts(ints []int) *ArrayValue {
 }
 
 func WrapStrings(strings []string) *ArrayValue {
-	els := make([]eval.Value, len(strings))
+	els := make([]px.Value, len(strings))
 	for i, e := range strings {
 		els[i] = stringValue(e)
 	}
 	return &ArrayValue{elements: els}
 }
 
-func WrapArray3(iv eval.List) *ArrayValue {
+func WrapArray3(iv px.List) *ArrayValue {
 	if ar, ok := iv.(*ArrayValue); ok {
 		return ar
 	}
-	return WrapValues(iv.AppendTo(make([]eval.Value, 0, iv.Len())))
+	return WrapValues(iv.AppendTo(make([]px.Value, 0, iv.Len())))
 }
 
-func (av *ArrayValue) Add(ov eval.Value) eval.List {
+func (av *ArrayValue) Add(ov px.Value) px.List {
 	return WrapValues(append(av.elements, ov))
 }
 
-func (av *ArrayValue) AddAll(ov eval.List) eval.List {
+func (av *ArrayValue) AddAll(ov px.List) px.List {
 	if ar, ok := ov.(*ArrayValue); ok {
 		return WrapValues(append(av.elements, ar.elements...))
 	}
 
 	aLen := len(av.elements)
 	sLen := aLen + ov.Len()
-	el := make([]eval.Value, sLen)
+	el := make([]px.Value, sLen)
 	copy(el, av.elements)
 	for idx := aLen; idx < sLen; idx++ {
 		el[idx] = ov.At(idx - aLen)
@@ -350,7 +350,7 @@ func (av *ArrayValue) AddAll(ov eval.List) eval.List {
 	return WrapValues(el)
 }
 
-func (av *ArrayValue) All(predicate eval.Predicate) bool {
+func (av *ArrayValue) All(predicate px.Predicate) bool {
 	for _, e := range av.elements {
 		if !predicate(e) {
 			return false
@@ -359,7 +359,7 @@ func (av *ArrayValue) All(predicate eval.Predicate) bool {
 	return true
 }
 
-func (av *ArrayValue) Any(predicate eval.Predicate) bool {
+func (av *ArrayValue) Any(predicate px.Predicate) bool {
 	for _, e := range av.elements {
 		if predicate(e) {
 			return true
@@ -368,48 +368,48 @@ func (av *ArrayValue) Any(predicate eval.Predicate) bool {
 	return false
 }
 
-func (av *ArrayValue) AppendTo(slice []eval.Value) []eval.Value {
+func (av *ArrayValue) AppendTo(slice []px.Value) []px.Value {
 	return append(slice, av.elements...)
 }
 
-func (av *ArrayValue) At(i int) eval.Value {
+func (av *ArrayValue) At(i int) px.Value {
 	if i >= 0 && i < len(av.elements) {
 		return av.elements[i]
 	}
 	return undef
 }
 
-func (av *ArrayValue) Delete(ov eval.Value) eval.List {
-	return av.Reject(func(elem eval.Value) bool {
+func (av *ArrayValue) Delete(ov px.Value) px.List {
+	return av.Reject(func(elem px.Value) bool {
 		return elem.Equals(ov, nil)
 	})
 }
 
-func (av *ArrayValue) DeleteAll(ov eval.List) eval.List {
-	return av.Reject(func(elem eval.Value) bool {
-		return ov.Any(func(oe eval.Value) bool {
+func (av *ArrayValue) DeleteAll(ov px.List) px.List {
+	return av.Reject(func(elem px.Value) bool {
+		return ov.Any(func(oe px.Value) bool {
 			return elem.Equals(oe, nil)
 		})
 	})
 }
 
-func (av *ArrayValue) DetailedType() eval.Type {
+func (av *ArrayValue) DetailedType() px.Type {
 	return av.privateDetailedType()
 }
 
-func (av *ArrayValue) Each(consumer eval.Consumer) {
+func (av *ArrayValue) Each(consumer px.Consumer) {
 	for _, e := range av.elements {
 		consumer(e)
 	}
 }
 
-func (av *ArrayValue) EachWithIndex(consumer eval.IndexedConsumer) {
+func (av *ArrayValue) EachWithIndex(consumer px.IndexedConsumer) {
 	for i, e := range av.elements {
 		consumer(e, i)
 	}
 }
 
-func (av *ArrayValue) EachSlice(n int, consumer eval.SliceConsumer) {
+func (av *ArrayValue) EachSlice(n int, consumer px.SliceConsumer) {
 	top := len(av.elements)
 	for i := 0; i < top; i += n {
 		e := i + n
@@ -420,11 +420,11 @@ func (av *ArrayValue) EachSlice(n int, consumer eval.SliceConsumer) {
 	}
 }
 
-func (av *ArrayValue) ElementType() eval.Type {
+func (av *ArrayValue) ElementType() px.Type {
 	return av.PType().(*ArrayType).ElementType()
 }
 
-func (av *ArrayValue) Equals(o interface{}, g eval.Guard) bool {
+func (av *ArrayValue) Equals(o interface{}, g px.Guard) bool {
 	if ov, ok := o.(*ArrayValue); ok {
 		if top := len(av.elements); top == len(ov.elements) {
 			for idx := 0; idx < top; idx++ {
@@ -443,7 +443,7 @@ func (av *ArrayValue) Equals(o interface{}, g eval.Guard) bool {
 	return false
 }
 
-func (av *ArrayValue) Find(predicate eval.Predicate) (eval.Value, bool) {
+func (av *ArrayValue) Find(predicate px.Predicate) (px.Value, bool) {
 	for _, e := range av.elements {
 		if predicate(e) {
 			return e, true
@@ -452,23 +452,23 @@ func (av *ArrayValue) Find(predicate eval.Predicate) (eval.Value, bool) {
 	return nil, false
 }
 
-func (av *ArrayValue) Flatten() eval.List {
+func (av *ArrayValue) Flatten() px.List {
 	for _, e := range av.elements {
 		switch e.(type) {
 		case *ArrayValue, *HashEntry:
-			return WrapValues(flattenElements(av.elements, make([]eval.Value, 0, len(av.elements)*2)))
+			return WrapValues(flattenElements(av.elements, make([]px.Value, 0, len(av.elements)*2)))
 		}
 	}
 	return av
 }
 
-func flattenElements(elements, receiver []eval.Value) []eval.Value {
+func flattenElements(elements, receiver []px.Value) []px.Value {
 	for _, e := range elements {
 		switch e := e.(type) {
 		case *ArrayValue:
 			receiver = flattenElements(e.elements, receiver)
 		case *HashEntry:
-			receiver = flattenElements([]eval.Value{e.key, e.value}, receiver)
+			receiver = flattenElements([]px.Value{e.key, e.value}, receiver)
 		default:
 			receiver = append(receiver, e)
 		}
@@ -484,7 +484,7 @@ func (av *ArrayValue) IsHashStyle() bool {
 	return false
 }
 
-func (av *ArrayValue) Iterator() eval.Iterator {
+func (av *ArrayValue) Iterator() px.Iterator {
 	return &indexedIterator{av.ElementType(), -1, av}
 }
 
@@ -492,26 +492,26 @@ func (av *ArrayValue) Len() int {
 	return len(av.elements)
 }
 
-func (av *ArrayValue) Map(mapper eval.Mapper) eval.List {
-	mapped := make([]eval.Value, len(av.elements))
+func (av *ArrayValue) Map(mapper px.Mapper) px.List {
+	mapped := make([]px.Value, len(av.elements))
 	for i, e := range av.elements {
 		mapped[i] = mapper(e)
 	}
 	return WrapValues(mapped)
 }
 
-func (av *ArrayValue) Reduce(redactor eval.BiMapper) eval.Value {
+func (av *ArrayValue) Reduce(redactor px.BiMapper) px.Value {
 	if av.IsEmpty() {
 		return undef
 	}
 	return reduceSlice(av.elements[1:], av.At(0), redactor)
 }
 
-func (av *ArrayValue) Reduce2(initialValue eval.Value, redactor eval.BiMapper) eval.Value {
+func (av *ArrayValue) Reduce2(initialValue px.Value, redactor px.BiMapper) px.Value {
 	return reduceSlice(av.elements, initialValue, redactor)
 }
 
-func (av *ArrayValue) Reflect(c eval.Context) reflect.Value {
+func (av *ArrayValue) Reflect(c px.Context) reflect.Value {
 	at, ok := ReflectType(c, av.PType())
 	if !ok {
 		at = reflect.TypeOf([]interface{}{})
@@ -524,7 +524,7 @@ func (av *ArrayValue) Reflect(c eval.Context) reflect.Value {
 	return s
 }
 
-func (av *ArrayValue) ReflectTo(c eval.Context, value reflect.Value) {
+func (av *ArrayValue) ReflectTo(c px.Context, value reflect.Value) {
 	vt := value.Type()
 	ptr := vt.Kind() == reflect.Ptr
 	if ptr {
@@ -544,9 +544,9 @@ func (av *ArrayValue) ReflectTo(c eval.Context, value reflect.Value) {
 	value.Set(s)
 }
 
-func (av *ArrayValue) Reject(predicate eval.Predicate) eval.List {
+func (av *ArrayValue) Reject(predicate px.Predicate) px.List {
 	all := true
-	selected := make([]eval.Value, 0)
+	selected := make([]px.Value, 0)
 	for _, e := range av.elements {
 		if !predicate(e) {
 			selected = append(selected, e)
@@ -560,9 +560,9 @@ func (av *ArrayValue) Reject(predicate eval.Predicate) eval.List {
 	return WrapValues(selected)
 }
 
-func (av *ArrayValue) Select(predicate eval.Predicate) eval.List {
+func (av *ArrayValue) Select(predicate px.Predicate) px.List {
 	all := true
-	selected := make([]eval.Value, 0)
+	selected := make([]px.Value, 0)
 	for _, e := range av.elements {
 		if predicate(e) {
 			selected = append(selected, e)
@@ -576,13 +576,13 @@ func (av *ArrayValue) Select(predicate eval.Predicate) eval.List {
 	return WrapValues(selected)
 }
 
-func (av *ArrayValue) Slice(i int, j int) eval.List {
+func (av *ArrayValue) Slice(i int, j int) px.List {
 	return WrapValues(av.elements[i:j])
 }
 
 type arraySorter struct {
-	values     []eval.Value
-	comparator eval.Comparator
+	values     []px.Value
+	comparator px.Comparator
 }
 
 func (s *arraySorter) Len() int {
@@ -601,24 +601,24 @@ func (s *arraySorter) Swap(i, j int) {
 	vs[j] = v
 }
 
-func (av *ArrayValue) Sort(comparator eval.Comparator) eval.List {
-	s := &arraySorter{make([]eval.Value, len(av.elements)), comparator}
+func (av *ArrayValue) Sort(comparator px.Comparator) px.List {
+	s := &arraySorter{make([]px.Value, len(av.elements)), comparator}
 	copy(s.values, av.elements)
 	sort.Sort(s)
 	return WrapValues(s.values)
 }
 
 func (av *ArrayValue) String() string {
-	return eval.ToString2(av, None)
+	return px.ToString2(av, None)
 }
 
-func (av *ArrayValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
-	av.ToString2(b, s, eval.GetFormat(s.FormatMap(), av.PType()), '[', g)
+func (av *ArrayValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+	av.ToString2(b, s, px.GetFormat(s.FormatMap(), av.PType()), '[', g)
 }
 
-func (av *ArrayValue) ToString2(b io.Writer, s eval.FormatContext, f eval.Format, delim byte, g eval.RDetect) {
+func (av *ArrayValue) ToString2(b io.Writer, s px.FormatContext, f px.Format, delim byte, g px.RDetect) {
 	if g == nil {
-		g = make(eval.RDetect)
+		g = make(px.RDetect)
 	} else if g[av] {
 		utils.WriteString(b, `<recursive reference>`)
 		return
@@ -708,16 +708,16 @@ func (av *ArrayValue) ToString2(b io.Writer, s eval.FormatContext, f eval.Format
 	delete(g, av)
 }
 
-func (av *ArrayValue) Unique() eval.List {
+func (av *ArrayValue) Unique() px.List {
 	top := len(av.elements)
 	if top < 2 {
 		return av
 	}
 
-	result := make([]eval.Value, 0, top)
-	exists := make(map[eval.HashKey]bool, top)
+	result := make([]px.Value, 0, top)
+	exists := make(map[px.HashKey]bool, top)
 	for _, v := range av.elements {
-		key := eval.ToKey(v)
+		key := px.ToKey(v)
 		if !exists[key] {
 			exists[key] = true
 			result = append(result, v)
@@ -729,8 +729,8 @@ func (av *ArrayValue) Unique() eval.List {
 	return WrapValues(result)
 }
 
-func childToString(child eval.Value, indent eval.Indentation, parentCtx eval.FormatContext, cf eval.FormatMap, g eval.RDetect) string {
-	var childrenCtx eval.FormatContext
+func childToString(child px.Value, indent px.Indentation, parentCtx px.FormatContext, cf px.FormatMap, g px.RDetect) string {
+	var childrenCtx px.FormatContext
 	if isContainer(child, parentCtx) {
 		childrenCtx = newFormatContext2(indent, parentCtx.FormatMap(), parentCtx.Properties())
 	} else {
@@ -741,38 +741,38 @@ func childToString(child eval.Value, indent eval.Indentation, parentCtx eval.For
 	return b.String()
 }
 
-func isContainer(child eval.Value, s eval.FormatContext) bool {
+func isContainer(child px.Value, s px.FormatContext) bool {
 	switch child.(type) {
 	case *ArrayValue, *HashValue:
 		return true
-	case eval.ObjectType, eval.TypeSet:
+	case px.ObjectType, px.TypeSet:
 		if ex, ok := s.Property(`expanded`); ok && ex == `true` {
 			return true
 		}
 		return false
-	case eval.PuppetObject:
+	case px.PuppetObject:
 		return true
 	default:
 		return false
 	}
 }
 
-func (av *ArrayValue) PType() eval.Type {
+func (av *ArrayValue) PType() px.Type {
 	return av.privateReducedType()
 }
 
-func (av *ArrayValue) privateDetailedType() eval.Type {
+func (av *ArrayValue) privateDetailedType() px.Type {
 	if av.detailedType == nil {
 		if len(av.elements) == 0 {
 			av.detailedType = av.privateReducedType()
 		} else {
-			types := make([]eval.Type, len(av.elements))
+			types := make([]px.Type, len(av.elements))
 			av.detailedType = NewTupleType(types, nil)
 			for idx := range types {
 				types[idx] = DefaultAnyType()
 			}
 			for idx, element := range av.elements {
-				types[idx] = eval.DetailedValueType(element)
+				types[idx] = px.DetailedValueType(element)
 			}
 		}
 	}
@@ -796,7 +796,7 @@ func (av *ArrayValue) privateReducedType() *ArrayType {
 	return av.reducedType
 }
 
-func reduceSlice(slice []eval.Value, initialValue eval.Value, redactor eval.BiMapper) eval.Value {
+func reduceSlice(slice []px.Value, initialValue px.Value, redactor px.BiMapper) px.Value {
 	memo := initialValue
 	for _, v := range slice {
 		memo = redactor(memo, v)

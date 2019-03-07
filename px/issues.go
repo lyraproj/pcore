@@ -1,4 +1,4 @@
-package eval
+package px
 
 import "github.com/lyraproj/issue/issue"
 
@@ -268,7 +268,7 @@ func init() {
 
 	issue.Hard(UnknownFunction, `Unknown function: '%{name}'`)
 
-	issue.Hard(UnreflectableType, `Unable to create a eval.Type from value of type '%{type}'`)
+	issue.Hard(UnreflectableType, `Unable to create a pcore.Type from value of type '%{type}'`)
 
 	issue.Hard(UnreflectableValue, `Unable to create a reflect.Value from value of type '%{type}'`)
 
@@ -280,4 +280,3 @@ func init() {
 
 	issue.Hard(WrongDefinition, `The code loaded from %{source} produced %{type} with the wrong name, expected %{expected}, actual %{actual}`)
 }
-

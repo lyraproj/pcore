@@ -2,21 +2,22 @@ package types
 
 import (
 	"fmt"
-	"github.com/lyraproj/pcore/utils"
 	"io"
 
+	"github.com/lyraproj/pcore/utils"
+
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type TypeAliasType struct {
 	name           string
 	typeExpression *DeferredType
-	resolvedType   eval.Type
-	loader         eval.Loader
+	resolvedType   px.Type
+	loader         px.Loader
 }
 
-var TypeAliasMetaType eval.ObjectType
+var TypeAliasMetaType px.ObjectType
 
 func init() {
 	TypeAliasMetaType = newObjectType(`Pcore::TypeAlias`,
@@ -28,7 +29,7 @@ func init() {
 			value => undef
 		}
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newTypeAliasType2(args...)
 		})
 }
@@ -40,11 +41,11 @@ func DefaultTypeAliasType() *TypeAliasType {
 // NewTypeAliasType creates a new TypeAliasType from a name and a typeExpression which
 // must either be a *DeferredType, a parser.Expression, or nil. If it is nil, the
 // resolved Type must be given.
-func NewTypeAliasType(name string, typeExpression *DeferredType, resolvedType eval.Type) *TypeAliasType {
+func NewTypeAliasType(name string, typeExpression *DeferredType, resolvedType px.Type) *TypeAliasType {
 	return &TypeAliasType{name, typeExpression, resolvedType, nil}
 }
 
-func newTypeAliasType2(args ...eval.Value) *TypeAliasType {
+func newTypeAliasType2(args ...px.Value) *TypeAliasType {
 	switch len(args) {
 	case 0:
 		return DefaultTypeAliasType()
@@ -53,8 +54,8 @@ func newTypeAliasType2(args ...eval.Value) *TypeAliasType {
 		if !ok {
 			panic(NewIllegalArgumentType(`TypeAlias`, 0, `String`, args[0]))
 		}
-		var pt eval.Type
-		if pt, ok = args[1].(eval.Type); ok {
+		var pt px.Type
+		if pt, ok = args[1].(px.Type); ok {
 			return NewTypeAliasType(string(name), nil, pt)
 		}
 		if dt, ok := args[1].(*DeferredType); ok {
@@ -66,9 +67,9 @@ func newTypeAliasType2(args ...eval.Value) *TypeAliasType {
 	}
 }
 
-func (t *TypeAliasType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *TypeAliasType) Accept(v px.Visitor, g px.Guard) {
 	if g == nil {
-		g = make(eval.Guard)
+		g = make(px.Guard)
 	}
 	if g.Seen(t, nil) {
 		return
@@ -77,14 +78,14 @@ func (t *TypeAliasType) Accept(v eval.Visitor, g eval.Guard) {
 	t.resolvedType.Accept(v, g)
 }
 
-func (t *TypeAliasType) Default() eval.Type {
+func (t *TypeAliasType) Default() px.Type {
 	return typeAliasTypeDefault
 }
 
-func (t *TypeAliasType) Equals(o interface{}, g eval.Guard) bool {
+func (t *TypeAliasType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*TypeAliasType); ok && t.name == ot.name {
 		if g == nil {
-			g = make(eval.Guard)
+			g = make(px.Guard)
 		}
 		if g.Seen(t, ot) {
 			return true
@@ -96,7 +97,7 @@ func (t *TypeAliasType) Equals(o interface{}, g eval.Guard) bool {
 	return false
 }
 
-func (t *TypeAliasType) Get(key string) (eval.Value, bool) {
+func (t *TypeAliasType) Get(key string) (px.Value, bool) {
 	switch key {
 	case `name`:
 		return stringValue(t.name), true
@@ -107,13 +108,13 @@ func (t *TypeAliasType) Get(key string) (eval.Value, bool) {
 	}
 }
 
-func (t *TypeAliasType) Loader() eval.Loader {
+func (t *TypeAliasType) Loader() px.Loader {
 	return t.loader
 }
 
-func (t *TypeAliasType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *TypeAliasType) IsAssignable(o px.Type, g px.Guard) bool {
 	if g == nil {
-		g = make(eval.Guard)
+		g = make(px.Guard)
 	}
 	if g.Seen(t, o) {
 		return true
@@ -121,9 +122,9 @@ func (t *TypeAliasType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	return GuardedIsAssignable(t.ResolvedType(), o, g)
 }
 
-func (t *TypeAliasType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *TypeAliasType) IsInstance(o px.Value, g px.Guard) bool {
 	if g == nil {
-		g = make(eval.Guard)
+		g = make(px.Guard)
 	}
 	if g.Seen(t, o) {
 		return true
@@ -131,7 +132,7 @@ func (t *TypeAliasType) IsInstance(o eval.Value, g eval.Guard) bool {
 	return GuardedIsInstance(t.ResolvedType(), o, g)
 }
 
-func (t *TypeAliasType) MetaType() eval.ObjectType {
+func (t *TypeAliasType) MetaType() px.ObjectType {
 	return TypeAliasMetaType
 }
 
@@ -139,7 +140,7 @@ func (t *TypeAliasType) Name() string {
 	return t.name
 }
 
-func (t *TypeAliasType) Resolve(c eval.Context) eval.Type {
+func (t *TypeAliasType) Resolve(c px.Context) px.Type {
 	if t.resolvedType == nil {
 		t.resolvedType = t.typeExpression.Resolve(c)
 		t.loader = c.Loader()
@@ -147,7 +148,7 @@ func (t *TypeAliasType) Resolve(c eval.Context) eval.Type {
 	return t
 }
 
-func (t *TypeAliasType) ResolvedType() eval.Type {
+func (t *TypeAliasType) ResolvedType() px.Type {
 	if t.resolvedType == nil {
 		panic(fmt.Sprintf("Reference to unresolved type '%s'", t.name))
 	}
@@ -155,11 +156,11 @@ func (t *TypeAliasType) ResolvedType() eval.Type {
 }
 
 func (t *TypeAliasType) String() string {
-	return eval.ToString2(t, Expanded)
+	return px.ToString2(t, Expanded)
 }
 
-func (t *TypeAliasType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
-	f := eval.GetFormat(s.FormatMap(), t.PType())
+func (t *TypeAliasType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+	f := px.GetFormat(s.FormatMap(), t.PType())
 	if t.name == `UnresolvedAlias` {
 		utils.WriteString(b, `TypeAlias`)
 	} else {
@@ -168,7 +169,7 @@ func (t *TypeAliasType) ToString(b io.Writer, s eval.FormatContext, g eval.RDete
 			return
 		}
 		if g == nil {
-			g = make(eval.RDetect)
+			g = make(px.RDetect)
 		} else if g[t] {
 			utils.WriteString(b, `<recursive reference>`)
 			return
@@ -182,7 +183,7 @@ func (t *TypeAliasType) ToString(b io.Writer, s eval.FormatContext, g eval.RDete
 	}
 }
 
-func (t *TypeAliasType) PType() eval.Type {
+func (t *TypeAliasType) PType() px.Type {
 	return &TypeType{t}
 }
 

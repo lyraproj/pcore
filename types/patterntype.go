@@ -5,7 +5,7 @@ import (
 
 	"reflect"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
@@ -13,7 +13,7 @@ type PatternType struct {
 	regexps []*RegexpType
 }
 
-var PatternMetaType eval.ObjectType
+var PatternMetaType px.ObjectType
 
 func init() {
 	PatternMetaType = newObjectType(`Pcore::PatternType`,
@@ -21,7 +21,7 @@ func init() {
 	attributes => {
 		patterns => Array[Regexp]
 	}
-}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+}`, func(ctx px.Context, args []px.Value) px.Value {
 			return newPatternType2(args...)
 		})
 }
@@ -34,11 +34,11 @@ func NewPatternType(regexps []*RegexpType) *PatternType {
 	return &PatternType{regexps}
 }
 
-func newPatternType2(regexps ...eval.Value) *PatternType {
+func newPatternType2(regexps ...px.Value) *PatternType {
 	return newPatternType3(WrapValues(regexps))
 }
 
-func newPatternType3(regexps eval.List) *PatternType {
+func newPatternType3(regexps px.List) *PatternType {
 
 	cnt := regexps.Len()
 	switch cnt {
@@ -51,7 +51,7 @@ func newPatternType3(regexps eval.List) *PatternType {
 	}
 
 	rs := make([]*RegexpType, cnt)
-	regexps.EachWithIndex(func(arg eval.Value, idx int) {
+	regexps.EachWithIndex(func(arg px.Value, idx int) {
 		switch arg := arg.(type) {
 		case *RegexpType:
 			rs[idx] = arg
@@ -66,25 +66,25 @@ func newPatternType3(regexps eval.List) *PatternType {
 	return NewPatternType(rs)
 }
 
-func (t *PatternType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *PatternType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 	for _, rx := range t.regexps {
 		rx.Accept(v, g)
 	}
 }
 
-func (t *PatternType) Default() eval.Type {
+func (t *PatternType) Default() px.Type {
 	return patternTypeDefault
 }
 
-func (t *PatternType) Equals(o interface{}, g eval.Guard) bool {
+func (t *PatternType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*PatternType); ok {
-		return len(t.regexps) == len(ot.regexps) && eval.GuardedIncludesAll(eval.EqSlice(t.regexps), eval.EqSlice(ot.regexps), g)
+		return len(t.regexps) == len(ot.regexps) && px.GuardedIncludesAll(px.EqSlice(t.regexps), px.EqSlice(ot.regexps), g)
 	}
 	return false
 }
 
-func (t *PatternType) Get(key string) (value eval.Value, ok bool) {
+func (t *PatternType) Get(key string) (value px.Value, ok bool) {
 	switch key {
 	case `patterns`:
 		return WrapValues(t.Parameters()), true
@@ -92,7 +92,7 @@ func (t *PatternType) Get(key string) (value eval.Value, ok bool) {
 	return nil, false
 }
 
-func (t *PatternType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *PatternType) IsAssignable(o px.Type, g px.Guard) bool {
 	if _, ok := o.(*PatternType); ok {
 		return len(t.regexps) == 0
 	}
@@ -121,12 +121,12 @@ func (t *PatternType) IsAssignable(o eval.Type, g eval.Guard) bool {
 	return false
 }
 
-func (t *PatternType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *PatternType) IsInstance(o px.Value, g px.Guard) bool {
 	str, ok := o.(stringValue)
 	return ok && (len(t.regexps) == 0 || utils.MatchesString(MapToRegexps(t.regexps), string(str)))
 }
 
-func (t *PatternType) MetaType() eval.ObjectType {
+func (t *PatternType) MetaType() px.ObjectType {
 	return PatternMetaType
 }
 
@@ -134,12 +134,12 @@ func (t *PatternType) Name() string {
 	return `Pattern`
 }
 
-func (t *PatternType) Parameters() []eval.Value {
+func (t *PatternType) Parameters() []px.Value {
 	top := len(t.regexps)
 	if top == 0 {
-		return eval.EmptyValues
+		return px.EmptyValues
 	}
-	rxs := make([]eval.Value, top)
+	rxs := make([]px.Value, top)
 	for idx, rx := range t.regexps {
 		rxs[idx] = WrapRegexp2(rx.pattern)
 	}
@@ -147,14 +147,14 @@ func (t *PatternType) Parameters() []eval.Value {
 }
 
 func (t *PatternType) Patterns() *ArrayValue {
-	rxs := make([]eval.Value, len(t.regexps))
+	rxs := make([]px.Value, len(t.regexps))
 	for idx, rx := range t.regexps {
 		rxs[idx] = rx
 	}
 	return WrapValues(rxs)
 }
 
-func (t *PatternType) ReflectType(c eval.Context) (reflect.Type, bool) {
+func (t *PatternType) ReflectType(c px.Context) (reflect.Type, bool) {
 	return reflect.TypeOf(`x`), true
 }
 
@@ -166,15 +166,15 @@ func (t *PatternType) SerializationString() string {
 	return t.String()
 }
 
-func (t *PatternType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *PatternType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
 func (t *PatternType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *PatternType) PType() eval.Type {
+func (t *PatternType) PType() px.Type {
 	return &TypeType{t}
 }
 

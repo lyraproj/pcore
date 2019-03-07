@@ -3,7 +3,7 @@ package types
 import (
 	"io"
 
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
 type (
@@ -15,10 +15,10 @@ type (
 
 var defaultTypeDefault = &DefaultType{}
 
-var DefaultMetaType eval.ObjectType
+var DefaultMetaType px.ObjectType
 
 func init() {
-	DefaultMetaType = newObjectType(`Pcore::DefaultType`, `Pcore::AnyType{}`, func(ctx eval.Context, args []eval.Value) eval.Value {
+	DefaultMetaType = newObjectType(`Pcore::DefaultType`, `Pcore::AnyType{}`, func(ctx px.Context, args []px.Value) px.Value {
 		return DefaultDefaultType()
 	})
 }
@@ -27,25 +27,25 @@ func DefaultDefaultType() *DefaultType {
 	return defaultTypeDefault
 }
 
-func (t *DefaultType) Accept(v eval.Visitor, g eval.Guard) {
+func (t *DefaultType) Accept(v px.Visitor, g px.Guard) {
 	v(t)
 }
 
-func (t *DefaultType) Equals(o interface{}, g eval.Guard) bool {
+func (t *DefaultType) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*DefaultType)
 	return ok
 }
 
-func (t *DefaultType) IsAssignable(o eval.Type, g eval.Guard) bool {
+func (t *DefaultType) IsAssignable(o px.Type, g px.Guard) bool {
 	return o == defaultTypeDefault
 }
 
-func (t *DefaultType) IsInstance(o eval.Value, g eval.Guard) bool {
+func (t *DefaultType) IsInstance(o px.Value, g px.Guard) bool {
 	_, ok := o.(*DefaultValue)
 	return ok
 }
 
-func (t *DefaultType) MetaType() eval.ObjectType {
+func (t *DefaultType) MetaType() px.ObjectType {
 	return DefaultMetaType
 }
 
@@ -62,14 +62,14 @@ func (t *DefaultType) SerializationString() string {
 }
 
 func (t *DefaultType) String() string {
-	return eval.ToString2(t, None)
+	return px.ToString2(t, None)
 }
 
-func (t *DefaultType) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
+func (t *DefaultType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	TypeToString(t, b, s, g)
 }
 
-func (t *DefaultType) PType() eval.Type {
+func (t *DefaultType) PType() px.Type {
 	return &TypeType{t}
 }
 
@@ -77,21 +77,21 @@ func WrapDefault() *DefaultValue {
 	return &DefaultValue{}
 }
 
-func (dv *DefaultValue) Equals(o interface{}, g eval.Guard) bool {
+func (dv *DefaultValue) Equals(o interface{}, g px.Guard) bool {
 	_, ok := o.(*DefaultValue)
 	return ok
 }
 
-func (dv *DefaultValue) ToKey() eval.HashKey {
-	return eval.HashKey([]byte{1, HkDefault})
+func (dv *DefaultValue) ToKey() px.HashKey {
+	return px.HashKey([]byte{1, HkDefault})
 }
 
 func (dv *DefaultValue) String() string {
 	return `default`
 }
 
-func (dv *DefaultValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDetect) {
-	f := eval.GetFormat(s.FormatMap(), dv.PType())
+func (dv *DefaultValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+	f := px.GetFormat(s.FormatMap(), dv.PType())
 	switch f.FormatChar() {
 	case 'd', 's', 'p':
 		f.ApplyStringFlags(b, `default`, f.IsAlt())
@@ -102,6 +102,6 @@ func (dv *DefaultValue) ToString(b io.Writer, s eval.FormatContext, g eval.RDete
 	}
 }
 
-func (dv *DefaultValue) PType() eval.Type {
+func (dv *DefaultValue) PType() px.Type {
 	return DefaultDefaultType()
 }

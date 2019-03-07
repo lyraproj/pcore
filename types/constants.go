@@ -1,17 +1,17 @@
 package types
 
 import (
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 )
 
-var emptyArray = WrapValues([]eval.Value{})
+var emptyArray = WrapValues([]px.Value{})
 var emptyMap = WrapHash([]*HashEntry{})
 var emptyString = stringValue(``)
 var undef = WrapUndef()
 
 func init() {
-	eval.EmptyArray = emptyArray
-	eval.EmptyMap = emptyMap
-	eval.EmptyString = emptyString
-	eval.Undef = undef
+	px.EmptyArray = emptyArray
+	px.EmptyMap = emptyMap
+	px.EmptyString = emptyString
+	px.Undef = undef
 }

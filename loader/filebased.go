@@ -10,49 +10,49 @@ import (
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/errors"
-	"github.com/lyraproj/pcore/eval"
+	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
 
 type (
 	ContentProvidingLoader interface {
-		eval.Loader
+		px.Loader
 
-		GetContent(c eval.Context, path string) []byte
+		GetContent(c px.Context, path string) []byte
 	}
 
 	fileBasedLoader struct {
 		parentedLoader
 		path            string
 		moduleName      string
-		initPlanName    eval.TypedName
-		initTaskName    eval.TypedName
-		initTypeSetName eval.TypedName
-		paths           map[eval.Namespace][]SmartPath
+		initPlanName    px.TypedName
+		initTaskName    px.TypedName
+		initTypeSetName px.TypedName
+		paths           map[px.Namespace][]SmartPath
 		index           map[string][]string
 	}
 
-	SmartPathFactory func(loader eval.ModuleLoader, moduleNameRelative bool) SmartPath
+	SmartPathFactory func(loader px.ModuleLoader, moduleNameRelative bool) SmartPath
 )
 
-var SmartPathFactories map[eval.PathType]SmartPathFactory = map[eval.PathType]SmartPathFactory{
-	eval.PuppetDataTypePath: newPuppetTypePath,
+var SmartPathFactories map[px.PathType]SmartPathFactory = map[px.PathType]SmartPathFactory{
+	px.PuppetDataTypePath: newPuppetTypePath,
 }
 
 func init() {
-	eval.NewFileBasedLoader = newFileBasedLoader
+	px.NewFileBasedLoader = newFileBasedLoader
 }
 
-func newFileBasedLoader(parent eval.Loader, path, moduleName string, lds ...eval.PathType) eval.ModuleLoader {
-	paths := make(map[eval.Namespace][]SmartPath, len(lds))
+func newFileBasedLoader(parent px.Loader, path, moduleName string, lds ...px.PathType) px.ModuleLoader {
+	paths := make(map[px.Namespace][]SmartPath, len(lds))
 	loader := &fileBasedLoader{
 		parentedLoader: parentedLoader{
-			basicLoader: basicLoader{namedEntries: make(map[string]eval.LoaderEntry, 64)},
+			basicLoader: basicLoader{namedEntries: make(map[string]px.LoaderEntry, 64)},
 			parent:      parent},
 		path:            path,
-		initPlanName:    eval.NewTypedName2(eval.NsPlan, `init`, parent.NameAuthority()),
-		initTaskName:    eval.NewTypedName2(eval.NsTask, `init`, parent.NameAuthority()),
-		initTypeSetName: eval.NewTypedName2(eval.NsType, `init_typeset`, parent.NameAuthority()),
+		initPlanName:    px.NewTypedName2(px.NsPlan, `init`, parent.NameAuthority()),
+		initTaskName:    px.NewTypedName2(px.NsTask, `init`, parent.NameAuthority()),
+		initTypeSetName: px.NewTypedName2(px.NsType, `init_typeset`, parent.NameAuthority()),
 		moduleName:      moduleName,
 		paths:           paths}
 
@@ -67,18 +67,18 @@ func newFileBasedLoader(parent eval.Loader, path, moduleName string, lds ...eval
 	return loader
 }
 
-func (l *fileBasedLoader) newSmartPath(pathType eval.PathType, moduleNameRelative bool) SmartPath {
+func (l *fileBasedLoader) newSmartPath(pathType px.PathType, moduleNameRelative bool) SmartPath {
 	if f, ok := SmartPathFactories[pathType]; ok {
 		return f(l, moduleNameRelative)
 	}
 	panic(errors.NewIllegalArgument(`newSmartPath`, 1, fmt.Sprintf(`Unknown path type '%s'`, pathType)))
 }
 
-func newPuppetTypePath(loader eval.ModuleLoader, moduleNameRelative bool) SmartPath {
-	return NewSmartPath(`types`, `.pp`, loader, eval.NsType, moduleNameRelative, false,InstantiatePuppetType)
+func newPuppetTypePath(loader px.ModuleLoader, moduleNameRelative bool) SmartPath {
+	return NewSmartPath(`types`, `.pp`, loader, px.NsType, moduleNameRelative, false, InstantiatePuppetType)
 }
 
-func (l *fileBasedLoader) LoadEntry(c eval.Context, name eval.TypedName) eval.LoaderEntry {
+func (l *fileBasedLoader) LoadEntry(c px.Context, name px.TypedName) px.LoaderEntry {
 	entry := l.parentedLoader.LoadEntry(c, name)
 	if entry == nil {
 		entry = l.find(c, name)
@@ -102,7 +102,7 @@ func (l *fileBasedLoader) isGlobal() bool {
 	return l.moduleName == `` || l.moduleName == `environment`
 }
 
-func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderEntry {
+func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 	if name.IsQualified() {
 		// The name is in a name space.
 		if l.moduleName != `` && l.moduleName != name.Parts()[0] {
@@ -111,16 +111,16 @@ func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderE
 			// ok since such a "module" cannot have namespaced content).
 			return nil
 		}
-		if name.Namespace() == eval.NsTask && len(name.Parts()) > 2 {
+		if name.Namespace() == px.NsTask && len(name.Parts()) > 2 {
 			// Subdirectories beneath the tasks directory are currently not recognized
 			return nil
 		}
 	} else {
 		// The name is in the global name space.
 		switch name.Namespace() {
-		case eval.NsFunction:
+		case px.NsFunction:
 			// Can be defined in module using a global name. No action required
-		case eval.NsPlan:
+		case px.NsPlan:
 			if !l.isGlobal() {
 				// Global name must be the name of the module
 				if l.moduleName != name.Parts()[0] {
@@ -135,7 +135,7 @@ func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderE
 				}
 				return l.instantiate(c, smartPath, name, origins)
 			}
-		case eval.NsTask:
+		case px.NsTask:
 			if !l.isGlobal() {
 				// Global name must be the name of the module
 				if l.moduleName != name.Parts()[0] {
@@ -150,7 +150,7 @@ func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderE
 				}
 				return l.instantiate(c, smartPath, name, origins)
 			}
-		case eval.NsType:
+		case px.NsType:
 			if !l.isGlobal() {
 				// Global name must be the name of the module
 				if l.moduleName != name.Parts()[0] {
@@ -166,11 +166,11 @@ func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderE
 				smartPath.Instantiator()(c, l, name, origins)
 				entry := l.GetEntry(name)
 				if entry != nil {
-					if _, ok := entry.Value().(eval.TypeSet); ok {
+					if _, ok := entry.Value().(px.TypeSet); ok {
 						return entry
 					}
 				}
-				panic(eval.Error(eval.NotExpectedTypeset, issue.H{`source`: origins[0], `name`: utils.CapitalizeSegment(l.moduleName)}))
+				panic(px.Error(px.NotExpectedTypeset, issue.H{`source`: origins[0], `name`: utils.CapitalizeSegment(l.moduleName)}))
 			}
 		default:
 			return nil
@@ -182,7 +182,7 @@ func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderE
 		return l.instantiate(c, smartPath, name, origins)
 	}
 
-	if !(name.Namespace() == eval.NsType && name.IsQualified()) {
+	if !(name.Namespace() == px.NsType && name.IsQualified()) {
 		return nil
 	}
 
@@ -194,9 +194,9 @@ func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderE
 			tse = l.find(c, tsName)
 		}
 		if tse != nil && tse.Value() != nil {
-			if ts, ok := tse.Value().(eval.TypeSet); ok {
+			if ts, ok := tse.Value().(px.TypeSet); ok {
 				c.DoWithLoader(l, func() {
-					ts.(eval.ResolvableType).Resolve(c)
+					ts.(px.ResolvableType).Resolve(c)
 				})
 				te := l.GetEntry(name)
 				if te != nil {
@@ -209,7 +209,7 @@ func (l *fileBasedLoader) find(c eval.Context, name eval.TypedName) eval.LoaderE
 	return nil
 }
 
-func (l *fileBasedLoader) findExistingPath(name eval.TypedName) (origins []string, smartPath SmartPath) {
+func (l *fileBasedLoader) findExistingPath(name px.TypedName) (origins []string, smartPath SmartPath) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -242,17 +242,17 @@ func (l *fileBasedLoader) ensureIndexed(sp SmartPath) {
 	}
 }
 
-func (l *fileBasedLoader) instantiate(c eval.Context, smartPath SmartPath, name eval.TypedName, origins []string) eval.LoaderEntry {
+func (l *fileBasedLoader) instantiate(c px.Context, smartPath SmartPath, name px.TypedName, origins []string) px.LoaderEntry {
 	smartPath.Instantiator()(c, l, name, origins)
 	return l.GetEntry(name)
 }
 
-func (l *fileBasedLoader) Discover(c eval.Context, predicate func(eval.TypedName) bool) []eval.TypedName {
+func (l *fileBasedLoader) Discover(c px.Context, predicate func(px.TypedName) bool) []px.TypedName {
 	l.ensureAllIndexed()
 	found := l.parent.Discover(c, predicate)
 	added := false
 	for k := range l.index {
-		tn := eval.TypedNameFromMapKey(k)
+		tn := px.TypedNameFromMapKey(k)
 		if !l.parent.HasEntry(tn) {
 			if predicate(tn) {
 				found = append(found, tn)
@@ -266,15 +266,15 @@ func (l *fileBasedLoader) Discover(c eval.Context, predicate func(eval.TypedName
 	return found
 }
 
-func (l *fileBasedLoader) GetContent(c eval.Context, path string) []byte {
+func (l *fileBasedLoader) GetContent(c px.Context, path string) []byte {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
-		panic(eval.Error(eval.UnableToReadFile, issue.H{`path`: path, `detail`: err.Error()}))
+		panic(px.Error(px.UnableToReadFile, issue.H{`path`: path, `detail`: err.Error()}))
 	}
 	return content
 }
 
-func (l *fileBasedLoader) HasEntry(name eval.TypedName) bool {
+func (l *fileBasedLoader) HasEntry(name px.TypedName) bool {
 	if l.parent.HasEntry(name) {
 		return true
 	}
@@ -325,6 +325,6 @@ func (l *fileBasedLoader) addToIndex(smartPath SmartPath) {
 	})
 
 	if err != nil {
-		panic(eval.Error(eval.Failure, issue.H{`message`: err.Error()}))
+		panic(px.Error(px.Failure, issue.H{`message`: err.Error()}))
 	}
 }
