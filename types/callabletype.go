@@ -272,7 +272,7 @@ func (t *CallableType) Parameters() (params []px.Value) {
 		if len(tupleParams) == 0 {
 			params = make([]px.Value, 0)
 		} else {
-			params = px.Select1(tupleParams, func(p px.Value) bool { _, ok := p.(*UnitType); return !ok })
+			params = px.Select(tupleParams, func(p px.Value) bool { _, ok := p.(*UnitType); return !ok })
 		}
 	} else {
 		params = make([]px.Value, 0)

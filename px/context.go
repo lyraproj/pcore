@@ -2,6 +2,7 @@ package px
 
 import (
 	"context"
+	"reflect"
 	"runtime"
 
 	"github.com/lyraproj/pcore/threadlocal"
@@ -151,3 +152,9 @@ var ResolveResolvables func(c Context)
 
 // Resolve
 var ResolveTypes func(c Context, types ...ResolvableType)
+
+// Wrap converts the given value into a Value
+var Wrap func(c Context, v interface{}) Value
+
+// WrapReflected converts the given reflect.Value into a Value
+var WrapReflected func(c Context, v reflect.Value) Value

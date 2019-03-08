@@ -214,9 +214,9 @@ func mergeFormats(lower px.FormatMap, higher px.FormatMap) px.FormatMap {
 	}
 
 	higherKeys := higher.Keys()
-	normLower := WrapHash2(px.Reject2(lower.Entries(), func(lev px.Value) bool {
+	normLower := WrapHash2(lower.Entries().Reject(func(lev px.Value) bool {
 		le := lev.(*HashEntry)
-		return px.Any2(higherKeys, func(hk px.Value) bool {
+		return higherKeys.Any(func(hk px.Value) bool {
 			return !hk.Equals(le.Key(), nil) && px.IsAssignable(hk.(px.Type), le.Key().(px.Type))
 		})
 	}))

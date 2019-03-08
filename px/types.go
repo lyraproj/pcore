@@ -270,46 +270,6 @@ var Normalize func(t Type) Type
 
 var DefaultFor func(t Type) Type
 
-var ToArray func(elements []Value) List
-
-func All(elements []Value, predicate Predicate) bool {
-	for _, elem := range elements {
-		if !predicate(elem) {
-			return false
-		}
-	}
-	return true
-}
-
-func All2(array List, predicate Predicate) bool {
-	top := array.Len()
-	for idx := 0; idx < top; idx++ {
-		if !predicate(array.At(idx)) {
-			return false
-		}
-	}
-	return true
-}
-
-func Any(elements []Value, predicate Predicate) bool {
-	for _, elem := range elements {
-		if predicate(elem) {
-			return true
-		}
-	}
-	return false
-}
-
-func Any2(array List, predicate Predicate) bool {
-	top := array.Len()
-	for idx := 0; idx < top; idx++ {
-		if predicate(array.At(idx)) {
-			return true
-		}
-	}
-	return false
-}
-
 func AssertType(pfx interface{}, expected, actual Type) Type {
 	if !IsAssignable(expected, actual) {
 		panic(Error(TypeMismatch, issue.H{`detail`: DescribeMismatch(getPrefix(pfx), expected, actual)}))
@@ -324,64 +284,6 @@ func AssertInstance(pfx interface{}, expected Type, value Value) Value {
 	return value
 }
 
-func Each(elements []Value, consumer Consumer) {
-	for _, elem := range elements {
-		consumer(elem)
-	}
-}
-
-func Each2(array List, consumer Consumer) {
-	top := array.Len()
-	for idx := 0; idx < top; idx++ {
-		consumer(array.At(idx))
-	}
-}
-
-func Find(elements []Value, dflt Value, predicate Predicate) Value {
-	for _, elem := range elements {
-		if predicate(elem) {
-			return elem
-		}
-	}
-	return dflt
-}
-
-func Find2(array List, dflt Value, predicate Predicate) Value {
-	top := array.Len()
-	for idx := 0; idx < top; idx++ {
-		v := array.At(idx)
-		if predicate(v) {
-			return v
-		}
-	}
-	return dflt
-}
-
-func Map1(elements []Value, mapper Mapper) []Value {
-	result := make([]Value, len(elements))
-	for idx, elem := range elements {
-		result[idx] = mapper(elem)
-	}
-	return result
-}
-
-func Map2(array List, mapper Mapper) List {
-	top := array.Len()
-	result := make([]Value, top)
-	for idx := 0; idx < top; idx++ {
-		result[idx] = mapper(array.At(idx))
-	}
-	return ToArray(result)
-}
-
-func MapTypes(types []Type, mapper TypeMapper) []Value {
-	result := make([]Value, len(types))
-	for idx, elem := range types {
-		result[idx] = mapper(elem)
-	}
-	return result
-}
-
 // New creates a new instance of type t
 var New func(c Context, receiver Value, args ...Value) Value
 
@@ -393,65 +295,6 @@ func NewWithBlock(c Context, receiver Value, args []Value, block Lambda) Value {
 		r = block.Call(c, nil, r)
 	}
 	return r
-}
-
-func Reduce(elements []Value, memo Value, reductor BiMapper) Value {
-	for _, elem := range elements {
-		memo = reductor(memo, elem)
-	}
-	return memo
-}
-
-func Reduce2(array List, memo Value, reductor BiMapper) Value {
-	top := array.Len()
-	for idx := 0; idx < top; idx++ {
-		memo = reductor(memo, array.At(idx))
-	}
-	return memo
-}
-
-func Select1(elements []Value, predicate Predicate) []Value {
-	result := make([]Value, 0, 8)
-	for _, elem := range elements {
-		if predicate(elem) {
-			result = append(result, elem)
-		}
-	}
-	return result
-}
-
-func Select2(array List, predicate Predicate) List {
-	result := make([]Value, 0, 8)
-	top := array.Len()
-	for idx := 0; idx < top; idx++ {
-		v := array.At(idx)
-		if predicate(v) {
-			result = append(result, v)
-		}
-	}
-	return ToArray(result)
-}
-
-func Reject(elements []Value, predicate Predicate) []Value {
-	result := make([]Value, 0, 8)
-	for _, elem := range elements {
-		if !predicate(elem) {
-			result = append(result, elem)
-		}
-	}
-	return result
-}
-
-func Reject2(array List, predicate Predicate) List {
-	result := make([]Value, 0, 8)
-	top := array.Len()
-	for idx := 0; idx < top; idx++ {
-		v := array.At(idx)
-		if !predicate(v) {
-			result = append(result, v)
-		}
-	}
-	return ToArray(result)
 }
 
 var DescribeSignatures func(signatures []Signature, argsTuple Type, block Lambda) string

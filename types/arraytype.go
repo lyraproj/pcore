@@ -351,21 +351,11 @@ func (av *ArrayValue) AddAll(ov px.List) px.List {
 }
 
 func (av *ArrayValue) All(predicate px.Predicate) bool {
-	for _, e := range av.elements {
-		if !predicate(e) {
-			return false
-		}
-	}
-	return true
+	return px.All(av.elements, predicate)
 }
 
 func (av *ArrayValue) Any(predicate px.Predicate) bool {
-	for _, e := range av.elements {
-		if predicate(e) {
-			return true
-		}
-	}
-	return false
+	return px.Any(av.elements, predicate)
 }
 
 func (av *ArrayValue) AppendTo(slice []px.Value) []px.Value {
@@ -444,12 +434,7 @@ func (av *ArrayValue) Equals(o interface{}, g px.Guard) bool {
 }
 
 func (av *ArrayValue) Find(predicate px.Predicate) (px.Value, bool) {
-	for _, e := range av.elements {
-		if predicate(e) {
-			return e, true
-		}
-	}
-	return nil, false
+	return px.Find(av.elements, predicate)
 }
 
 func (av *ArrayValue) Flatten() px.List {
@@ -493,11 +478,7 @@ func (av *ArrayValue) Len() int {
 }
 
 func (av *ArrayValue) Map(mapper px.Mapper) px.List {
-	mapped := make([]px.Value, len(av.elements))
-	for i, e := range av.elements {
-		mapped[i] = mapper(e)
-	}
-	return WrapValues(mapped)
+	return WrapValues(px.Map(av.elements, mapper))
 }
 
 func (av *ArrayValue) Reduce(redactor px.BiMapper) px.Value {
@@ -545,35 +526,11 @@ func (av *ArrayValue) ReflectTo(c px.Context, value reflect.Value) {
 }
 
 func (av *ArrayValue) Reject(predicate px.Predicate) px.List {
-	all := true
-	selected := make([]px.Value, 0)
-	for _, e := range av.elements {
-		if !predicate(e) {
-			selected = append(selected, e)
-		} else {
-			all = false
-		}
-	}
-	if all {
-		return av
-	}
-	return WrapValues(selected)
+	return WrapValues(px.Reject(av.elements, predicate))
 }
 
 func (av *ArrayValue) Select(predicate px.Predicate) px.List {
-	all := true
-	selected := make([]px.Value, 0)
-	for _, e := range av.elements {
-		if predicate(e) {
-			selected = append(selected, e)
-		} else {
-			all = false
-		}
-	}
-	if all {
-		return av
-	}
-	return WrapValues(selected)
+	return WrapValues(px.Select(av.elements, predicate))
 }
 
 func (av *ArrayValue) Slice(i int, j int) px.List {
