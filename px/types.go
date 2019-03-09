@@ -44,10 +44,6 @@ type (
 		New(c Context, args []Value) Value
 	}
 
-	Resolvable interface {
-		Resolve(c Context)
-	}
-
 	ResolvableType interface {
 		Name() string
 
@@ -300,10 +296,6 @@ func NewWithBlock(c Context, receiver Value, args []Value, block Lambda) Value {
 var DescribeSignatures func(signatures []Signature, argsTuple Type, block Lambda) string
 
 var DescribeMismatch func(pfx string, expected Type, actual Type) string
-
-var ErrorFromReported func(c Context, err issue.Reported) ErrorObject
-
-var NewError func(c Context, message, kind, issueCode string, partialResult Value, details OrderedMap) ErrorObject
 
 var NewGoType func(name string, zeroValue interface{}) ObjectType
 

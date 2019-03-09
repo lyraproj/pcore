@@ -168,7 +168,7 @@ func mergeMismatch(m mismatch, o mismatch, path []*pathElement) mismatch {
 					ts = append(ts, ov.Types()...)
 					et.setExpected(types.NewVariantType(types.UniqueTypes(ts)...))
 				} else {
-					if !px.Equals(et.expectedType, ot.expectedType) {
+					if !et.expectedType.Equals(ot.expectedType, nil) {
 						et.setExpected(types.NewVariantType(et.expectedType, ot.expectedType))
 					}
 				}
@@ -441,7 +441,7 @@ func anyAssignable(es []px.Type, a px.Type) bool {
 
 func alwaysFullyDetailed(es []px.Type, a px.Type) bool {
 	for _, e := range es {
-		if px.Equals(px.Generalize(e), px.Generalize(a)) {
+		if px.Generalize(e).Equals(px.Generalize(a), nil) {
 			return true
 		}
 		if _, ok := e.(*types.TypeAliasType); ok {
@@ -754,7 +754,7 @@ func describeTuple(expected *types.TupleType, original, actual px.Type, path []*
 	}
 
 	if at, ok := actual.(*types.TupleType); ok {
-		if px.Equals(expected, actual) {
+		if expected.Equals(actual, nil) {
 			return NoMismatch
 		}
 

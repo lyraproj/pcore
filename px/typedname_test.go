@@ -54,7 +54,7 @@ func ExampleTypedNameFromMapKey() {
 func TestParent(t *testing.T) {
 	tn := NewTypedName(NsType, `Foo::Fee::Fum`)
 	tp := NewTypedName(NsType, `Foo::Fee`)
-	if !Equals(tn.Parent(), tp) {
+	if !Equals(tn.Parent(), tp, nil) {
 		t.Error(`TypedName.Parent() does not return parent`)
 	}
 }
@@ -63,7 +63,7 @@ func TestChild(t *testing.T) {
 	tn := NewTypedName(NsType, `Foo::Fee::Fum`)
 	tp := NewTypedName(NsType, `Fee::Fum`)
 	ch := tn.Child()
-	if !Equals(ch, tp) {
+	if !Equals(ch, tp, nil) {
 		t.Errorf(`TypedName.Child() does not return child. Expected '%s', got '%s'`, tp, ch)
 	}
 }

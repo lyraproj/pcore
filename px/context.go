@@ -57,15 +57,15 @@ type Context interface {
 	// logger of the evaluator.
 	Logger() Logger
 
-	// ParseType parses and evaluates the given Value into a Type. It will panic with
+	// ParseTypeValue parses and evaluates the given Value into a Type. It will panic with
 	// an issue.Reported unless the parsing was successful and the result is evaluates
 	// to a Type
-	ParseType(str Value) Type
+	ParseTypeValue(str Value) Type
 
-	// ParseType2 parses and evaluates the given string into a Type. It will panic with
+	// ParseType parses and evaluates the given string into a Type. It will panic with
 	// an issue.Reported unless the parsing was successful and the result is evaluates
 	// to a Type
-	ParseType2(typeString string) Type
+	ParseType(str string) Type
 
 	// Reflector returns a Reflector capable of converting to and from reflected values
 	// and types
@@ -134,6 +134,24 @@ func CurrentContext() Context {
 	}
 	_, file, line, _ := runtime.Caller(1)
 	panic(issue.NewReported(NoCurrentContext, issue.SEVERITY_ERROR, issue.NO_ARGS, issue.NewLocation(file, line, 0)))
+}
+
+// Fork calls the given function in a new go routine. The given context is forked and becomes
+// the CurrentContext for that routine.
+func Fork(c Context, doer ContextDoer) {
+	go func() {
+		defer threadlocal.Cleanup()
+		threadlocal.Init()
+		cf := c.Fork()
+		threadlocal.Set(PuppetContextKey, cf)
+		doer(cf)
+	}()
+}
+
+// Go calls the given function in a new go routine. The CurrentContext is forked and becomes
+// the CurrentContext for that routine.
+func Go(f ContextDoer) {
+	Fork(CurrentContext(), f)
 }
 
 // StackTop returns the top of the stack contained in the current context or a location determined

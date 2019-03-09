@@ -192,17 +192,17 @@ func (tb *localTypeBuilder) Type2(name string, tp px.Type) {
 func (db *dispatchBuilder) createDispatch(c px.Context) px.Lambda {
 	for idx, tp := range db.types {
 		if trt, ok := tp.(*types.TypeReferenceType); ok {
-			db.types[idx] = c.ParseType2(trt.TypeString())
+			db.types[idx] = c.ParseType(trt.TypeString())
 		}
 	}
 	if r, ok := db.blockType.(*types.TypeReferenceType); ok {
-		db.blockType = c.ParseType2(r.TypeString())
+		db.blockType = c.ParseType(r.TypeString())
 	}
 	if db.optionalBlock {
 		db.blockType = types.NewOptionalType(db.blockType)
 	}
 	if r, ok := db.returnType.(*types.TypeReferenceType); ok {
-		db.returnType = c.ParseType2(r.TypeString())
+		db.returnType = c.ParseType(r.TypeString())
 	}
 	if db.function2 == nil {
 		return &goLambda{lambda{types.NewCallableType(types.NewTupleType(db.types, types.NewIntegerType(db.min, db.max)), db.returnType, nil)}, db.function}

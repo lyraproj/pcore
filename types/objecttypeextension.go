@@ -192,7 +192,7 @@ func (te *objectTypeExtension) initialize(c px.Context, baseType *objectType, in
 			if tp == nil {
 				panic(px.Error(px.MissingTypeParameter, issue.H{`name`: pn, `label`: baseType.Label()}))
 			}
-			if !px.Equals(pv, WrapDefault()) {
+			if !pv.Equals(WrapDefault(), nil) {
 				byName.Put(pn, checkParam(tp.(*typeParameter), pv))
 			}
 		})
@@ -201,7 +201,7 @@ func (te *objectTypeExtension) initialize(c px.Context, baseType *objectType, in
 			if idx < len(initParameters) {
 				tp := t.(*typeParameter)
 				pv := initParameters[idx]
-				if !px.Equals(pv, WrapDefault()) {
+				if !pv.Equals(WrapDefault(), nil) {
 					byName.Put(tp.Name(), checkParam(tp, pv))
 				}
 			}

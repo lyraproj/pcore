@@ -360,7 +360,7 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh px.OrderedMap) (
 			as = append(as, WrapHashEntry2(keyValue, undef))
 		}
 	} else {
-		if px.Equals(val, undef) {
+		if val != nil && val.Equals(undef, nil) {
 			// Convenience. If a value is declared as being undef, then ensure that
 			// type accepts undef
 			typ = NewOptionalType(typ)

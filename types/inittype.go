@@ -75,7 +75,7 @@ func (t *InitType) Default() px.Type {
 
 func (t *InitType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*InitType); ok {
-		return px.Equals(t.typ, ot.typ) && px.Equals(t.initArgs, ot.initArgs)
+		return t == ot || px.Equals(t.typ, ot.typ, g) && px.Equals(t.initArgs, ot.initArgs, g)
 	}
 	return false
 }

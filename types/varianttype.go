@@ -77,7 +77,7 @@ func (t *VariantType) Accept(v px.Visitor, g px.Guard) {
 
 func (t *VariantType) Equals(o interface{}, g px.Guard) bool {
 	ot, ok := o.(*VariantType)
-	return ok && len(t.types) == len(ot.types) && px.GuardedIncludesAll(px.EqSlice(t.types), px.EqSlice(ot.types), g)
+	return ok && len(t.types) == len(ot.types) && px.IncludesAll(t.types, ot.types, g)
 }
 
 func (t *VariantType) Generic() px.Type {

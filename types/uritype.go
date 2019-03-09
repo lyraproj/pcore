@@ -252,8 +252,8 @@ func (t *UriType) Equals(other interface{}, g px.Guard) bool {
 			if undef.Equals(ot.parameters, g) {
 				return false
 			}
-			if _, ok := ot.parameters.(*url.URL); ok {
-				return px.Equals(t.parameters, ot.parameters)
+			if u, ok := ot.parameters.(*url.URL); ok {
+				return px.Equals(t.parameters, u, g)
 			}
 			return t.paramsAsHash().Equals(ot.paramsAsHash(), g)
 		}

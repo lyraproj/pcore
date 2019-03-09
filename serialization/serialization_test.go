@@ -35,7 +35,7 @@ func ExampleNewSerializer_richDataRoundtrip() {
 
 func ExampleNewSerializer_objectRoundtrip() {
 	pcore.Do(func(ctx px.Context) {
-		p := px.NewParameter(`p1`, ctx.ParseType2(`Type[String]`), nil, false)
+		p := px.NewParameter(`p1`, ctx.ParseType(`Type[String]`), nil, false)
 		fmt.Println(p)
 
 		dc := serialization.NewSerializer(ctx, px.EmptyMap)
@@ -58,7 +58,7 @@ func ExampleNewSerializer_objectRoundtrip() {
 
 func ExampleNewSerializer_structInArrayRoundtrip() {
 	pcore.Do(func(ctx px.Context) {
-		p := types.WrapValues([]px.Value{ctx.ParseType2(`Struct[a => String, b => Integer]`)})
+		p := types.WrapValues([]px.Value{ctx.ParseType(`Struct[a => String, b => Integer]`)})
 		fmt.Println(p)
 		dc := serialization.NewSerializer(ctx, px.EmptyMap)
 		buf := bytes.NewBufferString(``)
@@ -80,7 +80,7 @@ func ExampleNewSerializer_structInArrayRoundtrip() {
 
 func ExampleNewSerializer_typeSetRoundtrip() {
 	pcore.Do(func(ctx px.Context) {
-		p := ctx.ParseType2(`TypeSet[{
+		p := ctx.ParseType(`TypeSet[{
       name => 'Foo',
       version => '1.0.0',
       pcore_version => '1.0.0',

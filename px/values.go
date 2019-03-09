@@ -42,27 +42,6 @@ type (
 		InitHash() OrderedMap
 	}
 
-	ErrorObject interface {
-		PuppetObject
-
-		// Kind returns the error kind
-		Kind() string
-
-		// Message returns the error message
-		Message() string
-
-		// IssueCode returns the issue code
-		IssueCode() string
-
-		// PartialResult returns the optional partial result. It returns
-		// pcore.UNDEF if no partial result exists
-		PartialResult() Value
-
-		// Details returns the optional details. It returns
-		// an empty map when o details exist
-		Details() OrderedMap
-	}
-
 	DetailedTypeValue interface {
 		Value
 		DetailedType() Type

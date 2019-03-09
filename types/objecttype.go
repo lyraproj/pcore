@@ -258,8 +258,8 @@ func (t *objectType) Equals(other interface{}, guard px.Guard) bool {
 	return t.attributes.Equals(ot.attributes, guard) &&
 		t.functions.Equals(ot.functions, guard) &&
 		t.parameters.Equals(ot.parameters, guard) &&
-		px.GuardedEquals(t.equality, ot.equality, guard) &&
-		px.GuardedEquals(t.serialization, ot.serialization, guard)
+		px.Equals(t.equality, ot.equality, guard) &&
+		px.Equals(t.serialization, ot.serialization, guard)
 }
 
 func (t *objectType) FromReflectedValue(c px.Context, src reflect.Value) px.PuppetObject {
@@ -339,7 +339,7 @@ func (t *objectType) parseAttributeType(c px.Context, receiverType, receiver str
 			panic(r)
 		}
 	}()
-	return c.ParseType(typeString)
+	return c.ParseType(typeString.String())
 }
 
 func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
@@ -931,7 +931,7 @@ func (t *objectType) appendAttributeValues(c px.Context, entries []*HashEntry, s
 func (t *objectType) checkSelfRecursion(c px.Context, originator *objectType) {
 	if t.parent != nil {
 		op := t.resolvedParent()
-		if px.Equals(op, originator) {
+		if op.Equals(originator, nil) {
 			panic(px.Error(px.ObjectInheritsSelf, issue.H{`label`: originator.Label()}))
 		}
 		op.checkSelfRecursion(c, originator)
@@ -1128,7 +1128,7 @@ func (t *objectType) initHash(includeName bool) *hash.StringHash {
 		others := hash.NewStringHash(5)
 		t.attributes.EachPair(func(key string, value interface{}) {
 			a := value.(px.Attribute)
-			if a.Kind() == constant && px.Equals(a.Type(), px.Generalize(a.Value().PType())) {
+			if a.Kind() == constant && px.Equals(a.Type(), px.Generalize(a.Value().PType()), nil) {
 				constants = append(constants, WrapHashEntry2(key, a.Value()))
 			} else {
 				others.Put(key, a)

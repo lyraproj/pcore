@@ -146,14 +146,14 @@ func (c *pxContext) Logger() px.Logger {
 	return c.logger
 }
 
-func (c *pxContext) ParseType(typeString px.Value) px.Type {
+func (c *pxContext) ParseTypeValue(typeString px.Value) px.Type {
 	if sv, ok := typeString.(px.StringValue); ok {
-		return c.ParseType2(sv.String())
+		return c.ParseType(sv.String())
 	}
-	panic(px.Error(px.IllegalArgumentType, issue.H{`function`: `ParseType`, `index`: 0, `expected`: `String`, `actual`: px.DetailedValueType(typeString).String()}))
+	panic(px.Error(px.IllegalArgumentType, issue.H{`function`: `ParseTypeValue`, `index`: 0, `expected`: `String`, `actual`: px.DetailedValueType(typeString).String()}))
 }
 
-func (c *pxContext) ParseType2(str string) px.Type {
+func (c *pxContext) ParseType(str string) px.Type {
 	t, err := types.Parse(str)
 	if err != nil {
 		panic(err)

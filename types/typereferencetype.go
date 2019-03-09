@@ -107,7 +107,7 @@ func (t *TypeReferenceType) Parameters() []px.Value {
 }
 
 func (t *TypeReferenceType) Resolve(c px.Context) px.Type {
-	r := c.ParseType2(t.typeString)
+	r := c.ParseType(t.typeString)
 	if rt, ok := r.(px.ResolvableType); ok {
 		if tr, ok := rt.(*TypeReferenceType); ok && t.typeString == tr.typeString {
 			panic(px.Error(px.UnresolvedType, issue.H{`typeString`: t.typeString}))

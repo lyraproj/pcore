@@ -61,11 +61,14 @@ func equals(a px.Value, b px.Value) bool {
 			}
 		}
 		return false
+	case px.Equality:
+		return a.Equals(b, nil)
 	default:
-		return px.Equals(a, b)
+		return px.Equals(a, b, nil)
 	}
 }
 
+// PuppetMatch implements the Puppet =~ semantics
 func match(a px.Value, b px.Value) bool {
 	result := false
 	switch b := b.(type) {

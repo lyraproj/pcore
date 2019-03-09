@@ -15,11 +15,15 @@ type (
 	// (algorithm copied from golang reflect/deepequal.go)
 	Guard map[visit]bool
 
+	// Equality is implemented by values that can be compared for equality with other values
 	Equality interface {
-		Equals(other interface{}, guard Guard) bool
+		// Returns true if the receiver is equal to the given value, false otherwise.
+		Equals(value interface{}, guard Guard) bool
 	}
 )
 
+// Seen returns true if the combination of the given values has been seen by this guard and if not, registers
+// the combination so that true is returned the next time the same values are given.
 func (g Guard) Seen(a, b interface{}) bool {
 	v := visit{a, b}
 	if _, ok := g[v]; ok {
@@ -29,25 +33,29 @@ func (g Guard) Seen(a, b interface{}) bool {
 	return false
 }
 
-// EqSlice converts a slice of values that implement the Equality interface to []Equality. The
-// method will panic if the given argument is not a slice or array, or if not all
-// elements implement the Equality interface
-func EqSlice(slice interface{}) []Equality {
-	sv := reflect.ValueOf(slice)
-	top := sv.Len()
-	result := make([]Equality, top)
-	for idx := 0; idx < top; idx++ {
-		result[idx] = sv.Index(idx).Interface().(Equality)
-	}
-	return result
-}
-
-func Equals(a interface{}, b interface{}) bool {
+// Equals will compare two values for equality. If the first value implements the Equality interface, then
+// the that interface is used. If the first value is a primitive, then the primitive will be compared using
+// ==. The default behavior is to delegate to reflect.DeepEqual.
+//
+// The comparison is optionally guarded from endless recursion by passing a Guard instance
+func Equals(a interface{}, b interface{}, g Guard) bool {
 	switch a := a.(type) {
 	case nil:
 		return b == nil
 	case Equality:
-		return a.(Equality).Equals(b, nil)
+		return a.(Equality).Equals(b, g)
+	case bool:
+		bs, ok := b.(bool)
+		return ok && a == bs
+	case int:
+		bs, ok := b.(int)
+		return ok && a == bs
+	case int64:
+		bs, ok := b.(int64)
+		return ok && a == bs
+	case float64:
+		bs, ok := b.(float64)
+		return ok && a == bs
 	case string:
 		bs, ok := b.(string)
 		return ok && a == bs
@@ -56,45 +64,19 @@ func Equals(a interface{}, b interface{}) bool {
 	}
 }
 
-func GuardedEquals(a interface{}, b interface{}, g Guard) bool {
-	switch a := a.(type) {
-	case nil:
-		return b == nil
-	case Equality:
-		return a.Equals(b, g)
-	case string:
-		bs, ok := b.(string)
-		return ok && a == bs
-	default:
-		return reflect.DeepEqual(a, b)
-	}
-}
-
-func IncludesAll(a []Equality, b []Equality) bool {
-	return GuardedIncludesAll(a, b, nil)
-}
-
-func IndexOf(a []Equality, b Equality) int {
-	return GuardedIndexFrom(a, b, 0, nil)
-}
-
-func ReverseIndexOf(a []Equality, b Equality) int {
-	return GuardedReverseIndexFrom(a, b, len(a), nil)
-}
-
-func IndexFrom(a []Equality, b Equality, startPos int) int {
-	return GuardedIndexFrom(a, b, startPos, nil)
-}
-
-func ReverseIndexFrom(a []Equality, b Equality, startPos int) int {
-	return GuardedReverseIndexFrom(a, b, startPos, nil)
-}
-
-func GuardedIncludesAll(a []Equality, b []Equality, g Guard) bool {
-	for _, v := range a {
+// IncludesAll returns true if the given slice a contains all values
+// in the given slice b.
+func IncludesAll(a interface{}, b interface{}, g Guard) bool {
+	ra := reflect.ValueOf(a)
+	la := ra.Len()
+	rb := reflect.ValueOf(b)
+	lb := rb.Len()
+	for ia := 0; ia < la; ia++ {
+		v := ra.Index(ia).Interface()
 		found := false
-		for _, ov := range b {
-			if v.Equals(ov, g) {
+		for ib := 0; ib < lb; ib++ {
+			ov := rb.Index(ib).Interface()
+			if Equals(ov, v, g) {
 				found = true
 				break
 			}
@@ -106,32 +88,34 @@ func GuardedIncludesAll(a []Equality, b []Equality, g Guard) bool {
 	return true
 }
 
-func GuardedIndexOf(a []Equality, b Equality, g Guard) int {
-	return GuardedIndexFrom(a, b, 0, g)
-}
-
-func GuardedReverseIndexOf(a []Equality, b Equality, g Guard) int {
-	return GuardedReverseIndexFrom(a, b, len(a), g)
-}
-
-func GuardedIndexFrom(a []Equality, b Equality, startPos int, g Guard) int {
-	top := len(a)
-	for idx := startPos; idx < top; idx++ {
-		if a[idx].Equals(b, g) {
+// IndexFrom returns the index in the given slice of the first occurrence of an
+// element for which Equals with the given value starting the comparison at the
+// given startPos. The value of -1 is returned when no such element is found.
+func IndexFrom(slice interface{}, value interface{}, startPos int, g Guard) int {
+	ra := reflect.ValueOf(slice)
+	la := ra.Len()
+	for idx := startPos; idx < la; idx++ {
+		if Equals(ra.Index(idx).Interface(), value, g) {
 			return idx
 		}
 	}
 	return -1
 }
 
-func GuardedReverseIndexFrom(a []Equality, b Equality, startPos int, g Guard) int {
-	top := len(a)
-	idx := startPos
-	if idx >= top {
-		idx = top - 1
+// ReverseIndexFrom returns the index in the given slice of the last occurrence of an
+// element for which Equals with the given value between position zero and the given
+// endPos. If endPos is -1 it will be set to the length of the slice.
+//
+// The value of -1 is returned when no such element is found.
+func ReverseIndexFrom(slice interface{}, value interface{}, endPos int, g Guard) int {
+	ra := reflect.ValueOf(slice)
+	top := ra.Len()
+	idx := top - 1
+	if endPos >= 0 && endPos < idx {
+		idx = endPos
 	}
 	for ; idx >= 0; idx-- {
-		if a[idx].Equals(b, g) {
+		if Equals(ra.Index(idx).Interface(), value, g) {
 			return idx
 		}
 	}
@@ -141,7 +125,25 @@ func GuardedReverseIndexFrom(a []Equality, b Equality, startPos int, g Guard) in
 // PuppetEquals is like Equals but:
 //   int and float values with same value are considered equal
 //   string comparisons are case insensitive
-//
 var PuppetEquals func(a, b Value) bool
 
-var PuppetMatch func(a, b Value) bool
+// PuppetMatch tests if the LHS matches the RHS pattern expression and returns a Boolean result
+//
+// When the RHS is a Type:
+//
+//   the match is true if the LHS is an instance of the type
+//   No match variables are set in this case.
+//
+// When the RHS is a SemVerRange:
+//
+//   the match is true if the LHS is a SemVer, and the version is within the range
+//   the match is true if the LHS is a String representing a SemVer, and the version is within the range
+//   an error is raised if the LHS is neither a String with a valid SemVer representation, nor a SemVer.
+//   otherwise the result is false (not in range).
+//
+// When the RHS is not a Type:
+//
+//   If the RHS evaluates to a String a new Regular Expression is created with the string value as its pattern.
+//   If the RHS is not a Regexp (after string conversion) an error is raised.
+//   If the LHS is not a String an error is raised. (Note, Numeric values are not converted to String automatically because of unknown radix).
+var PuppetMatch func(lhs, rhs Value) bool

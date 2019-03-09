@@ -50,7 +50,7 @@ func ExampleWrapHash() {
 				types.WrapInteger(1), types.WrapInteger(2), types.WrapInteger(3)})),
 			types.WrapHashEntry2(`z`, types.WrapRegexp(`^[a-z]+$`))}))})
 
-	fmt.Println(px.Equals(e, a))
+	fmt.Println(e.Equals(a, nil))
 	// Output: true
 }
 

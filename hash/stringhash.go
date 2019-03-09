@@ -105,7 +105,7 @@ func (h *StringHash) Equals(other interface{}, g px.Guard) bool {
 
 	for _, e := range h.entries {
 		oi, ok := oh.index[e.key]
-		if !(ok && px.GuardedEquals(e.value, oh.entries[oi].value, g)) {
+		if !(ok && px.Equals(e.value, oh.entries[oi].value, g)) {
 			return false
 		}
 	}

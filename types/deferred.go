@@ -89,7 +89,7 @@ func (e *deferred) String() string {
 func (e *deferred) Equals(other interface{}, guard px.Guard) bool {
 	if o, ok := other.(*deferred); ok {
 		return e.name == o.name &&
-			px.GuardedEquals(e.arguments, o.arguments, guard)
+			px.Equals(e.arguments, o.arguments, guard)
 	}
 	return false
 }

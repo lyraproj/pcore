@@ -349,7 +349,7 @@ func FormatFromHash(h *Hash) px.Format {
 	}
 
 	var cf px.FormatMap
-	if v := h.Get5(`string_formats`, undef); !px.Equals(v, undef) {
+	if v := h.Get5(`string_formats`, undef); !v.Equals(undef, nil) {
 		cf = NewFormatMap(v.(*Hash))
 	}
 	return parseFormat(stringArg(`format`, true), stringArg(`separator`, false), stringArg(`separator2`, false), cf)

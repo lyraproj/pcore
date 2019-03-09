@@ -31,7 +31,7 @@ func init() {
 		func(d px.Dispatch) {
 			d.Param(`String`)
 			d.Function(func(c px.Context, args []px.Value) px.Value {
-				return c.ParseType(args[0])
+				return c.ParseTypeValue(args[0])
 			})
 		},
 		func(d px.Dispatch) {

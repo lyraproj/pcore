@@ -142,7 +142,7 @@ func (o *attributeSlice) Call(c px.Context, method px.ObjFunc, args []px.Value, 
 
 func (o *attributeSlice) Equals(other interface{}, g px.Guard) bool {
 	if ov, ok := other.(*attributeSlice); ok {
-		return o.typ.Equals(ov.typ, g) && px.GuardedEquals(o.values, ov.values, g)
+		return o.typ.Equals(ov.typ, g) && px.Equals(o.values, ov.values, g)
 	}
 	return false
 }
@@ -166,7 +166,7 @@ func makeValueHash(pi px.AttributesInfo, values []px.Value) *Hash {
 	entries := make([]*HashEntry, 0, len(at))
 	for i, v := range values {
 		attr := at[i]
-		if !(attr.HasValue() && px.Equals(v, attr.Value()) || attr.Kind() == givenOrDerived && v.Equals(undef, nil)) {
+		if !(attr.HasValue() && v.Equals(attr.Value(), nil) || attr.Kind() == givenOrDerived && v.Equals(undef, nil)) {
 			entries = append(entries, WrapHashEntry2(attr.Name(), v))
 		}
 	}
@@ -363,7 +363,7 @@ func (o *reflectedObject) InitHash() px.OrderedMap {
 		gn := attr.GoName()
 		if gn != `` {
 			v := wrapReflected(c, oe.FieldByName(gn))
-			if !(attr.HasValue() && px.Equals(v, attr.Value()) || attr.Kind() == givenOrDerived && v.Equals(undef, nil)) {
+			if !(attr.HasValue() && v.Equals(attr.Value(), nil) || attr.Kind() == givenOrDerived && v.Equals(undef, nil)) {
 				entries = append(entries, WrapHashEntry2(attr.Name(), v))
 			}
 		}

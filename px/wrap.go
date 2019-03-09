@@ -2,27 +2,9 @@ package px
 
 import (
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/threadlocal"
 )
 
-// Go calls the given function in a new go routine. The CurrentContext is forked and becomes
-// the CurrentContext for that routine.
-func Go(f ContextDoer) {
-	Fork(CurrentContext(), f)
-}
-
-// Fork calls the given function in a new go routine. The given context is forked and becomes
-// the CurrentContext for that routine.
-func Fork(c Context, doer ContextDoer) {
-	go func() {
-		defer threadlocal.Cleanup()
-		threadlocal.Init()
-		cf := c.Fork()
-		threadlocal.Set(PuppetContextKey, cf)
-		doer(cf)
-	}()
-}
-
+// LogWarning logs a warning to the logger of the current context
 func LogWarning(issueCode issue.Code, args issue.H) {
 	CurrentContext().Logger().LogIssue(Warning(issueCode, args))
 }

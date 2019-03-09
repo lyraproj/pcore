@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"testing"
 	"time"
 
 	"github.com/lyraproj/pcore/pcore"
@@ -13,6 +14,111 @@ import (
 	"github.com/lyraproj/pcore/types"
 	"github.com/lyraproj/semver/semver"
 )
+
+func ExampleImplementationRegistry() {
+	type TestAddress struct {
+		Street string
+		Zip    string
+	}
+	type TestPerson struct {
+		Name    string
+		Age     int
+		Address *TestAddress
+		Active  bool
+	}
+
+	address, err := types.Parse(`
+    attributes => {
+      street => String,
+      zip => String,
+    }`)
+	if err != nil {
+		panic(err)
+	}
+	person, err := types.Parse(`
+		attributes => {
+      name => String,
+      age => Integer,
+      address => My::Address,
+      active => Boolean,
+		}`)
+	if err != nil {
+		panic(err)
+	}
+
+	c := pcore.RootContext()
+	px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
+
+	ir := c.ImplementationRegistry()
+	ir.RegisterType(c.ParseType(`My::Address`), reflect.TypeOf(TestAddress{}))
+	ir.RegisterType(c.ParseType(`My::Person`), reflect.TypeOf(TestPerson{}))
+
+	ts := &TestPerson{`Bob Tester`, 34, &TestAddress{`Example Road 23`, `12345`}, true}
+	ev := px.Wrap(c, ts)
+	fmt.Println(ev)
+	// Output: My::Person('name' => 'Bob Tester', 'age' => 34, 'address' => My::Address('street' => 'Example Road 23', 'zip' => '12345'), 'active' => true)
+}
+
+func ExampleImplementationRegistry_tags() {
+	type TestAddress struct {
+		Street string
+		Zip    string `puppet:"name=>zip_code"`
+	}
+	type TestPerson struct {
+		Name    string
+		Age     int
+		Address *TestAddress
+		Active  bool `puppet:"name=>enabled"`
+	}
+
+	address, _ := types.Parse(`
+    attributes => {
+      street => String,
+      zip_code => Optional[String],
+    }`)
+
+	person, _ := types.Parse(`
+		attributes => {
+      name => String,
+      age => Integer,
+      address => My::Address,
+      enabled => Boolean,
+		}`)
+
+	c := pcore.RootContext()
+	px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
+
+	ir := c.ImplementationRegistry()
+	ir.RegisterType(c.ParseType(`My::Address`), reflect.TypeOf(TestAddress{}))
+	ir.RegisterType(c.ParseType(`My::Person`), reflect.TypeOf(TestPerson{}))
+
+	ts := &TestPerson{`Bob Tester`, 34, &TestAddress{`Example Road 23`, `12345`}, true}
+	ev := px.Wrap(c, ts)
+	fmt.Println(ev)
+	// Output: My::Person('name' => 'Bob Tester', 'age' => 34, 'address' => My::Address('street' => 'Example Road 23', 'zip_code' => '12345'), 'enabled' => true)
+}
+
+func TestReflectorAndImplRepo(t *testing.T) {
+	type ObscurelyNamedAddress struct {
+		Street string
+		Zip    string `puppet:"name=>zip_code"`
+	}
+	type Person struct {
+		Name    string
+		Address ObscurelyNamedAddress
+	}
+
+	pcore.Do(func(c px.Context) {
+		typeSet := c.Reflector().TypeSetFromReflect(`My`, semver.MustParseVersion(`1.0.0`), map[string]string{`ObscurelyNamedAddress`: `Address`},
+			reflect.TypeOf(&ObscurelyNamedAddress{}), reflect.TypeOf(&Person{}))
+		px.AddTypes(c, typeSet)
+		tss := typeSet.String()
+		exp := `TypeSet[{pcore_uri => 'http://puppet.com/2016.1/pcore', pcore_version => '1.0.0', name_authority => 'http://puppet.com/2016.1/runtime', name => 'My', version => '1.0.0', types => {Address => {attributes => {'street' => String, 'zip_code' => String}}, Person => {attributes => {'name' => String, 'address' => Address}}}}]`
+		if tss != exp {
+			t.Errorf("Expected %s, got %s\n", exp, tss)
+		}
+	})
+}
 
 func ExampleReflector_reflectArray() {
 	c := pcore.RootContext()

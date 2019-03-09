@@ -181,7 +181,7 @@ func (t *TupleType) Default() px.Type {
 }
 
 func (t *TupleType) Equals(o interface{}, g px.Guard) bool {
-	if ot, ok := o.(*TupleType); ok && len(t.types) == len(ot.types) && px.GuardedEquals(t.size, ot.size, g) {
+	if ot, ok := o.(*TupleType); ok && len(t.types) == len(ot.types) && px.Equals(t.size, ot.size, g) {
 		for idx, col := range t.types {
 			if !col.Equals(ot.types[idx], g) {
 				return false

@@ -79,7 +79,7 @@ func (t *PatternType) Default() px.Type {
 
 func (t *PatternType) Equals(o interface{}, g px.Guard) bool {
 	if ot, ok := o.(*PatternType); ok {
-		return len(t.regexps) == len(ot.regexps) && px.GuardedIncludesAll(px.EqSlice(t.regexps), px.EqSlice(ot.regexps), g)
+		return len(t.regexps) == len(ot.regexps) && px.IncludesAll(t.regexps, ot.regexps, g)
 	}
 	return false
 }

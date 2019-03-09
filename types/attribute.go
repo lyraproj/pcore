@@ -87,7 +87,7 @@ func (a *attribute) Call(c px.Context, receiver px.Value, block px.Lambda, args 
 }
 
 func (a *attribute) Default(value px.Value) bool {
-	return px.Equals(a.value, value)
+	return a.value != nil && a.value.Equals(value, nil)
 }
 
 func (a *attribute) GoName() string {

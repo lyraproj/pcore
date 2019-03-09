@@ -29,22 +29,6 @@ type (
 		Signature() Signature
 	}
 
-	// ParameterDefaults is implemented by functions that can have
-	// default values for the parameters. Currently only applicable
-	// to the Puppet DSL function.
-	//
-	// A default is often an instance of types.Deferred and it is the
-	// callers responsibility to resolve.
-	ParameterDefaults interface {
-		Defaults() []Value
-	}
-
-	// CallNamed is implemented by functions that can be called with
-	// named arguments.
-	CallNamed interface {
-		CallNamed(c Context, block Lambda, args OrderedMap) Value
-	}
-
 	Function interface {
 		InvokableValue
 
@@ -122,8 +106,6 @@ type (
 
 	LocalTypesCreator func(lt LocalTypes)
 )
-
-var NoParameters = make([]Parameter, 0)
 
 var BuildFunction func(name string, localTypes LocalTypesCreator, creators []DispatchCreator) ResolvableFunction
 

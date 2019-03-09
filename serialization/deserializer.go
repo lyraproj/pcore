@@ -132,7 +132,7 @@ func (ds *dsContext) convertOther(hash px.OrderedMap, typeValue px.Value) px.Val
 		}
 		return ds.pcoreTypeHashToValue(typ.(px.Type), hash, value)
 	}
-	typ := ds.context.ParseType(typeValue)
+	typ := ds.context.ParseTypeValue(typeValue)
 	if tr, ok := typ.(*types.TypeReferenceType); ok {
 		if !ds.allowUnresolved {
 			panic(px.Error(px.UnresolvedType, issue.H{`typeString`: tr.String()}))
