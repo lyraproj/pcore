@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/semver/semver"
 )
@@ -184,8 +183,20 @@ func UniqueValues(values []px.Value) []px.Value {
 	return result
 }
 
-func NewIllegalArgumentType(name string, index int, expected string, actual px.Value) errors.InstantiationError {
-	return errors.NewIllegalArgumentType(name, index, expected, px.DetailedValueType(actual).String())
+func illegalArgument(name string, index int, arg string) issue.Reported {
+	return px.Error(px.IllegalArgument, issue.H{`function`: name, `index`: index, `arg`: arg})
+}
+
+func illegalArguments(name string, message string) issue.Reported {
+	return px.Error(px.IllegalArguments, issue.H{`function`: name, `message`: message})
+}
+
+func illegalArgumentType(name string, index int, expected string, actual px.Value) issue.Reported {
+	return px.Error(px.IllegalArgumentType, issue.H{`function`: name, `index`: index, `expected`: expected, `actual`: px.DetailedValueType(actual).String()})
+}
+
+func illegalArgumentCount(name string, expected string, actual int) issue.Reported {
+	return px.Error(px.IllegalArgumentCount, issue.H{`function`: name, `expected`: expected, `actual`: actual})
 }
 
 func TypeToString(t px.Type, b io.Writer, s px.FormatContext, g px.RDetect) {
@@ -549,14 +560,14 @@ func appendKey(b *bytes.Buffer, v px.Value) {
 	} else if hk, ok := v.(px.HashKeyValue); ok {
 		b.Write([]byte(hk.ToKey()))
 	} else {
-		panic(NewIllegalArgumentType(`ToKey`, 0, `value used as hash key`, v))
+		panic(illegalArgumentType(`ToKey`, 0, `value used as hash key`, v))
 	}
 }
 
 // Special hash key generation for type parameters which might be hashes
 // using string keys
 func appendTypeParamKey(b *bytes.Buffer, v px.Value) {
-	if h, ok := v.(*HashValue); ok {
+	if h, ok := v.(*Hash); ok {
 		b.WriteByte(2)
 		h.EachPair(func(k, v px.Value) {
 			b.Write([]byte(k.String()))
@@ -882,8 +893,8 @@ func createMetaType2(na px.URI, name string, typeName string, parentName string,
 	return NewParentedObjectType(name, NewTypeReferenceType(parentName), hash)
 }
 
-func argError(e px.Type, a px.Value) errors.InstantiationError {
-	return errors.NewArgumentsError(``, px.DescribeMismatch(`assert`, e, a.PType()))
+func argError(key string, e px.Type, a px.Value) issue.Reported {
+	return px.Error(px.TypeMismatch, issue.H{`detail`: px.DescribeMismatch(`property '`+key+`'`, e, a.PType())})
 }
 
 func typeArg(hash px.OrderedMap, key string, d px.Type) px.Type {
@@ -894,18 +905,18 @@ func typeArg(hash px.OrderedMap, key string, d px.Type) px.Type {
 	if t, ok := v.(px.Type); ok {
 		return t
 	}
-	panic(argError(DefaultTypeType(), v))
+	panic(argError(key, DefaultTypeType(), v))
 }
 
-func hashArg(hash px.OrderedMap, key string) *HashValue {
+func hashArg(hash px.OrderedMap, key string) *Hash {
 	v := hash.Get5(key, nil)
 	if v == nil {
 		return emptyMap
 	}
-	if t, ok := v.(*HashValue); ok {
+	if t, ok := v.(*Hash); ok {
 		return t
 	}
-	panic(argError(DefaultHashType(), v))
+	panic(argError(key, DefaultHashType(), v))
 }
 
 func boolArg(hash px.OrderedMap, key string, d bool) bool {
@@ -916,7 +927,7 @@ func boolArg(hash px.OrderedMap, key string, d bool) bool {
 	if t, ok := v.(booleanValue); ok {
 		return t.Bool()
 	}
-	panic(argError(DefaultBooleanType(), v))
+	panic(argError(key, DefaultBooleanType(), v))
 }
 
 type LazyType interface {
@@ -941,7 +952,7 @@ func stringArg(hash px.OrderedMap, key string, d string) string {
 	if t, ok := v.(stringValue); ok {
 		return string(t)
 	}
-	panic(argError(DefaultStringType(), v))
+	panic(argError(key, DefaultStringType(), v))
 }
 
 func uriArg(hash px.OrderedMap, key string, d px.URI) px.URI {
@@ -959,7 +970,7 @@ func uriArg(hash px.OrderedMap, key string, d px.URI) px.URI {
 	if t, ok := v.(*UriValue); ok {
 		return px.URI(t.URL().String())
 	}
-	panic(argError(DefaultUriType(), v))
+	panic(argError(key, DefaultUriType(), v))
 }
 
 func versionArg(hash px.OrderedMap, key string, d semver.Version) semver.Version {
@@ -974,10 +985,10 @@ func versionArg(hash px.OrderedMap, key string, d semver.Version) semver.Version
 		}
 		return sv
 	}
-	if sv, ok := v.(*SemVerValue); ok {
+	if sv, ok := v.(*SemVer); ok {
 		return sv.Version()
 	}
-	panic(argError(DefaultSemVerType(), v))
+	panic(argError(key, DefaultSemVerType(), v))
 }
 
 func versionRangeArg(hash px.OrderedMap, key string, d semver.VersionRange) semver.VersionRange {
@@ -992,8 +1003,8 @@ func versionRangeArg(hash px.OrderedMap, key string, d semver.VersionRange) semv
 		}
 		return sr
 	}
-	if sv, ok := v.(*SemVerRangeValue); ok {
+	if sv, ok := v.(*SemVerRange); ok {
 		return sv.VersionRange()
 	}
-	panic(argError(DefaultSemVerType(), v))
+	panic(argError(key, DefaultSemVerType(), v))
 }

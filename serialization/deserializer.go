@@ -21,7 +21,7 @@ func NewDeserializer(ctx px.Context, options px.OrderedMap) px.Collector {
 		context:         ctx,
 		newTypes:        make([]px.Type, 0, 11),
 		converted:       make(map[px.Value]px.Value, 11),
-		allowUnresolved: options.Get5(`allow_unresolved`, types.BooleanFalse).(px.BooleanValue).Bool()}
+		allowUnresolved: options.Get5(`allow_unresolved`, types.BooleanFalse).(px.Boolean).Bool()}
 	ds.Init()
 	return ds
 }
@@ -39,7 +39,7 @@ func (ds *dsContext) convert(value px.Value) px.Value {
 		return cv
 	}
 
-	if hash, ok := value.(*types.HashValue); ok {
+	if hash, ok := value.(*types.Hash); ok {
 		if hash.AllKeysAreStrings() {
 			if pcoreType, ok := hash.Get4(PcoreTypeKey); ok {
 				switch pcoreType.String() {
@@ -77,7 +77,7 @@ func (ds *dsContext) convert(value px.Value) px.Value {
 			}
 		}
 
-		return types.BuildHash(hash.Len(), func(h *types.HashValue, entries []*types.HashEntry) []*types.HashEntry {
+		return types.BuildHash(hash.Len(), func(h *types.Hash, entries []*types.HashEntry) []*types.HashEntry {
 			ds.converted[value] = h
 			hash.EachPair(func(k, v px.Value) {
 				entries = append(entries, types.WrapHashEntry(ds.convert(k), ds.convert(v)))
@@ -86,8 +86,8 @@ func (ds *dsContext) convert(value px.Value) px.Value {
 		})
 	}
 
-	if array, ok := value.(*types.ArrayValue); ok {
-		return types.BuildArray(array.Len(), func(a *types.ArrayValue, elements []px.Value) []px.Value {
+	if array, ok := value.(*types.Array); ok {
+		return types.BuildArray(array.Len(), func(a *types.Array, elements []px.Value) []px.Value {
 			ds.converted[value] = a
 			array.Each(func(v px.Value) { elements = append(elements, ds.convert(v)) })
 			return elements
@@ -98,7 +98,7 @@ func (ds *dsContext) convert(value px.Value) px.Value {
 
 func (ds *dsContext) convertHash(hv px.OrderedMap) px.Value {
 	value := hv.Get5(PcoreValueKey, px.EmptyArray).(px.List)
-	return types.BuildHash(value.Len(), func(hash *types.HashValue, entries []*types.HashEntry) []*types.HashEntry {
+	return types.BuildHash(value.Len(), func(hash *types.Hash, entries []*types.HashEntry) []*types.HashEntry {
 		ds.converted[hv] = hash
 		for idx := 0; idx < value.Len(); idx += 2 {
 			entries = append(entries, types.WrapHashEntry(ds.convert(value.At(idx)), ds.convert(value.At(idx+1))))
@@ -122,9 +122,9 @@ func (ds *dsContext) convertOther(hash px.OrderedMap, typeValue px.Value) px.Val
 			return false
 		})
 	})
-	if typeHash, ok := typeValue.(*types.HashValue); ok {
+	if typeHash, ok := typeValue.(*types.Hash); ok {
 		typ := ds.convert(typeHash)
-		if _, ok := typ.(*types.HashValue); ok {
+		if _, ok := typ.(*types.Hash); ok {
 			if !ds.allowUnresolved {
 				panic(px.Error(px.UnableToDeserializeType, issue.H{`hash`: typ.String()}))
 			}
@@ -144,14 +144,14 @@ func (ds *dsContext) convertOther(hash px.OrderedMap, typeValue px.Value) px.Val
 
 func (ds *dsContext) pcoreTypeHashToValue(typ px.Type, key, value px.Value) px.Value {
 	var ov px.Value
-	if hash, ok := value.(*types.HashValue); ok {
+	if hash, ok := value.(*types.Hash); ok {
 		if ov, ok = ds.allocate(typ); ok {
 			ds.converted[key] = ov
-			ov.(px.Object).InitFromHash(ds.context, ds.convert(hash).(*types.HashValue))
+			ov.(px.Object).InitFromHash(ds.context, ds.convert(hash).(*types.Hash))
 			return ov
 		}
 
-		hash = ds.convert(hash).(*types.HashValue)
+		hash = ds.convert(hash).(*types.Hash)
 		if ot, ok := typ.(px.ObjectType); ok {
 			if ot.HasHashConstructor() {
 				ov = px.New(ds.context, typ, hash)

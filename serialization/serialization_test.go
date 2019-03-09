@@ -18,7 +18,7 @@ func ExampleNewSerializer_richDataRoundtrip() {
 		v := types.WrapSemVer(ver)
 		fmt.Printf("%T '%s'\n", v, v)
 
-		dc := serialization.NewSerializer(ctx, types.SingletonHash2(`rich_data`, types.BooleanTrue))
+		dc := serialization.NewSerializer(ctx, px.SingletonMap(`rich_data`, types.BooleanTrue))
 		buf := bytes.NewBufferString(``)
 		dc.Convert(v, serialization.NewJsonStreamer(buf))
 
@@ -29,8 +29,8 @@ func ExampleNewSerializer_richDataRoundtrip() {
 		fmt.Printf("%T '%s'\n", v2, v2)
 	})
 	// Output:
-	// *types.SemVerValue '1.0.0'
-	// *types.SemVerValue '1.0.0'
+	// *types.SemVer '1.0.0'
+	// *types.SemVer '1.0.0'
 }
 
 func ExampleNewSerializer_objectRoundtrip() {
@@ -204,7 +204,7 @@ func ExampleSerializer_Convert() {
 	pcore.Do(func(ctx px.Context) {
 		ver, _ := semver.NewVersion(1, 0, 0)
 		cl := px.NewCollector()
-		serialization.NewSerializer(ctx, types.SingletonHash2(`rich_data`, types.BooleanTrue)).Convert(types.WrapSemVer(ver), cl)
+		serialization.NewSerializer(ctx, px.SingletonMap(`rich_data`, types.BooleanTrue)).Convert(types.WrapSemVer(ver), cl)
 		fmt.Println(cl.Value())
 	})
 	// Output: {'__ptype' => 'SemVer', '__pvalue' => '1.0.0'}

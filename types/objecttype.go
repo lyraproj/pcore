@@ -11,7 +11,6 @@ import (
 	"bytes"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/hash"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
@@ -25,7 +24,7 @@ func init() {
 	}
 	ObjectMetaType = NewParentedObjectType(`Pcore::ObjectType`, AnyMetaType,
 		WrapStringToValueMap(map[string]px.Value{
-			`attributes`: SingletonHash2(`_pcore_init_hash`, TypeObjectInitHash)}),
+			`attributes`: singletonMap(`_pcore_init_hash`, TypeObjectInitHash)}),
 		oneArgCtor, oneArgCtor)
 }
 
@@ -95,7 +94,7 @@ type objectType struct {
 	equalityIncludeType bool
 	serialization       []string
 	loader              px.Loader
-	initHashExpression  interface{} // Expression, *HashValue, or Go zero value
+	initHashExpression  interface{} // Expression, *Hash, or Go zero value
 	attrInfo            *attributesInfo
 	ctor                px.Function
 	goType              px.AnnotatedType
@@ -116,7 +115,7 @@ func ObjectToString(o px.PuppetObject, s px.FormatContext, b io.Writer, g px.RDe
 		utils.WriteString(b, indent.Padding())
 	}
 	utils.WriteString(b, o.PType().Name())
-	o.InitHash().(*HashValue).ToString2(b, s, px.GetFormat(s.FormatMap(), o.PType()), '(', g)
+	o.InitHash().(*Hash).ToString2(b, s, px.GetFormat(s.FormatMap(), o.PType()), '(', g)
 }
 
 var objectTypeDefault = &objectType{
@@ -381,7 +380,7 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 			key := k.String()
 			var paramType px.Type
 			var paramValue px.Value
-			if ph, ok := v.(*HashValue); ok {
+			if ph, ok := v.(*Hash); ok {
 				px.AssertInstance(
 					func() string { return fmt.Sprintf(`type_parameter %s[%s]`, t.Label(), key) },
 					TypeTypeParameter, ph)
@@ -438,7 +437,7 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 		ah := hash.NewStringHash(attrSpecs.Len())
 		attrSpecs.EachPair(func(key string, ifv interface{}) {
 			value := ifv.(px.Value)
-			attrSpec, ok := value.(*HashValue)
+			attrSpec, ok := value.(*Hash)
 			if !ok {
 				var attrType px.Type
 				if tn, ok := value.(stringValue); ok {
@@ -491,7 +490,7 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 			if attributes.IncludesKey(key) {
 				panic(px.Error(px.MemberNameConflict, issue.H{`label`: fmt.Sprintf(`function %s[%s]`, t.Label(), key)}))
 			}
-			funcSpec, ok := value.(*HashValue)
+			funcSpec, ok := value.(*Hash)
 			if !ok {
 				var funcType px.Type
 				if tn, ok := value.(stringValue); ok {
@@ -517,7 +516,7 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 	eq := initHash.Get5(keyEquality, nil)
 	if es, ok := eq.(stringValue); ok {
 		equality = []string{string(es)}
-	} else if ea, ok := eq.(*ArrayValue); ok {
+	} else if ea, ok := eq.(*Array); ok {
 		equality = make([]string, ea.Len())
 	} else {
 		equality = nil
@@ -547,7 +546,7 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 	}
 	t.equality = equality
 
-	se, ok := initHash.Get5(keySerialization, nil).(*ArrayValue)
+	se, ok := initHash.Get5(keySerialization, nil).(*Array)
 	if ok {
 		serialization := make([]string, se.Len())
 		var optFound px.Attribute
@@ -581,7 +580,7 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 
 	t.isInterface = isInterface
 	t.attrInfo = t.createAttributesInfo()
-	t.annotatable.initialize(initHash.(*HashValue))
+	t.annotatable.initialize(initHash.(*Hash))
 	t.loader = c.Loader()
 }
 
@@ -866,7 +865,7 @@ func (t *objectType) basicTypeToString(b io.Writer, f px.Format, s px.FormatCont
 			// The keys should not be quoted in this hash
 			utils.WriteString(b, `{`)
 			first3 := true
-			value.(*HashValue).EachPair(func(name, typ px.Value) {
+			value.(*Hash).EachPair(func(name, typ px.Value) {
 				if first3 {
 					first3 = false
 				} else {
@@ -1065,7 +1064,7 @@ func (t *objectType) createNewFunction(c px.Context) {
 			},
 			// Named argument creator
 			func(c px.Context, args []px.Value) px.Value {
-				return newObjectValue2(c, t, args[0].(*HashValue))
+				return newObjectValue2(c, t, args[0].(*Hash))
 			}}
 	}
 
@@ -1201,7 +1200,7 @@ func (t *objectType) typeParameters(includeParent bool) *hash.StringHash {
 	return c
 }
 
-func compressedMembersHash(mh *hash.StringHash) *HashValue {
+func compressedMembersHash(mh *hash.StringHash) *Hash {
 	he := make([]*HashEntry, 0, mh.Len())
 	mh.EachPair(func(key string, value interface{}) {
 		fh := value.(px.AnnotatedMember).InitHash()
@@ -1219,7 +1218,7 @@ func compressedMembersHash(mh *hash.StringHash) *HashValue {
 
 func resolveTypeRefs(c px.Context, v interface{}) px.Value {
 	switch v := v.(type) {
-	case *HashValue:
+	case *Hash:
 		he := make([]*HashEntry, v.Len())
 		i := 0
 		v.EachPair(func(key, value px.Value) {
@@ -1228,7 +1227,7 @@ func resolveTypeRefs(c px.Context, v interface{}) px.Value {
 			i++
 		})
 		return WrapHash(he)
-	case *ArrayValue:
+	case *Array:
 		ae := make([]px.Value, v.Len())
 		i := 0
 		v.Each(func(value px.Value) {
@@ -1249,14 +1248,14 @@ func newObjectType(name, typeDecl string, creators ...px.DispatchFunction) px.Ob
 		_, fileName, fileLine, _ := runtime.Caller(1)
 		panic(convertReported(err, fileName, fileLine))
 	}
-	if h, ok := ta.(*HashValue); ok {
+	if h, ok := ta.(*Hash); ok {
 		// "type = {}"
 		return NewParentedObjectType(name, nil, h, creators...)
 	}
 	if dt, ok := ta.(*DeferredType); ok {
 		ps := dt.Parameters()
 		if len(ps) == 1 {
-			if h, ok := ps[0].(*HashValue); ok {
+			if h, ok := ps[0].(*Hash); ok {
 				var p px.Type
 				if pn := dt.Name(); pn != `TypeSet` && pn != `Object` {
 					p = NewTypeReferenceType(pn)
@@ -1275,7 +1274,7 @@ func newObjectType2(c px.Context, args ...px.Value) *objectType {
 		return DefaultObjectType()
 	case 1:
 		arg := args[0]
-		if initHash, ok := arg.(*HashValue); ok {
+		if initHash, ok := arg.(*Hash); ok {
 			if initHash.IsEmpty() {
 				return DefaultObjectType()
 			}
@@ -1284,9 +1283,9 @@ func newObjectType2(c px.Context, args ...px.Value) *objectType {
 			obj.loader = c.Loader()
 			return obj
 		}
-		panic(NewIllegalArgumentType(`Object[]`, 0, `Hash[String,Any]`, arg.PType()))
+		panic(illegalArgumentType(`Object[]`, 0, `Hash[String,Any]`, arg.PType()))
 	default:
-		panic(errors.NewIllegalArgumentCount(`Object[]`, `1`, argc))
+		panic(illegalArgumentCount(`Object[]`, `1`, argc))
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/lyraproj/pcore/utils"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -52,7 +51,7 @@ func newTypeAliasType2(args ...px.Value) *TypeAliasType {
 	case 2:
 		name, ok := args[0].(stringValue)
 		if !ok {
-			panic(NewIllegalArgumentType(`TypeAlias`, 0, `String`, args[0]))
+			panic(illegalArgumentType(`TypeAlias`, 0, `String`, args[0]))
 		}
 		var pt px.Type
 		if pt, ok = args[1].(px.Type); ok {
@@ -61,9 +60,9 @@ func newTypeAliasType2(args ...px.Value) *TypeAliasType {
 		if dt, ok := args[1].(*DeferredType); ok {
 			return NewTypeAliasType(string(name), dt, nil)
 		}
-		panic(NewIllegalArgumentType(`TypeAlias[]`, 1, `Type or Expression`, args[1]))
+		panic(illegalArgumentType(`TypeAlias[]`, 1, `Type or Expression`, args[1]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`TypeAlias[]`, `0 or 2`, len(args)))
+		panic(illegalArgumentCount(`TypeAlias[]`, `0 or 2`, len(args)))
 	}
 }
 

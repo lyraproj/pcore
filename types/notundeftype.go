@@ -5,7 +5,6 @@ import (
 
 	"reflect"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -51,9 +50,9 @@ func newNotUndefType2(args ...px.Value) *NotUndefType {
 		if containedType, ok := args[0].(stringValue); ok {
 			return newNotUndefType3(string(containedType))
 		}
-		panic(NewIllegalArgumentType(`NotUndef[]`, 0, `Variant[Type,String]`, args[0]))
+		panic(illegalArgumentType(`NotUndef[]`, 0, `Variant[Type,String]`, args[0]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`NotUndef[]`, `0 - 1`, len(args)))
+		panic(illegalArgumentCount(`NotUndef[]`, `0 - 1`, len(args)))
 	}
 }
 

@@ -17,11 +17,11 @@ import (
 func ExampleReflector_reflectArray() {
 	c := pcore.RootContext()
 
-	av := px.Wrap(nil, []interface{}{`hello`, 3}).(*types.ArrayValue)
+	av := px.Wrap(nil, []interface{}{`hello`, 3}).(*types.Array)
 	ar := c.Reflector().Reflect(av)
 	fmt.Printf("%s %v\n", ar.Type(), ar)
 
-	av = px.Wrap(nil, []interface{}{`hello`, `world`}).(*types.ArrayValue)
+	av = px.Wrap(nil, []interface{}{`hello`, `world`}).(*types.Array)
 	ar = c.Reflector().Reflect(av)
 	fmt.Printf("%s %v\n", ar.Type(), ar)
 	// Output:
@@ -194,22 +194,6 @@ func ExampleReflector_reflectToVersion() {
 
 	fmt.Println(version)
 	// Output: 1.2.3
-}
-
-func ExampleReflector_ReflectTo_puppetObject() {
-	type TestStruct struct {
-		Message   string
-		Kind      string
-		IssueCode string `puppet:"name => issue_code"`
-	}
-
-	c := pcore.RootContext()
-	ts := &TestStruct{}
-
-	ev := px.NewError(c, `the message`, `THE_KIND`, `THE_CODE`, nil, nil)
-	c.Reflector().ReflectTo(ev, reflect.ValueOf(ts).Elem())
-	fmt.Printf("message: %s, kind %s, issueCode %s\n", ts.Message, ts.Kind, ts.IssueCode)
-	// Output: message: the message, kind THE_KIND, issueCode THE_CODE
 }
 
 func ExampleReflector_typeFromReflect() {
@@ -512,12 +496,12 @@ func ExampleReflector_TypeFromReflect_twoValueReturnErrorFail() {
 
 type valueStruct struct {
 	X px.OrderedMap
-	Y *types.ArrayValue
+	Y *types.Array
 	P px.PuppetObject
 	O px.Object
 }
 
-func (v *valueStruct) Get(key px.IntegerValue, dflt px.Value) px.StringValue {
+func (v *valueStruct) Get(key px.Integer, dflt px.Value) px.StringValue {
 	return v.X.Get2(key, px.Undef).(px.StringValue)
 }
 

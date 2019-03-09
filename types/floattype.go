@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"reflect"
 	"strings"
 
-	"reflect"
-
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -72,7 +70,7 @@ func NewFloatType(min float64, max float64) *FloatType {
 		return DefaultFloatType()
 	}
 	if min > max {
-		panic(errors.NewArgumentsError(`Float[]`, `min is not allowed to be greater than max`))
+		panic(illegalArguments(`Float[]`, `min is not allowed to be greater than max`))
 	}
 	return &FloatType{min, max}
 }
@@ -85,7 +83,7 @@ func newFloatType2(limits ...px.Value) *FloatType {
 	min, ok := toFloat(limits[0])
 	if !ok {
 		if _, ok = limits[0].(*DefaultValue); !ok {
-			panic(NewIllegalArgumentType(`Float[]`, 0, `Float`, limits[0]))
+			panic(illegalArgumentType(`Float[]`, 0, `Float`, limits[0]))
 		}
 		min = -math.MaxFloat64
 	}
@@ -97,12 +95,12 @@ func newFloatType2(limits ...px.Value) *FloatType {
 	case 2:
 		if max, ok = toFloat(limits[1]); !ok {
 			if _, ok = limits[1].(*DefaultValue); !ok {
-				panic(NewIllegalArgumentType(`Float[]`, 1, `Float`, limits[1]))
+				panic(illegalArgumentType(`Float[]`, 1, `Float`, limits[1]))
 			}
 			max = math.MaxFloat64
 		}
 	default:
-		panic(errors.NewIllegalArgumentCount(`Float`, `0 - 2`, len(limits)))
+		panic(illegalArgumentCount(`Float`, `0 - 2`, len(limits)))
 	}
 	return NewFloatType(min, max)
 }
@@ -216,7 +214,7 @@ func (t *FloatType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func WrapFloat(val float64) px.FloatValue {
+func WrapFloat(val float64) px.Float {
 	return floatValue(val)
 }
 

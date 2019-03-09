@@ -5,9 +5,10 @@ import (
 	"io"
 	"math"
 
+	"github.com/lyraproj/issue/issue"
+
 	"github.com/lyraproj/pcore/utils"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 )
@@ -315,7 +316,7 @@ func (f *goFunction) Call(c px.Context, block px.Lambda, args ...px.Value) px.Va
 			return d.Call(c, block, args...)
 		}
 	}
-	panic(errors.NewArgumentsError(f.name, px.DescribeSignatures(signatures(f.dispatchers), types.WrapValues(args).DetailedType(), block)))
+	panic(px.Error(px.IllegalArguments, issue.H{`function`: f.name, `message`: px.DescribeSignatures(signatures(f.dispatchers), types.WrapValues(args).DetailedType(), block)}))
 }
 
 func signatures(lambdas []px.Lambda) []px.Signature {

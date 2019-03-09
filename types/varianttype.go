@@ -54,15 +54,15 @@ func newVariantType3(args px.List) px.Type {
 		switch first := first.(type) {
 		case px.Type:
 			return first
-		case *ArrayValue:
+		case *Array:
 			return newVariantType3(first)
 		default:
-			panic(NewIllegalArgumentType(`Variant[]`, 0, `Type or Array[Type]`, args.At(0)))
+			panic(illegalArgumentType(`Variant[]`, 0, `Type or Array[Type]`, args.At(0)))
 		}
 	default:
 		variants, failIdx = toTypes(args)
 		if failIdx >= 0 {
-			panic(NewIllegalArgumentType(`Variant[]`, failIdx, `Type`, args.At(failIdx)))
+			panic(illegalArgumentType(`Variant[]`, failIdx, `Type`, args.At(failIdx)))
 		}
 	}
 	return &VariantType{variants}

@@ -103,11 +103,11 @@ func (j *jsonStreamer) write(e px.Value) {
 	switch e := e.(type) {
 	case px.StringValue:
 		v, err = json.Marshal(e.String())
-	case px.FloatValue:
+	case px.Float:
 		v, err = json.Marshal(e.Float())
-	case px.IntegerValue:
+	case px.Integer:
 		v, err = json.Marshal(e.Int())
-	case px.BooleanValue:
+	case px.Boolean:
 		v, err = json.Marshal(e.Bool())
 	default:
 		v = []byte(`null`)

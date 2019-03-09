@@ -1,7 +1,6 @@
 package loader
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -71,7 +69,7 @@ func (l *fileBasedLoader) newSmartPath(pathType px.PathType, moduleNameRelative 
 	if f, ok := SmartPathFactories[pathType]; ok {
 		return f(l, moduleNameRelative)
 	}
-	panic(errors.NewIllegalArgument(`newSmartPath`, 1, fmt.Sprintf(`Unknown path type '%s'`, pathType)))
+	panic(px.Error(px.IllegalArgument, issue.H{`function`: `newSmartPath`, `index`: 1, `arg`: pathType}))
 }
 
 func newPuppetTypePath(loader px.ModuleLoader, moduleNameRelative bool) SmartPath {

@@ -22,7 +22,7 @@ func (hm *BasicCollector) Init() {
 }
 
 func (hm *BasicCollector) AddArray(cap int, doer px.Doer) {
-	BuildArray(cap, func(ar *ArrayValue, elements []px.Value) []px.Value {
+	BuildArray(cap, func(ar *Array, elements []px.Value) []px.Value {
 		hm.Add(ar)
 		top := len(hm.stack)
 		hm.stack = append(hm.stack, elements)
@@ -34,7 +34,7 @@ func (hm *BasicCollector) AddArray(cap int, doer px.Doer) {
 }
 
 func (hm *BasicCollector) AddHash(cap int, doer px.Doer) {
-	BuildHash(cap, func(ar *HashValue, entries []*HashEntry) []*HashEntry {
+	BuildHash(cap, func(ar *Hash, entries []*HashEntry) []*HashEntry {
 		hm.Add(ar)
 		top := len(hm.stack)
 		hm.stack = append(hm.stack, make([]px.Value, 0, cap*2))

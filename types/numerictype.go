@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -45,7 +44,7 @@ func init() {
 	)
 }
 
-func numberFromPositionalArgs(args []px.Value, tryInt bool) px.NumericValue {
+func numberFromPositionalArgs(args []px.Value, tryInt bool) px.Number {
 	n := fromConvertible(args[0], tryInt)
 	if len(args) > 1 && args[1].(booleanValue).Bool() {
 		if i, ok := n.(integerValue); ok {
@@ -57,8 +56,8 @@ func numberFromPositionalArgs(args []px.Value, tryInt bool) px.NumericValue {
 	return n
 }
 
-func numberFromNamedArgs(args []px.Value, tryInt bool) px.NumericValue {
-	h := args[0].(*HashValue)
+func numberFromNamedArgs(args []px.Value, tryInt bool) px.Number {
+	h := args[0].(*Hash)
 	n := fromConvertible(h.Get5(`from`, px.Undef), tryInt)
 	a := h.Get5(`abs`, nil)
 	if a != nil && a.(booleanValue).Bool() {
@@ -134,23 +133,23 @@ func (t *NumericType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func fromConvertible(c px.Value, allowInt bool) px.NumericValue {
+func fromConvertible(c px.Value, allowInt bool) px.Number {
 	switch c := c.(type) {
 	case integerValue:
 		if allowInt {
 			return c
 		}
 		return floatValue(c.Float())
-	case *TimestampValue:
+	case *Timestamp:
 		return floatValue(c.Float())
-	case TimespanValue:
+	case Timespan:
 		return floatValue(c.Float())
 	case booleanValue:
 		if allowInt {
 			return integerValue(c.Int())
 		}
 		return floatValue(c.Float())
-	case px.NumericValue:
+	case px.Number:
 		return c
 	case stringValue:
 		s := c.String()
@@ -170,5 +169,5 @@ func fromConvertible(c px.Value, allowInt bool) px.NumericValue {
 			}
 		}
 	}
-	panic(errors.NewArgumentsError(`Numeric`, fmt.Sprintf(`Value of type %s cannot be converted to an Number`, c.PType().String())))
+	panic(illegalArguments(`Numeric`, fmt.Sprintf(`Value of type %s cannot be converted to an Number`, c.PType().String())))
 }

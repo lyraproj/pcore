@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -123,7 +122,7 @@ func init() {
 		func(d px.Dispatch) {
 			d.Param(`Hash[String[1],ScalarData]`)
 			d.Function(func(c px.Context, args []px.Value) px.Value {
-				return WrapURI(URIFromHash(args[0].(*HashValue)))
+				return WrapURI(URIFromHash(args[0].(*Hash)))
 			})
 		})
 }
@@ -156,7 +155,7 @@ func NewUriType(uri *url.URL) *UriType {
 	return &UriType{uri}
 }
 
-func newUriType3(parameters *HashValue) *UriType {
+func newUriType3(parameters *Hash) *UriType {
 	if parameters.IsEmpty() {
 		return uriTypeDefault
 	}
@@ -174,12 +173,12 @@ func newUriType2(args ...px.Value) *UriType {
 		if uri, ok := args[0].(*UriValue); ok {
 			return NewUriType(uri.URL())
 		}
-		if hash, ok := args[0].(*HashValue); ok {
+		if hash, ok := args[0].(*Hash); ok {
 			return newUriType3(hash)
 		}
-		panic(NewIllegalArgumentType(`URI[]`, 0, `Variant[URI, Hash]`, args[0]))
+		panic(illegalArgumentType(`URI[]`, 0, `Variant[URI, Hash]`, args[0]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`URI[]`, `0 or 1`, len(args)))
+		panic(illegalArgumentCount(`URI[]`, `0 or 1`, len(args)))
 	}
 }
 
@@ -199,7 +198,7 @@ func ParseURI2(str string, strict bool) (*url.URL, error) {
 	return url.Parse(str)
 }
 
-func URIFromHash(hash *HashValue) *url.URL {
+func URIFromHash(hash *Hash) *url.URL {
 	uri := &url.URL{}
 	if scheme, ok := hash.Get4(`scheme`); ok {
 		uri.Scheme = scheme.String()
@@ -247,8 +246,8 @@ func (t *UriType) Equals(other interface{}, g px.Guard) bool {
 		switch t.parameters.(type) {
 		case *UndefValue:
 			return undef.Equals(ot.parameters, g)
-		case *HashValue:
-			return t.parameters.(*HashValue).Equals(ot.paramsAsHash(), g)
+		case *Hash:
+			return t.parameters.(*Hash).Equals(ot.paramsAsHash(), g)
 		default:
 			if undef.Equals(ot.parameters, g) {
 				return false
@@ -267,8 +266,8 @@ func (t *UriType) Get(key string) (value px.Value, ok bool) {
 		switch t.parameters.(type) {
 		case *UndefValue:
 			return undef, true
-		case *HashValue:
-			return t.parameters.(*HashValue), true
+		case *Hash:
+			return t.parameters.(*Hash), true
 		default:
 			return urlToHash(t.parameters.(*url.URL)), true
 		}
@@ -332,8 +331,8 @@ func (t *UriType) Parameters() []px.Value {
 	switch t.parameters.(type) {
 	case *UndefValue:
 		return px.EmptyValues
-	case *HashValue:
-		return []px.Value{t.parameters.(*HashValue)}
+	case *Hash:
+		return []px.Value{t.parameters.(*Hash)}
 	default:
 		return []px.Value{urlToHash(t.parameters.(*url.URL))}
 	}
@@ -359,18 +358,18 @@ func (t *UriType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func (t *UriType) paramsAsHash() *HashValue {
+func (t *UriType) paramsAsHash() *Hash {
 	switch t.parameters.(type) {
 	case *UndefValue:
 		return emptyMap
-	case *HashValue:
-		return t.parameters.(*HashValue)
+	case *Hash:
+		return t.parameters.(*Hash)
 	default:
 		return urlToHash(t.parameters.(*url.URL))
 	}
 }
 
-func urlToHash(uri *url.URL) *HashValue {
+func urlToHash(uri *url.URL) *Hash {
 	entries := make([]*HashEntry, 0, 8)
 	if uri.Scheme != `` {
 		entries = append(entries, WrapHashEntry2(`scheme`, stringValue(strings.ToLower(uri.Scheme))))

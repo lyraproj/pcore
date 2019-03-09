@@ -41,13 +41,13 @@ type context struct {
 // NewSerializer returns a new Serializer
 func NewSerializer(ctx px.Context, options px.OrderedMap) Serializer {
 	t := &rdSerializer{context: ctx}
-	t.richData = options.Get5(`rich_data`, types.BooleanTrue).(px.BooleanValue).Bool()
+	t.richData = options.Get5(`rich_data`, types.BooleanTrue).(px.Boolean).Bool()
 	t.messagePrefix = options.Get5(`message_prefix`, px.EmptyString).String()
-	if !options.Get5(`local_reference`, types.BooleanTrue).(px.BooleanValue).Bool() {
+	if !options.Get5(`local_reference`, types.BooleanTrue).(px.Boolean).Bool() {
 		// local_reference explicitly set to false
 		t.dedupLevel = NoDedup
 	} else {
-		t.dedupLevel = int(options.Get5(`dedup_level`, types.WrapInteger(MaxDedup)).(px.IntegerValue).Int())
+		t.dedupLevel = int(options.Get5(`dedup_level`, types.WrapInteger(MaxDedup)).(px.Integer).Int())
 	}
 	return t
 }
@@ -91,7 +91,7 @@ func (sc *context) toData(level int, value px.Value) {
 	}
 
 	switch value := value.(type) {
-	case *types.UndefValue, px.IntegerValue, px.FloatValue, px.BooleanValue:
+	case *types.UndefValue, px.Integer, px.Float, px.Boolean:
 		// Never dedup
 		sc.addData(value)
 	case px.StringValue:
@@ -114,7 +114,7 @@ func (sc *context) toData(level int, value px.Value) {
 			px.LogWarning(px.SerializationDefaultConvertedToString, issue.H{`path`: sc.pathToString()})
 			sc.toData(1, types.WrapString(`default`))
 		}
-	case *types.HashValue:
+	case *types.Hash:
 		if sc.consumer.CanDoComplexKeys() || value.AllKeysAreStrings() {
 			sc.process(value, func() {
 				sc.addHash(value.Len(), func() {
@@ -127,7 +127,7 @@ func (sc *context) toData(level int, value px.Value) {
 		} else {
 			sc.nonStringKeyedHashToData(value)
 		}
-	case *types.ArrayValue:
+	case *types.Array:
 		sc.process(value, func() {
 			sc.addArray(value.Len(), func() {
 				value.EachWithIndex(func(elem px.Value, idx int) {
@@ -135,7 +135,7 @@ func (sc *context) toData(level int, value px.Value) {
 				})
 			})
 		})
-	case *types.SensitiveValue:
+	case *types.Sensitive:
 		sc.process(value, func() {
 			if sc.config.richData {
 				sc.addHash(2, func() {
@@ -148,7 +148,7 @@ func (sc *context) toData(level int, value px.Value) {
 				sc.unknownToStringWithWarning(level, value)
 			}
 		})
-	case *types.BinaryValue:
+	case *types.Binary:
 		sc.process(value, func() {
 			if sc.consumer.CanDoBinary() {
 				sc.addData(value)

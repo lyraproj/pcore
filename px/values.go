@@ -68,7 +68,7 @@ type (
 		DetailedType() Type
 	}
 
-	SizedValue interface {
+	Sized interface {
 		Value
 		Len() int
 		IsEmpty() bool
@@ -79,28 +79,33 @@ type (
 		Interface() interface{}
 	}
 
-	IterableValue interface {
-		Iterator() Iterator
+	Arrayable interface {
+		AsArray() List
+	}
+
+	Indexed interface {
+		Sized
+		At(index int) Value
 		ElementType() Type
 		IsHashStyle() bool
 	}
 
 	IteratorValue interface {
 		Value
-		AsArray() List
+		Arrayable
+		ElementType() Type
+		Next() (Value, bool)
 	}
 
 	// List represents an Array. The iterative methods will not catch break exceptions. If
 	//	// that is desired, then use an Iterator instead.
 	List interface {
-		SizedValue
-		IterableValue
+		Indexed
 		Add(Value) List
 		AddAll(List) List
 		All(predicate Predicate) bool
 		Any(predicate Predicate) bool
 		AppendTo(slice []Value) []Value
-		At(index int) Value
 		Delete(Value) List
 		DeleteAll(List) List
 		Each(Consumer)
@@ -183,24 +188,24 @@ type (
 		RejectPairs(BiPredicate) OrderedMap
 	}
 
-	NumericValue interface {
+	Number interface {
 		Value
 		Int() int64
 		Float() float64
 	}
 
-	BooleanValue interface {
+	Boolean interface {
 		Value
 		Bool() bool
 	}
 
-	IntegerValue interface {
-		NumericValue
+	Integer interface {
+		Number
 		Abs() int64
 	}
 
-	FloatValue interface {
-		NumericValue
+	Float interface {
+		Number
 		Abs() float64
 	}
 
@@ -219,6 +224,7 @@ var EmptyString Value
 var EmptyValues []Value
 var Undef Value
 
+var SingletonMap func(string, Value) OrderedMap
 var DetailedValueType func(value Value) Type
 var GenericValueType func(value Value) Type
 var ToKey func(value Value) HashKey

@@ -3,7 +3,6 @@ package px
 import "github.com/lyraproj/issue/issue"
 
 const (
-	ArgumentsError                        = `EVAL_ARGUMENTS_ERROR`
 	AttemptToRedefine                     = `EVAL_ATTEMPT_TO_REDEFINE`
 	AttemptToSetUnsettable                = `EVAL_ATTEMPT_TO_SET_UNSETTABLE`
 	AttemptToSetWrongKind                 = `EVAL_ATTEMPT_TO_SET_WRONG_KIND`
@@ -25,6 +24,10 @@ const (
 	FileReadDenied                        = `EVAL_FILE_READ_DENIED`
 	GoFunctionError                       = `EVAL_GO_FUNCTION_ERROR`
 	GoRuntimeTypeWithoutGoType            = `EVAL_GO_RUNTIME_TYPE_WITHOUT_GO_TYPE`
+	IllegalArgument                       = `EVAL_ILLEGAL_ARGUMENT`
+	IllegalArguments                      = `EVAL_ILLEGAL_ARGUMENTS`
+	IllegalArgumentCount                  = `EVAL_ILLEGAL_ARGUMENT_COUNT`
+	IllegalArgumentType                   = `EVAL_ILLEGAL_ARGUMENT_TYPE`
 	IllegalKindValueCombination           = `EVAL_ILLEGAL_KIND_VALUE_COMBINATION`
 	IllegalObjectInheritance              = `EVAL_ILLEGAL_OBJECT_INHERITANCE`
 	ImplAlreadyRegistered                 = `EVAL_IMPL_ALREADY_REGISTERED`
@@ -97,8 +100,6 @@ const (
 )
 
 func init() {
-	issue.Hard2(ArgumentsError, `Error when evaluating %{expression}: %{message}`, issue.HF{`expression`: issue.AnOrA})
-
 	issue.Hard(AttemptToRedefine, `attempt to redefine %{name}`)
 
 	issue.Hard(AttemptToSetUnsettable, `attempt to set a value of kind %{kind} in an unsettable reflect.Value`)
@@ -141,6 +142,14 @@ func init() {
 	issue.Hard(GoFunctionError, `Go function %{name} returned error '%{error}'`)
 
 	issue.Hard(GoRuntimeTypeWithoutGoType, `Attempt to create a Runtime['go', '%{name}'] without providing a Go type`)
+
+	issue.Hard(IllegalArgument, `invalid argument for function %{function}, argument %{index}: %{arg}`)
+
+	issue.Hard(IllegalArgumentCount, `invalid argument count for function %{function}. expected '%{expected}', got %{actual}`)
+
+	issue.Hard(IllegalArguments, `invalid arguments for function %{function}: %{message}`)
+
+	issue.Hard(IllegalArgumentType, `invalid argument type for function %{function}, argument %{index}. expected '%{expected}', got %{actual}`)
 
 	issue.Hard(IllegalKindValueCombination, `%{label} of kind '%{kind}' cannot be combined with an attribute value`)
 

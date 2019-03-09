@@ -3,7 +3,6 @@ package types
 import (
 	"io"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -45,11 +44,11 @@ func newIterableType2(args ...px.Value) *IterableType {
 	case 1:
 		containedType, ok := args[0].(px.Type)
 		if !ok {
-			panic(NewIllegalArgumentType(`Iterable[]`, 0, `Type`, args[0]))
+			panic(illegalArgumentType(`Iterable[]`, 0, `Type`, args[0]))
 		}
 		return NewIterableType(containedType)
 	default:
-		panic(errors.NewIllegalArgumentCount(`Iterable[]`, `0 - 1`, len(args)))
+		panic(illegalArgumentCount(`Iterable[]`, `0 - 1`, len(args)))
 	}
 }
 
@@ -101,7 +100,7 @@ func (t *IterableType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *IterableType) IsInstance(o px.Value, g px.Guard) bool {
-	if iv, ok := o.(px.IterableValue); ok {
+	if iv, ok := o.(px.Indexed); ok {
 		return GuardedIsAssignable(t.typ, iv.ElementType(), g)
 	}
 	return false

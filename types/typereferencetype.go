@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -41,9 +40,9 @@ func newTypeReferenceType2(args ...px.Value) *TypeReferenceType {
 		if str, ok := args[0].(stringValue); ok {
 			return &TypeReferenceType{string(str)}
 		}
-		panic(NewIllegalArgumentType(`TypeReference[]`, 0, `String`, args[0]))
+		panic(illegalArgumentType(`TypeReference[]`, 0, `String`, args[0]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`TypeReference[]`, `0 - 1`, len(args)))
+		panic(illegalArgumentCount(`TypeReference[]`, `0 - 1`, len(args)))
 	}
 }
 

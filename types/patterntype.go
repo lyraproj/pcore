@@ -45,7 +45,7 @@ func newPatternType3(regexps px.List) *PatternType {
 	case 0:
 		return DefaultPatternType()
 	case 1:
-		if av, ok := regexps.At(0).(*ArrayValue); ok {
+		if av, ok := regexps.At(0).(*Array); ok {
 			return newPatternType3(av)
 		}
 	}
@@ -55,12 +55,12 @@ func newPatternType3(regexps px.List) *PatternType {
 		switch arg := arg.(type) {
 		case *RegexpType:
 			rs[idx] = arg
-		case *RegexpValue:
+		case *Regexp:
 			rs[idx] = arg.PType().(*RegexpType)
 		case stringValue:
 			rs[idx] = newRegexpType2(arg)
 		default:
-			panic(NewIllegalArgumentType(`Pattern[]`, idx, `Type[Regexp], Regexp, or String`, arg))
+			panic(illegalArgumentType(`Pattern[]`, idx, `Type[Regexp], Regexp, or String`, arg))
 		}
 	})
 	return NewPatternType(rs)
@@ -146,7 +146,7 @@ func (t *PatternType) Parameters() []px.Value {
 	return rxs
 }
 
-func (t *PatternType) Patterns() *ArrayValue {
+func (t *PatternType) Patterns() *Array {
 	rxs := make([]px.Value, len(t.regexps))
 	for idx, rx := range t.regexps {
 		rxs[idx] = rx

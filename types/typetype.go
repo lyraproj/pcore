@@ -3,7 +3,6 @@ package types
 import (
 	"io"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -62,9 +61,9 @@ func newTypeType2(args ...px.Value) *TypeType {
 		if containedType, ok := args[0].(px.Type); ok {
 			return NewTypeType(containedType)
 		}
-		panic(NewIllegalArgumentType(`Type[]`, 0, `Type`, args[0]))
+		panic(illegalArgumentType(`Type[]`, 0, `Type`, args[0]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`Type[]`, `0 or 1`, len(args)))
+		panic(illegalArgumentCount(`Type[]`, `0 or 1`, len(args)))
 	}
 }
 

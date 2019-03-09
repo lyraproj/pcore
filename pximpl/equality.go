@@ -24,23 +24,23 @@ func equals(a px.Value, b px.Value) bool {
 	switch a := a.(type) {
 	case px.StringValue:
 		return a.EqualsIgnoreCase(b)
-	case px.IntegerValue:
+	case px.Integer:
 		lhs := a.Int()
 		switch b := b.(type) {
-		case px.IntegerValue:
+		case px.Integer:
 			return lhs == b.Int()
-		case px.NumericValue:
+		case px.Number:
 			return float64(lhs) == b.Float()
 		}
 		return false
-	case px.FloatValue:
+	case px.Float:
 		lhs := a.Float()
-		if rhv, ok := b.(px.NumericValue); ok {
+		if rhv, ok := b.(px.Number); ok {
 			return lhs == rhv.Float()
 		}
 		return false
-	case *types.ArrayValue:
-		if rhs, ok := b.(*types.ArrayValue); ok {
+	case *types.Array:
+		if rhs, ok := b.(*types.Array); ok {
 			if a.Len() == rhs.Len() {
 				idx := 0
 				return a.All(func(el px.Value) bool {
@@ -51,8 +51,8 @@ func equals(a px.Value, b px.Value) bool {
 			}
 		}
 		return false
-	case *types.HashValue:
-		if rhs, ok := b.(*types.HashValue); ok {
+	case *types.Hash:
+		if rhs, ok := b.(*types.Hash); ok {
 			if a.Len() == rhs.Len() {
 				return a.AllPairs(func(key, value px.Value) bool {
 					rhsValue, ok := rhs.Get(key)
@@ -72,7 +72,7 @@ func match(a px.Value, b px.Value) bool {
 	case px.Type:
 		result = px.IsInstance(b, a)
 
-	case px.StringValue, *types.RegexpValue:
+	case px.StringValue, *types.Regexp:
 		var rx *regexp.Regexp
 		if s, ok := b.(px.StringValue); ok {
 			var err error
@@ -81,7 +81,7 @@ func match(a px.Value, b px.Value) bool {
 				panic(px.Error(px.MatchNotRegexp, issue.H{`detail`: err.Error()}))
 			}
 		} else {
-			rx = b.(*types.RegexpValue).Regexp()
+			rx = b.(*types.Regexp).Regexp()
 		}
 
 		sv, ok := a.(px.StringValue)
@@ -92,10 +92,10 @@ func match(a px.Value, b px.Value) bool {
 			result = true
 		}
 
-	case *types.SemVerValue, *types.SemVerRangeValue:
+	case *types.SemVer, *types.SemVerRange:
 		var version semver.Version
 
-		if v, ok := a.(*types.SemVerValue); ok {
+		if v, ok := a.(*types.SemVer); ok {
 			version = v.Version()
 		} else if s, ok := a.(px.StringValue); ok {
 			var err error
@@ -107,10 +107,10 @@ func match(a px.Value, b px.Value) bool {
 			panic(px.Error(px.NotSemver,
 				issue.H{`detail`: fmt.Sprintf(`A value of type %s cannot be converted to a SemVer`, a.PType().String())}))
 		}
-		if lv, ok := b.(*types.SemVerValue); ok {
+		if lv, ok := b.(*types.SemVer); ok {
 			result = lv.Version().Equals(version)
 		} else {
-			result = b.(*types.SemVerRangeValue).VersionRange().Includes(version)
+			result = b.(*types.SemVerRange).VersionRange().Includes(version)
 		}
 
 	default:

@@ -2,11 +2,9 @@ package types
 
 import (
 	"io"
+	"reflect"
 	"strings"
 
-	"reflect"
-
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -85,9 +83,9 @@ func newBooleanType2(args ...px.Value) *BooleanType {
 		if bv, ok := args[0].(booleanValue); ok {
 			return NewBooleanType(bool(bv))
 		}
-		panic(NewIllegalArgumentType(`Boolean[]`, 0, `Boolean`, args[0]))
+		panic(illegalArgumentType(`Boolean[]`, 0, `Boolean`, args[0]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`Boolean[]`, `0 or 1`, len(args)))
+		panic(illegalArgumentCount(`Boolean[]`, `0 or 1`, len(args)))
 	}
 }
 
@@ -186,7 +184,7 @@ func (t *BooleanType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func WrapBoolean(val bool) px.BooleanValue {
+func WrapBoolean(val bool) px.Boolean {
 	if val {
 		return BooleanTrue
 	}

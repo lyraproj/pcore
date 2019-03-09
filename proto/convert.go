@@ -83,30 +83,30 @@ func (pc *protoConsumer) add(value *datapb.Data) {
 
 func ToPBData(v px.Value) (value *datapb.Data) {
 	switch v := v.(type) {
-	case px.BooleanValue:
+	case px.Boolean:
 		value = &datapb.Data{Kind: &datapb.Data_BooleanValue{BooleanValue: v.Bool()}}
-	case px.FloatValue:
+	case px.Float:
 		value = &datapb.Data{Kind: &datapb.Data_FloatValue{FloatValue: v.Float()}}
-	case px.IntegerValue:
+	case px.Integer:
 		value = &datapb.Data{Kind: &datapb.Data_IntegerValue{IntegerValue: v.Int()}}
 	case px.StringValue:
 		value = &datapb.Data{Kind: &datapb.Data_StringValue{StringValue: v.String()}}
 	case *types.UndefValue:
 		value = &datapb.Data{Kind: &datapb.Data_UndefValue{}}
-	case *types.ArrayValue:
+	case *types.Array:
 		vs := make([]*datapb.Data, v.Len())
 		v.EachWithIndex(func(elem px.Value, i int) {
 			vs[i] = ToPBData(elem)
 		})
 		value = &datapb.Data{Kind: &datapb.Data_ArrayValue{ArrayValue: &datapb.DataArray{Values: vs}}}
-	case *types.HashValue:
+	case *types.Hash:
 		vs := make([]*datapb.DataEntry, v.Len())
 		v.EachWithIndex(func(elem px.Value, i int) {
 			entry := elem.(*types.HashEntry)
 			vs[i] = &datapb.DataEntry{Key: ToPBData(entry.Key()), Value: ToPBData(entry.Value())}
 		})
 		value = &datapb.Data{Kind: &datapb.Data_HashValue{HashValue: &datapb.DataHash{Entries: vs}}}
-	case *types.BinaryValue:
+	case *types.Binary:
 		value = &datapb.Data{Kind: &datapb.Data_BinaryValue{BinaryValue: v.Bytes()}}
 	default:
 		value = &datapb.Data{Kind: &datapb.Data_UndefValue{}}

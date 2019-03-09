@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -65,7 +64,7 @@ func NewRuntimeType(runtimeName string, name string, pattern *RegexpType) *Runti
 func newRuntimeType2(args ...px.Value) *RuntimeType {
 	top := len(args)
 	if top > 3 {
-		panic(errors.NewIllegalArgumentCount(`Runtime[]`, `0 - 3`, len(args)))
+		panic(illegalArgumentCount(`Runtime[]`, `0 - 3`, len(args)))
 	}
 	if top == 0 {
 		return DefaultRuntimeType()
@@ -73,7 +72,7 @@ func newRuntimeType2(args ...px.Value) *RuntimeType {
 
 	runtimeName, ok := args[0].(stringValue)
 	if !ok {
-		panic(NewIllegalArgumentType(`Runtime[]`, 0, `String`, args[0]))
+		panic(illegalArgumentType(`Runtime[]`, 0, `String`, args[0]))
 	}
 
 	var pattern *RegexpType
@@ -84,7 +83,7 @@ func newRuntimeType2(args ...px.Value) *RuntimeType {
 		var rv stringValue
 		rv, ok = args[1].(stringValue)
 		if !ok {
-			panic(NewIllegalArgumentType(`Runtime[]`, 1, `String`, args[1]))
+			panic(illegalArgumentType(`Runtime[]`, 1, `String`, args[1]))
 		}
 		name = rv
 
@@ -93,7 +92,7 @@ func newRuntimeType2(args ...px.Value) *RuntimeType {
 		} else {
 			pattern, ok = args[2].(*RegexpType)
 			if !ok {
-				panic(NewIllegalArgumentType(`Runtime[]`, 2, `Type[Regexp]`, args[2]))
+				panic(illegalArgumentType(`Runtime[]`, 2, `Type[Regexp]`, args[2]))
 			}
 		}
 	}

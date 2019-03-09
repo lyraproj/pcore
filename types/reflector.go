@@ -252,7 +252,7 @@ func (r *reflector) InitializerFromTagged(typeName string, parent px.Type, tg px
 		if fn == `` {
 			fn = `do`
 		}
-		ie = append(ie, WrapHashEntry2(keyFunctions, SingletonHash2(`do`, r.FunctionDeclFromReflect(fn, rf, false))))
+		ie = append(ie, WrapHashEntry2(keyFunctions, singletonMap(`do`, r.FunctionDeclFromReflect(fn, rf, false))))
 	} else {
 		tags := tg.Tags()
 		fs := r.Fields(rf)

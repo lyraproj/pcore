@@ -61,7 +61,7 @@ func (dt *DeferredType) Resolve(c px.Context) px.Type {
 					dt.resolved = newTypeSetType2(ih, c.Loader())
 				}
 			} else {
-				ar := resolveValue(c, WrapValues(dt.params)).(*ArrayValue)
+				ar := resolveValue(c, WrapValues(dt.params)).(*Array)
 				dt.resolved = ResolveWithParams(c, dt.tn, ar.AppendTo(make([]px.Value, 0, ar.Len())))
 			}
 		} else {
@@ -81,11 +81,11 @@ func resolveValue(c px.Context, v px.Value) (rv px.Value) {
 		rv = v.Resolve(c)
 	case Deferred:
 		rv = v.Resolve(c)
-	case *ArrayValue:
+	case *Array:
 		rv = v.Map(func(e px.Value) px.Value { return resolveValue(c, e) })
 	case *HashEntry:
 		rv = resolveEntry(c, v)
-	case *HashValue:
+	case *Hash:
 		rv = v.MapEntries(func(he px.MapEntry) px.MapEntry { return resolveEntry(c, he) })
 	default:
 		rv = v

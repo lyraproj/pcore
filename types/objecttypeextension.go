@@ -172,7 +172,7 @@ func (te *objectTypeExtension) initialize(c px.Context, baseType *objectType, in
 	te.baseType = baseType
 	namedArgs := false
 	if len(initParameters) == 1 {
-		_, namedArgs = initParameters[0].(*HashValue)
+		_, namedArgs = initParameters[0].(*Hash)
 	}
 
 	if namedArgs {
@@ -185,7 +185,7 @@ func (te *objectTypeExtension) initialize(c px.Context, baseType *objectType, in
 
 	byName := hash.NewStringHash(pts.Len())
 	if namedArgs {
-		h := initParameters[0].(*HashValue)
+		h := initParameters[0].(*Hash)
 		h.EachPair(func(k, pv px.Value) {
 			pn := k.String()
 			tp := pts.Get(pn, nil)

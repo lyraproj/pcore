@@ -66,7 +66,7 @@ func NewObjectValue(c px.Context, typ px.ObjectType, values []px.Value) (ov px.O
 	return ov
 }
 
-func newObjectValue2(c px.Context, typ px.ObjectType, hash *HashValue) (ov px.Object) {
+func newObjectValue2(c px.Context, typ px.ObjectType, hash *Hash) (ov px.Object) {
 	ov = AllocObjectValue(typ)
 	ov.InitFromHash(c, hash)
 	return ov
@@ -161,7 +161,7 @@ func (o *attributeSlice) InitHash() px.OrderedMap {
 
 // Turn a positional argument list into a hash. The hash will exclude all values
 // that are equal to the default value of the corresponding attribute
-func makeValueHash(pi px.AttributesInfo, values []px.Value) *HashValue {
+func makeValueHash(pi px.AttributesInfo, values []px.Value) *Hash {
 	at := pi.Attributes()
 	entries := make([]*HashEntry, 0, len(at))
 	for i, v := range values {
@@ -352,7 +352,7 @@ func (o *reflectedObject) InitHash() px.OrderedMap {
 		attr := at[0]
 		if attr.GoName() == keyValue {
 			pv, _ := WrapPrimitive(o.value)
-			return SingletonHash2(`value`, pv)
+			return singletonMap(`value`, pv)
 		}
 	}
 

@@ -42,7 +42,7 @@ func init() {
 		}
 		return NewTypedName(ns, n)
 	}, func(ctx px.Context, args []px.Value) px.Value {
-		h := args[0].(*HashValue)
+		h := args[0].(*Hash)
 		ns := px.Namespace(h.Get5(`namespace`, px.EmptyString).String())
 		n := h.Get5(`name`, px.EmptyString).String()
 		if x, ok := h.Get4(`authority`); ok {

@@ -31,13 +31,13 @@ type attribute struct {
 	goName string
 }
 
-func newAttribute(c px.Context, name string, container *objectType, initHash *HashValue) px.Attribute {
+func newAttribute(c px.Context, name string, container *objectType, initHash *Hash) px.Attribute {
 	a := &attribute{}
 	a.initialize(c, name, container, initHash)
 	return a
 }
 
-func (a *attribute) initialize(c px.Context, name string, container *objectType, initHash *HashValue) {
+func (a *attribute) initialize(c px.Context, name string, container *objectType, initHash *Hash) {
 	px.AssertInstance(func() string { return fmt.Sprintf(`initializer for attribute %s[%s]`, container.Label(), name) }, typeAttribute, initHash)
 	a.annotatedMember.initialize(c, `attribute`, name, container, initHash)
 	a.kind = px.AttributeKind(stringArg(initHash, keyKind, ``))
@@ -153,7 +153,7 @@ func (a *attribute) CallableType() px.Type {
 	return typeAttributeCallable
 }
 
-func newTypeParameter(c px.Context, name string, container *objectType, initHash *HashValue) px.Attribute {
+func newTypeParameter(c px.Context, name string, container *objectType, initHash *Hash) px.Attribute {
 	t := &typeParameter{}
 	t.initialize(c, name, container, initHash)
 	return t

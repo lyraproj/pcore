@@ -3,7 +3,6 @@ package types
 import (
 	"io"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -29,7 +28,7 @@ func init() {
 			return newDeferred2(args...)
 		},
 		func(ctx px.Context, args []px.Value) px.Value {
-			return newDeferredFromHash(args[0].(*HashValue))
+			return newDeferredFromHash(args[0].(*Hash))
 		})
 }
 
@@ -38,14 +37,14 @@ type Deferred interface {
 
 	Name() string
 
-	Arguments() *ArrayValue
+	Arguments() *Array
 
 	Resolve(c px.Context) px.Value
 }
 
 type deferred struct {
 	name      string
-	arguments *ArrayValue
+	arguments *Array
 }
 
 func NewDeferred(name string, arguments ...px.Value) *deferred {
@@ -55,23 +54,23 @@ func NewDeferred(name string, arguments ...px.Value) *deferred {
 func newDeferred2(args ...px.Value) *deferred {
 	argc := len(args)
 	if argc < 1 || argc > 2 {
-		panic(errors.NewIllegalArgumentCount(`deferred[]`, `1 - 2`, argc))
+		panic(illegalArgumentCount(`Deferred[]`, `1 - 2`, argc))
 	}
 	if name, ok := args[0].(stringValue); ok {
 		if argc == 1 {
 			return &deferred{string(name), emptyArray}
 		}
-		if as, ok := args[1].(*ArrayValue); ok {
+		if as, ok := args[1].(*Array); ok {
 			return &deferred{string(name), as}
 		}
-		panic(NewIllegalArgumentType(`deferred[]`, 1, `Array`, args[1]))
+		panic(illegalArgumentType(`deferred[]`, 1, `Array`, args[1]))
 	}
-	panic(NewIllegalArgumentType(`deferred[]`, 0, `String`, args[0]))
+	panic(illegalArgumentType(`deferred[]`, 0, `String`, args[0]))
 }
 
-func newDeferredFromHash(hash *HashValue) *deferred {
+func newDeferredFromHash(hash *Hash) *deferred {
 	name := hash.Get5(`name`, px.EmptyString).String()
-	arguments := hash.Get5(`arguments`, px.EmptyArray).(*ArrayValue)
+	arguments := hash.Get5(`arguments`, px.EmptyArray).(*Array)
 	return &deferred{name, arguments}
 }
 
@@ -79,7 +78,7 @@ func (e *deferred) Name() string {
 	return e.name
 }
 
-func (e *deferred) Arguments() *ArrayValue {
+func (e *deferred) Arguments() *Array {
 	return e.arguments
 }
 
@@ -127,11 +126,11 @@ func ResolveDeferred(c px.Context, a px.Value) px.Value {
 	switch a := a.(type) {
 	case Deferred:
 		return a.Resolve(c)
-	case *ArrayValue:
+	case *Array:
 		return a.Map(func(v px.Value) px.Value {
 			return ResolveDeferred(c, v)
 		})
-	case *HashValue:
+	case *Hash:
 		return a.MapEntries(func(v px.MapEntry) px.MapEntry {
 			return WrapHashEntry(ResolveDeferred(c, v.Key()), ResolveDeferred(c, v.Value()))
 		})

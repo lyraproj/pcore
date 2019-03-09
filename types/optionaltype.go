@@ -5,7 +5,6 @@ import (
 
 	"reflect"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -51,9 +50,9 @@ func newOptionalType2(args ...px.Value) *OptionalType {
 		if containedType, ok := args[0].(stringValue); ok {
 			return newOptionalType3(string(containedType))
 		}
-		panic(NewIllegalArgumentType(`Optional[]`, 0, `Variant[Type,String]`, args[0]))
+		panic(illegalArgumentType(`Optional[]`, 0, `Variant[Type,String]`, args[0]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`Optional[]`, `0 - 1`, len(args)))
+		panic(illegalArgumentCount(`Optional[]`, `0 - 1`, len(args)))
 	}
 }
 

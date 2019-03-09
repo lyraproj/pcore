@@ -9,7 +9,7 @@ import (
 
 type InitType struct {
 	typ      px.Type
-	initArgs *ArrayValue
+	initArgs *Array
 	ctor     px.Function
 }
 
@@ -35,7 +35,7 @@ func NewInitType(typ px.Value, args px.Value) *InitType {
 	if !ok {
 		tp = nil
 	}
-	aa, ok := args.(*ArrayValue)
+	aa, ok := args.(*Array)
 	if !ok {
 		aa = emptyArray
 	}
@@ -156,7 +156,7 @@ func (t *InitType) IsInstance(o px.Value, g px.Guard) bool {
 	}
 
 	// If the given value is an array, expand it and check if it matches.
-	if a, ok := o.(*ArrayValue); ok {
+	if a, ok := o.(*Array); ok {
 		vs = a.AppendTo(make([]px.Value, 0, a.Len()))
 		return t.anySignature(func(s px.Signature) bool { return s.CallableWith(vs, nil) })
 	}
@@ -193,7 +193,7 @@ func (t *InitType) New(c px.Context, args []px.Value) px.Value {
 	// If the given value is an array, expand it and check if it matches.
 	if len(args) == 1 {
 		arg := args[0]
-		if a, ok := arg.(*ArrayValue); ok {
+		if a, ok := arg.(*Array); ok {
 			vs := a.AppendTo(make([]px.Value, 0, a.Len()))
 			return t.ctor.Call(c, nil, vs...)
 		}

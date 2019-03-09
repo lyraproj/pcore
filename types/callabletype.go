@@ -82,7 +82,7 @@ func newCallableType3(args px.List) *CallableType {
 		if iv, ok = first.(px.List); ok {
 			if argc == 2 {
 				if rt, ok = args.At(1).(px.Type); !ok {
-					panic(NewIllegalArgumentType(`Callable[]`, 1, `Type`, args.At(1)))
+					panic(illegalArgumentType(`Callable[]`, 1, `Type`, args.At(1)))
 				}
 			}
 			argc = iv.Len()

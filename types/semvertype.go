@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 	"github.com/lyraproj/semver/semver"
@@ -18,7 +17,7 @@ type (
 		vRange semver.VersionRange
 	}
 
-	SemVerValue SemVerType
+	SemVer SemVerType
 )
 
 var semVerTypeDefault = &SemVerType{semver.MatchAll}
@@ -50,7 +49,7 @@ func init() {
 			d.Function(func(c px.Context, args []px.Value) px.Value {
 				v, err := semver.ParseVersion(args[0].String())
 				if err != nil {
-					panic(errors.NewIllegalArgument(`SemVer`, 0, err.Error()))
+					panic(illegalArgument(`SemVer`, 0, err.Error()))
 				}
 				return WrapSemVer(v)
 			})
@@ -77,7 +76,7 @@ func init() {
 				}
 				v, err := semver.NewVersion3(int(major), int(minor), int(patch), preRelease, build)
 				if err != nil {
-					panic(errors.NewArgumentsError(`SemVer`, err.Error()))
+					panic(illegalArguments(`SemVer`, err.Error()))
 				}
 				return WrapSemVer(v)
 			})
@@ -86,7 +85,7 @@ func init() {
 		func(d px.Dispatch) {
 			d.Param(`SemVerHash`)
 			d.Function(func(c px.Context, args []px.Value) px.Value {
-				hash := args[0].(*HashValue)
+				hash := args[0].(*Hash)
 				major := hash.Get5(`major`, ZERO).(integerValue).Int()
 				minor := hash.Get5(`minor`, ZERO).(integerValue).Int()
 				patch := hash.Get5(`patch`, ZERO).(integerValue).Int()
@@ -102,7 +101,7 @@ func init() {
 				}
 				v, err := semver.NewVersion3(int(major), int(minor), int(patch), preRelease, build)
 				if err != nil {
-					panic(errors.NewArgumentsError(`SemVer`, err.Error()))
+					panic(illegalArguments(`SemVer`, err.Error()))
 				}
 				return WrapSemVer(v)
 			})
@@ -145,12 +144,12 @@ func newSemVerType3(limits px.List) *SemVerType {
 			var err error
 			rng, err = semver.ParseVersionRange(string(str))
 			if err != nil {
-				panic(errors.NewIllegalArgument(`SemVer[]`, idx, err.Error()))
+				panic(illegalArgument(`SemVer[]`, idx, err.Error()))
 			}
 		} else {
-			rv, ok := arg.(*SemVerRangeValue)
+			rv, ok := arg.(*SemVerRange)
 			if !ok {
-				panic(NewIllegalArgumentType(`SemVer[]`, idx, `Variant[String,SemVerRange]`, arg))
+				panic(illegalArgumentType(`SemVer[]`, idx, `Variant[String,SemVerRange]`, arg))
 			}
 			rng = rv.VersionRange()
 		}
@@ -217,7 +216,7 @@ func (t *SemVerType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *SemVerType) IsInstance(o px.Value, g px.Guard) bool {
-	if v, ok := o.(*SemVerValue); ok {
+	if v, ok := o.(*SemVer); ok {
 		return t.vRange.Includes(v.Version())
 	}
 	return false
@@ -238,26 +237,26 @@ func (t *SemVerType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func WrapSemVer(val semver.Version) *SemVerValue {
-	return (*SemVerValue)(NewSemVerType(semver.ExactVersionRange(val)))
+func WrapSemVer(val semver.Version) *SemVer {
+	return (*SemVer)(NewSemVerType(semver.ExactVersionRange(val)))
 }
 
-func (v *SemVerValue) Version() semver.Version {
+func (v *SemVer) Version() semver.Version {
 	return v.vRange.StartVersion()
 }
 
-func (v *SemVerValue) Equals(o interface{}, g px.Guard) bool {
-	if ov, ok := o.(*SemVerValue); ok {
+func (v *SemVer) Equals(o interface{}, g px.Guard) bool {
+	if ov, ok := o.(*SemVer); ok {
 		return v.Version().Equals(ov.Version())
 	}
 	return false
 }
 
-func (v *SemVerValue) Reflect(c px.Context) reflect.Value {
+func (v *SemVer) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf(v.Version())
 }
 
-func (v *SemVerValue) ReflectTo(c px.Context, dest reflect.Value) {
+func (v *SemVer) ReflectTo(c px.Context, dest reflect.Value) {
 	rv := v.Reflect(c)
 	if !rv.Type().AssignableTo(dest.Type()) {
 		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
@@ -265,25 +264,25 @@ func (v *SemVerValue) ReflectTo(c px.Context, dest reflect.Value) {
 	dest.Set(rv)
 }
 
-func (v *SemVerValue) CanSerializeAsString() bool {
+func (v *SemVer) CanSerializeAsString() bool {
 	return true
 }
 
-func (v *SemVerValue) SerializationString() string {
+func (v *SemVer) SerializationString() string {
 	return v.String()
 }
 
-func (v *SemVerValue) String() string {
+func (v *SemVer) String() string {
 	return v.Version().String()
 }
 
-func (v *SemVerValue) ToKey(b *bytes.Buffer) {
+func (v *SemVer) ToKey(b *bytes.Buffer) {
 	b.WriteByte(1)
 	b.WriteByte(HkVersion)
 	v.Version().ToString(b)
 }
 
-func (v *SemVerValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+func (v *SemVer) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	f := px.GetFormat(s.FormatMap(), v.PType())
 	val := v.Version().String()
 	switch f.FormatChar() {
@@ -298,6 +297,6 @@ func (v *SemVerValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	}
 }
 
-func (v *SemVerValue) PType() px.Type {
+func (v *SemVer) PType() px.Type {
 	return (*SemVerType)(v)
 }

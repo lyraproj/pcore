@@ -10,7 +10,6 @@ import (
 	"reflect"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -85,7 +84,7 @@ func init() {
 		func(d px.Dispatch) {
 			d.Param(`NamedArgs`)
 			d.Function(func(c px.Context, args []px.Value) px.Value {
-				h := args[0].(*HashValue)
+				h := args[0].(*Hash)
 				r := 10
 				abs := false
 				if rx, ok := h.Get4(`radix`); ok {
@@ -112,9 +111,9 @@ func intFromConvertible(from px.Value, radix int) int64 {
 		return from.Int()
 	case floatValue:
 		return from.Int()
-	case *TimestampValue:
+	case *Timestamp:
 		return from.Int()
-	case TimespanValue:
+	case Timespan:
 		return from.Int()
 	case booleanValue:
 		return from.Int()
@@ -150,7 +149,7 @@ func NewIntegerType(min int64, max int64) *IntegerType {
 		return IntegerTypeOne
 	}
 	if min > max {
-		panic(errors.NewArgumentsError(`Integer[]`, `min is not allowed to be greater than max`))
+		panic(illegalArguments(`Integer[]`, `min is not allowed to be greater than max`))
 	}
 	return &IntegerType{min, max}
 }
@@ -163,7 +162,7 @@ func newIntegerType2(limits ...px.Value) *IntegerType {
 	min, ok := toInt(limits[0])
 	if !ok {
 		if _, ok = limits[0].(*DefaultValue); !ok {
-			panic(NewIllegalArgumentType(`Integer[]`, 0, `Integer`, limits[0]))
+			panic(illegalArgumentType(`Integer[]`, 0, `Integer`, limits[0]))
 		}
 		min = math.MinInt64
 	}
@@ -176,12 +175,12 @@ func newIntegerType2(limits ...px.Value) *IntegerType {
 		max, ok = toInt(limits[1])
 		if !ok {
 			if _, ok = limits[1].(*DefaultValue); !ok {
-				panic(NewIllegalArgumentType(`Integer[]`, 1, `Integer`, limits[1]))
+				panic(illegalArgumentType(`Integer[]`, 1, `Integer`, limits[1]))
 			}
 			max = math.MaxInt64
 		}
 	default:
-		panic(errors.NewIllegalArgumentCount(`Integer[]`, `0 - 2`, len(limits)))
+		panic(illegalArgumentCount(`Integer[]`, `0 - 2`, len(limits)))
 	}
 	return NewIntegerType(min, max)
 }
@@ -314,7 +313,7 @@ func (t *IntegerType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func WrapInteger(val int64) px.IntegerValue {
+func WrapInteger(val int64) px.Integer {
 	return integerValue(val)
 }
 

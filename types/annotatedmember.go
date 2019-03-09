@@ -15,7 +15,7 @@ type annotatedMember struct {
 	final     bool
 }
 
-func (a *annotatedMember) initialize(c px.Context, memberType, name string, container *objectType, initHash *HashValue) {
+func (a *annotatedMember) initialize(c px.Context, memberType, name string, container *objectType, initHash *Hash) {
 	a.annotatable.initialize(initHash)
 	a.name = name
 	a.container = container
@@ -35,7 +35,7 @@ func (a *annotatedMember) Accept(v px.Visitor, g px.Guard) {
 	visitAnnotations(a.annotations, v, g)
 }
 
-func (a *annotatedMember) Annotations() *HashValue {
+func (a *annotatedMember) Annotations() *Hash {
 	return a.annotations
 }
 
@@ -108,7 +108,7 @@ func assertCanBeOverridden(a px.AnnotatedMember, member px.AnnotatedMember) {
 }
 
 // Visit the keys of an annotations map. All keys are known to be types
-func visitAnnotations(a *HashValue, v px.Visitor, g px.Guard) {
+func visitAnnotations(a *Hash, v px.Visitor, g px.Guard) {
 	if a != nil {
 		a.EachKey(func(key px.Value) {
 			key.(px.Type).Accept(v, g)

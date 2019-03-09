@@ -2,7 +2,6 @@ package types
 
 import (
 	"io"
-
 	"reflect"
 	"strings"
 
@@ -66,13 +65,13 @@ func newEnumType3(args px.List) *EnumType {
 		switch first := first.(type) {
 		case stringValue:
 			enums = []string{first.String()}
-		case *ArrayValue:
+		case *Array:
 			return newEnumType3(first)
 		default:
-			panic(NewIllegalArgumentType(`Enum[]`, 0, `String or Array[String]`, args.At(0)))
+			panic(illegalArgumentType(`Enum[]`, 0, `String or Array[String]`, args.At(0)))
 		}
 	} else {
-		if ar, ok := first.(*ArrayValue); ok {
+		if ar, ok := first.(*Array); ok {
 			enumArgs := ar.AppendTo(make([]px.Value, 0, ar.Len()+top-1))
 			for i := 1; i < top; i++ {
 				enumArgs = append(enumArgs, args.At(i))
@@ -92,7 +91,7 @@ func newEnumType3(args px.List) *EnumType {
 					caseInsensitive = ci.Bool()
 					return
 				}
-				panic(NewIllegalArgumentType(`Enum[]`, idx, `String`, arg))
+				panic(illegalArgumentType(`Enum[]`, idx, `String`, arg))
 			}
 			enums[idx] = string(str)
 		})

@@ -6,7 +6,6 @@ import (
 
 	"github.com/lyraproj/pcore/utils"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -76,7 +75,7 @@ func NewStructElement(key px.Value, value px.Type) *StructElement {
 	}
 
 	if keyType == nil || name == `` {
-		panic(NewIllegalArgumentType(`StructElement`, 0, `Variant[String[1], Type[String[1]], , Type[Optional[String[1]]]]`, key))
+		panic(illegalArgumentType(`StructElement`, 0, `Variant[String[1], Type[String[1]], , Type[Optional[String[1]]]]`, key))
 	}
 	return &StructElement{name, keyType, value}
 }
@@ -102,12 +101,12 @@ func newStructType2(args ...px.Value) *StructType {
 		return DefaultStructType()
 	case 1:
 		arg := args[0]
-		if ar, ok := arg.(*ArrayValue); ok {
+		if ar, ok := arg.(*Array); ok {
 			return newStructType2(ar.AppendTo(make([]px.Value, 0, ar.Len()))...)
 		}
 		hash, ok := arg.(px.OrderedMap)
 		if !ok {
-			panic(NewIllegalArgumentType(`Struct[]`, 0, `Hash[Variant[String[1], Optional[String[1]]], Type]`, arg))
+			panic(illegalArgumentType(`Struct[]`, 0, `Hash[Variant[String[1], Optional[String[1]]], Type]`, arg))
 		}
 		top := hash.Len()
 		es := make([]*StructElement, top)
@@ -115,13 +114,13 @@ func newStructType2(args ...px.Value) *StructType {
 			e := v.(*HashEntry)
 			vt, ok := e.Value().(px.Type)
 			if !ok {
-				panic(NewIllegalArgumentType(`StructElement`, 1, `Type`, v))
+				panic(illegalArgumentType(`StructElement`, 1, `Type`, v))
 			}
 			es[idx] = NewStructElement(e.Key(), vt)
 		})
 		return NewStructType(es)
 	default:
-		panic(errors.NewIllegalArgumentCount(`Struct`, `0 - 1`, len(args)))
+		panic(illegalArgumentCount(`Struct`, `0 - 1`, len(args)))
 	}
 }
 
@@ -296,7 +295,7 @@ func (t *StructType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *StructType) IsInstance(o px.Value, g px.Guard) bool {
-	ov, ok := o.(*HashValue)
+	ov, ok := o.(*Hash)
 	if !ok {
 		return false
 	}

@@ -27,13 +27,13 @@ type function struct {
 	goName       string
 }
 
-func newFunction(c px.Context, name string, container *objectType, initHash *HashValue) px.ObjFunc {
+func newFunction(c px.Context, name string, container *objectType, initHash *Hash) px.ObjFunc {
 	f := &function{}
 	f.initialize(c, name, container, initHash)
 	return f
 }
 
-func (f *function) initialize(c px.Context, name string, container *objectType, initHash *HashValue) {
+func (f *function) initialize(c px.Context, name string, container *objectType, initHash *Hash) {
 	px.AssertInstance(func() string { return fmt.Sprintf(`initializer function for %s[%s]`, container.Label(), name) }, typeFunction, initHash)
 	f.annotatedMember.initialize(c, `function`, name, container, initHash)
 	if gn, ok := initHash.Get4(KeyGoName); ok {

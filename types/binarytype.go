@@ -3,16 +3,14 @@ package types
 import (
 	"bytes"
 	"encoding/base64"
-	"io"
-	"unicode/utf8"
-
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
+	"unicode/utf8"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -73,8 +71,8 @@ func init() {
 type (
 	BinaryType struct{}
 
-	// BinaryValue keeps only the value because the type is known and not parameterized
-	BinaryValue struct {
+	// Binary keeps only the value because the type is known and not parameterized
+	Binary struct {
 		bytes []byte
 	}
 )
@@ -98,7 +96,7 @@ func (t *BinaryType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *BinaryType) IsInstance(o px.Value, g px.Guard) bool {
-	_, ok := o.(*BinaryValue)
+	_, ok := o.(*Binary)
 	return ok
 }
 
@@ -134,14 +132,14 @@ func (t *BinaryType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func WrapBinary(val []byte) *BinaryValue {
-	return &BinaryValue{val}
+func WrapBinary(val []byte) *Binary {
+	return &Binary{val}
 }
 
 // BinaryFromFile opens file appointed by the given path for reading and returns
 // its contents as a Binary. The function will panic with an issue.Reported unless
 // the operation succeeds.
-func BinaryFromFile(path string) *BinaryValue {
+func BinaryFromFile(path string) *Binary {
 	if bf, ok := BinaryFromFile2(path); ok {
 		return bf
 	}
@@ -154,7 +152,7 @@ func BinaryFromFile(path string) *BinaryValue {
 //
 // The function will only return false if the given file does not exist. It will panic
 // with an issue.Reported on all other errors.
-func BinaryFromFile2(path string) (*BinaryValue, bool) {
+func BinaryFromFile2(path string) (*Binary, bool) {
 	bs, err := ioutil.ReadFile(path)
 	if err != nil {
 		stat, statErr := os.Stat(path)
@@ -175,7 +173,7 @@ func BinaryFromFile2(path string) (*BinaryValue, bool) {
 	return WrapBinary(bs), true
 }
 
-func BinaryFromString(str string, f string) *BinaryValue {
+func BinaryFromString(str string, f string) *Binary {
 	var bs []byte
 	var err error
 
@@ -188,21 +186,21 @@ func BinaryFromString(str string, f string) *BinaryValue {
 		bs, err = base64.StdEncoding.Strict().DecodeString(str)
 	case `%s`:
 		if !utf8.ValidString(str) {
-			panic(errors.NewIllegalArgument(`BinaryFromString`, 0, `The given string is not valid utf8. Cannot create a Binary UTF-8 representation`))
+			panic(illegalArgument(`BinaryFromString`, 0, `The given string is not valid utf8. Cannot create a Binary UTF-8 representation`))
 		}
 		bs = []byte(str)
 	case `%r`:
 		bs = []byte(str)
 	default:
-		panic(errors.NewIllegalArgument(`BinaryFromString`, 1, `unsupported format specifier`))
+		panic(illegalArgument(`BinaryFromString`, 1, `unsupported format specifier`))
 	}
 	if err == nil {
 		return WrapBinary(bs)
 	}
-	panic(errors.NewIllegalArgument(`BinaryFromString`, 0, err.Error()))
+	panic(illegalArgument(`BinaryFromString`, 0, err.Error()))
 }
 
-func BinaryFromArray(array px.List) *BinaryValue {
+func BinaryFromArray(array px.List) *Binary {
 	top := array.Len()
 	result := make([]byte, top)
 	for idx := 0; idx < top; idx++ {
@@ -210,12 +208,12 @@ func BinaryFromArray(array px.List) *BinaryValue {
 			result[idx] = byte(v)
 			continue
 		}
-		panic(errors.NewIllegalArgument(`Binary`, 0, `The given array is not all integers between 0 and 255`))
+		panic(illegalArgument(`BinaryFromString`, 0, `The given array is not all integers between 0 and 255`))
 	}
 	return WrapBinary(result)
 }
 
-func (bv *BinaryValue) AsArray() px.List {
+func (bv *Binary) AsArray() px.List {
 	vs := make([]px.Value, len(bv.bytes))
 	for i, b := range bv.bytes {
 		vs[i] = integerValue(int64(b))
@@ -223,18 +221,18 @@ func (bv *BinaryValue) AsArray() px.List {
 	return WrapValues(vs)
 }
 
-func (bv *BinaryValue) Equals(o interface{}, g px.Guard) bool {
-	if ov, ok := o.(*BinaryValue); ok {
+func (bv *Binary) Equals(o interface{}, g px.Guard) bool {
+	if ov, ok := o.(*Binary); ok {
 		return bytes.Equal(bv.bytes, ov.bytes)
 	}
 	return false
 }
 
-func (bv *BinaryValue) Reflect(c px.Context) reflect.Value {
+func (bv *Binary) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf(bv.bytes)
 }
 
-func (bv *BinaryValue) ReflectTo(c px.Context, value reflect.Value) {
+func (bv *Binary) ReflectTo(c px.Context, value reflect.Value) {
 	switch value.Type().Elem().Kind() {
 	case reflect.Int8, reflect.Uint8:
 		value.SetBytes(bv.bytes)
@@ -245,31 +243,31 @@ func (bv *BinaryValue) ReflectTo(c px.Context, value reflect.Value) {
 	}
 }
 
-func (bv *BinaryValue) CanSerializeAsString() bool {
+func (bv *Binary) CanSerializeAsString() bool {
 	return true
 }
 
-func (bv *BinaryValue) SerializationString() string {
+func (bv *Binary) SerializationString() string {
 	return base64.StdEncoding.Strict().EncodeToString(bv.bytes)
 }
 
-func (bv *BinaryValue) String() string {
+func (bv *Binary) String() string {
 	return px.ToString2(bv, None)
 }
 
-func (bv *BinaryValue) ToKey(b *bytes.Buffer) {
+func (bv *Binary) ToKey(b *bytes.Buffer) {
 	b.WriteByte(0)
 	b.WriteByte(HkBinary)
 	b.Write(bv.bytes)
 }
 
-func (bv *BinaryValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+func (bv *Binary) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	f := px.GetFormat(s.FormatMap(), bv.PType())
 	var str string
 	switch f.FormatChar() {
 	case 's':
 		if !utf8.Valid(bv.bytes) {
-			panic(errors.GenericError(`binary data is not valid UTF-8`))
+			panic(px.Error(px.Failure, issue.H{`message`: `binary data is not valid UTF-8`}))
 		}
 		str = string(bv.bytes)
 	case 'p':
@@ -290,10 +288,10 @@ func (bv *BinaryValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	f.ApplyStringFlags(b, str, f.IsAlt())
 }
 
-func (bv *BinaryValue) PType() px.Type {
+func (bv *Binary) PType() px.Type {
 	return DefaultBinaryType()
 }
 
-func (bv *BinaryValue) Bytes() []byte {
+func (bv *Binary) Bytes() []byte {
 	return bv.bytes
 }

@@ -53,11 +53,11 @@ var typeTypesetInit = NewStructType([]*StructElement{
 
 func init() {
 	oneArgCtor := func(ctx px.Context, args []px.Value) px.Value {
-		return newTypeSetType2(args[0].(*HashValue), ctx.Loader())
+		return newTypeSetType2(args[0].(*Hash), ctx.Loader())
 	}
 	TypeSetMetaType = NewParentedObjectType(`Pcore::TypeSet`, AnyMetaType,
 		WrapStringToValueMap(map[string]px.Value{
-			`attributes`: SingletonHash2(`_pcore_init_hash`, typeTypesetInit)}),
+			`attributes`: singletonMap(`_pcore_init_hash`, typeTypesetInit)}),
 		// Hash constructor is equal to the positional arguments constructor
 		oneArgCtor, oneArgCtor)
 }
@@ -82,14 +82,14 @@ type (
 		pcoreVersion  semver.Version
 		version       semver.Version
 		typedName     px.TypedName
-		types         *HashValue
+		types         *Hash
 		references    map[string]*typeSetReference
 		loader        px.Loader
 		deferredInit  px.OrderedMap
 	}
 )
 
-func newTypeSetReference(t *typeSet, ref *HashValue) *typeSetReference {
+func newTypeSetReference(t *typeSet, ref *Hash) *typeSetReference {
 	r := &typeSetReference{
 		owner:         t,
 		nameAuthority: uriArg(ref, KeyNameAuthority, t.nameAuthority),
@@ -202,7 +202,7 @@ func DefaultTypeSetType() px.TypeSet {
 	return typeSetTypeDefault
 }
 
-func (t *typeSet) Annotations() *HashValue {
+func (t *typeSet) Annotations() *Hash {
 	return t.annotations
 }
 
@@ -261,7 +261,7 @@ func (t *typeSet) InitFromHash(c px.Context, initHash px.OrderedMap) {
 					issue.H{`name`: t.name, `ref_alias`: refAlias}))
 			}
 
-			ref := newTypeSetReference(t, v.(*HashValue))
+			ref := newTypeSetReference(t, v.(*Hash))
 			refName := ref.name
 			refNA := ref.nameAuthority
 			naRoots, found := rootMap[refNA]
@@ -287,7 +287,7 @@ func (t *typeSet) InitFromHash(c px.Context, initHash px.OrderedMap) {
 		})
 		t.references = refMap
 	}
-	t.annotatable.initialize(initHash.(*HashValue))
+	t.annotatable.initialize(initHash.(*Hash))
 }
 
 func (t *typeSet) Get(key string) (value px.Value, ok bool) {
@@ -427,7 +427,7 @@ func (t *typeSet) Resolve(c px.Context) px.Type {
 				return rtp.Resolve(c)
 			}
 			return tp
-		}).(*HashValue)
+		}).(*Hash)
 	})
 	return t
 }
@@ -527,7 +527,7 @@ func (t *typeSet) basicTypeToString(b io.Writer, f px.Format, s px.FormatContext
 			// The keys should not be quoted in this hash
 			utils.WriteString(b, `{`)
 			first3 := true
-			value.(*HashValue).EachPair(func(typeName, typ px.Value) {
+			value.(*Hash).EachPair(func(typeName, typ px.Value) {
 				if first3 {
 					first3 = false
 				} else {
@@ -586,7 +586,7 @@ func (t *typeSet) initHash() *hash.StringHash {
 	return h
 }
 
-func (t *typeSet) referencesHash() *HashValue {
+func (t *typeSet) referencesHash() *Hash {
 	if len(t.references) == 0 {
 		return emptyMap
 	}
@@ -599,11 +599,11 @@ func (t *typeSet) referencesHash() *HashValue {
 	return WrapHash(entries)
 }
 
-func (t *typeSet) resolveDeferred(c px.Context, lh px.OrderedMap) *HashValue {
+func (t *typeSet) resolveDeferred(c px.Context, lh px.OrderedMap) *Hash {
 	entries := make([]*HashEntry, 0)
 	types := hash.NewStringHash(16)
 
-	var typesHash *HashValue
+	var typesHash *Hash
 
 	lh.Each(func(v px.Value) {
 		le := v.(px.MapEntry)
@@ -667,7 +667,7 @@ func (t *typeSet) resolveDeferred(c px.Context, lh px.OrderedMap) *HashValue {
 									panic(px.Error(px.DuplicateKey, issue.H{`key`: keyParent}))
 								}
 							} else {
-								value.params[0] = ih.Merge(SingletonHash2(keyParent, WrapString(name)))
+								value.params[0] = ih.Merge(singletonMap(keyParent, WrapString(name)))
 							}
 						}
 					}

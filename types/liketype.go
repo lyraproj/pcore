@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -48,13 +47,13 @@ func newLikeType2(args ...px.Value) *LikeType {
 			if an, ok := args[1].(stringValue); ok {
 				return NewLikeType(tp, string(an))
 			} else {
-				panic(NewIllegalArgumentType(`Like[]`, 1, `String`, args[1]))
+				panic(illegalArgumentType(`Like[]`, 1, `String`, args[1]))
 			}
 		} else {
-			panic(NewIllegalArgumentType(`Like[]`, 0, `Type`, args[1]))
+			panic(illegalArgumentType(`Like[]`, 0, `Type`, args[1]))
 		}
 	default:
-		panic(errors.NewIllegalArgumentCount(`Like[]`, `0 or 2`, len(args)))
+		panic(illegalArgumentCount(`Like[]`, `0 or 2`, len(args)))
 	}
 }
 

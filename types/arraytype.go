@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -18,7 +17,7 @@ type (
 		typ  px.Type
 	}
 
-	ArrayValue struct {
+	Array struct {
 		reducedType  *ArrayType
 		detailedType px.Type
 		elements     []px.Value
@@ -38,7 +37,7 @@ func init() {
 			return newArrayType2(args...)
 		},
 		func(ctx px.Context, args []px.Value) px.Value {
-			h := args[0].(*HashValue)
+			h := args[0].(*Hash)
 			et := h.Get5(`element_type`, DefaultAnyType())
 			st := h.Get5(`size_type`, PositiveIntegerType())
 			return newArrayType2(et, st)
@@ -50,18 +49,14 @@ func init() {
 			d.OptionalParam(`Boolean`)
 			d.Function(func(c px.Context, args []px.Value) px.Value {
 				switch arg := args[0].(type) {
-				case *ArrayValue:
+				case *Array:
 					if len(args) > 1 && args[1].(booleanValue).Bool() {
 						// Wrapped
 						return WrapValues(args[:1])
 					}
 					return arg
-				case *HashValue:
-					return arg.AsArray()
-				case *BinaryValue:
-					return arg.AsArray()
 				default:
-					return arg.(px.IterableValue).Iterator().AsArray()
+					return arg.(px.Arrayable).AsArray()
 				}
 			})
 		},
@@ -116,7 +111,7 @@ func newArrayType2(args ...px.Value) *ArrayType {
 			var sz int64
 			sz, ok = toInt(sizeArg)
 			if !ok {
-				panic(NewIllegalArgumentType(`Array[]`, offset, `Variant[Integer, Type[Integer]]`, sizeArg))
+				panic(illegalArgumentType(`Array[]`, offset, `Variant[Integer, Type[Integer]]`, sizeArg))
 			}
 			rng = NewIntegerType(sz, math.MaxInt64)
 		}
@@ -125,7 +120,7 @@ func newArrayType2(args ...px.Value) *ArrayType {
 		arg := args[offset]
 		if min, ok = toInt(arg); !ok {
 			if _, ok = arg.(*DefaultValue); !ok {
-				panic(NewIllegalArgumentType(`Array[]`, offset, `Integer`, arg))
+				panic(illegalArgumentType(`Array[]`, offset, `Integer`, arg))
 			}
 			min = 0
 		}
@@ -133,13 +128,13 @@ func newArrayType2(args ...px.Value) *ArrayType {
 		arg = args[offset]
 		if max, ok = toInt(args[offset]); !ok {
 			if _, ok = arg.(*DefaultValue); !ok {
-				panic(NewIllegalArgumentType(`Array[]`, offset, `Integer`, arg))
+				panic(illegalArgumentType(`Array[]`, offset, `Integer`, arg))
 			}
 			max = math.MaxInt64
 		}
 		rng = NewIntegerType(min, max)
 	default:
-		panic(errors.NewIllegalArgumentCount(`Array[]`, `0 - 3`, argc))
+		panic(illegalArgumentCount(`Array[]`, `0 - 3`, argc))
 	}
 	return NewArrayType(element, rng)
 }
@@ -194,7 +189,7 @@ func (t *ArrayType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *ArrayType) IsInstance(v px.Value, g px.Guard) bool {
-	iv, ok := v.(*ArrayValue)
+	iv, ok := v.(*Array)
 	if !ok {
 		return false
 	}
@@ -278,65 +273,65 @@ func (t *ArrayType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 var arrayTypeDefault = &ArrayType{IntegerTypePositive, anyTypeDefault}
 var arrayTypeEmpty = &ArrayType{IntegerTypeZero, unitTypeDefault}
 
-func BuildArray(len int, bld func(*ArrayValue, []px.Value) []px.Value) *ArrayValue {
-	ar := &ArrayValue{elements: make([]px.Value, 0, len)}
+func BuildArray(len int, bld func(*Array, []px.Value) []px.Value) *Array {
+	ar := &Array{elements: make([]px.Value, 0, len)}
 	ar.elements = bld(ar, ar.elements)
 	return ar
 }
 
-func SingletonArray(element px.Value) *ArrayValue {
-	return &ArrayValue{elements: []px.Value{element}}
+func SingletonArray(element px.Value) *Array {
+	return &Array{elements: []px.Value{element}}
 }
 
-func WrapTypes(elements []px.Type) *ArrayValue {
+func WrapTypes(elements []px.Type) *Array {
 	els := make([]px.Value, len(elements))
 	for i, e := range elements {
 		els[i] = e
 	}
-	return &ArrayValue{elements: els}
+	return &Array{elements: els}
 }
 
-func WrapValues(elements []px.Value) *ArrayValue {
-	return &ArrayValue{elements: elements}
+func WrapValues(elements []px.Value) *Array {
+	return &Array{elements: elements}
 }
 
-func WrapInterfaces(c px.Context, elements []interface{}) *ArrayValue {
+func WrapInterfaces(c px.Context, elements []interface{}) *Array {
 	els := make([]px.Value, len(elements))
 	for i, e := range elements {
 		els[i] = wrap(c, e)
 	}
-	return &ArrayValue{elements: els}
+	return &Array{elements: els}
 }
 
-func WrapInts(ints []int) *ArrayValue {
+func WrapInts(ints []int) *Array {
 	els := make([]px.Value, len(ints))
 	for i, e := range ints {
 		els[i] = integerValue(int64(e))
 	}
-	return &ArrayValue{elements: els}
+	return &Array{elements: els}
 }
 
-func WrapStrings(strings []string) *ArrayValue {
+func WrapStrings(strings []string) *Array {
 	els := make([]px.Value, len(strings))
 	for i, e := range strings {
 		els[i] = stringValue(e)
 	}
-	return &ArrayValue{elements: els}
+	return &Array{elements: els}
 }
 
-func WrapArray3(iv px.List) *ArrayValue {
-	if ar, ok := iv.(*ArrayValue); ok {
+func WrapArray3(iv px.List) *Array {
+	if ar, ok := iv.(*Array); ok {
 		return ar
 	}
 	return WrapValues(iv.AppendTo(make([]px.Value, 0, iv.Len())))
 }
 
-func (av *ArrayValue) Add(ov px.Value) px.List {
+func (av *Array) Add(ov px.Value) px.List {
 	return WrapValues(append(av.elements, ov))
 }
 
-func (av *ArrayValue) AddAll(ov px.List) px.List {
-	if ar, ok := ov.(*ArrayValue); ok {
+func (av *Array) AddAll(ov px.List) px.List {
+	if ar, ok := ov.(*Array); ok {
 		return WrapValues(append(av.elements, ar.elements...))
 	}
 
@@ -350,32 +345,32 @@ func (av *ArrayValue) AddAll(ov px.List) px.List {
 	return WrapValues(el)
 }
 
-func (av *ArrayValue) All(predicate px.Predicate) bool {
+func (av *Array) All(predicate px.Predicate) bool {
 	return px.All(av.elements, predicate)
 }
 
-func (av *ArrayValue) Any(predicate px.Predicate) bool {
+func (av *Array) Any(predicate px.Predicate) bool {
 	return px.Any(av.elements, predicate)
 }
 
-func (av *ArrayValue) AppendTo(slice []px.Value) []px.Value {
+func (av *Array) AppendTo(slice []px.Value) []px.Value {
 	return append(slice, av.elements...)
 }
 
-func (av *ArrayValue) At(i int) px.Value {
+func (av *Array) At(i int) px.Value {
 	if i >= 0 && i < len(av.elements) {
 		return av.elements[i]
 	}
 	return undef
 }
 
-func (av *ArrayValue) Delete(ov px.Value) px.List {
+func (av *Array) Delete(ov px.Value) px.List {
 	return av.Reject(func(elem px.Value) bool {
 		return elem.Equals(ov, nil)
 	})
 }
 
-func (av *ArrayValue) DeleteAll(ov px.List) px.List {
+func (av *Array) DeleteAll(ov px.List) px.List {
 	return av.Reject(func(elem px.Value) bool {
 		return ov.Any(func(oe px.Value) bool {
 			return elem.Equals(oe, nil)
@@ -383,23 +378,23 @@ func (av *ArrayValue) DeleteAll(ov px.List) px.List {
 	})
 }
 
-func (av *ArrayValue) DetailedType() px.Type {
+func (av *Array) DetailedType() px.Type {
 	return av.privateDetailedType()
 }
 
-func (av *ArrayValue) Each(consumer px.Consumer) {
+func (av *Array) Each(consumer px.Consumer) {
 	for _, e := range av.elements {
 		consumer(e)
 	}
 }
 
-func (av *ArrayValue) EachWithIndex(consumer px.IndexedConsumer) {
+func (av *Array) EachWithIndex(consumer px.IndexedConsumer) {
 	for i, e := range av.elements {
 		consumer(e, i)
 	}
 }
 
-func (av *ArrayValue) EachSlice(n int, consumer px.SliceConsumer) {
+func (av *Array) EachSlice(n int, consumer px.SliceConsumer) {
 	top := len(av.elements)
 	for i := 0; i < top; i += n {
 		e := i + n
@@ -410,12 +405,12 @@ func (av *ArrayValue) EachSlice(n int, consumer px.SliceConsumer) {
 	}
 }
 
-func (av *ArrayValue) ElementType() px.Type {
+func (av *Array) ElementType() px.Type {
 	return av.PType().(*ArrayType).ElementType()
 }
 
-func (av *ArrayValue) Equals(o interface{}, g px.Guard) bool {
-	if ov, ok := o.(*ArrayValue); ok {
+func (av *Array) Equals(o interface{}, g px.Guard) bool {
+	if ov, ok := o.(*Array); ok {
 		if top := len(av.elements); top == len(ov.elements) {
 			for idx := 0; idx < top; idx++ {
 				if !av.elements[idx].Equals(ov.elements[idx], g) {
@@ -433,14 +428,14 @@ func (av *ArrayValue) Equals(o interface{}, g px.Guard) bool {
 	return false
 }
 
-func (av *ArrayValue) Find(predicate px.Predicate) (px.Value, bool) {
+func (av *Array) Find(predicate px.Predicate) (px.Value, bool) {
 	return px.Find(av.elements, predicate)
 }
 
-func (av *ArrayValue) Flatten() px.List {
+func (av *Array) Flatten() px.List {
 	for _, e := range av.elements {
 		switch e.(type) {
-		case *ArrayValue, *HashEntry:
+		case *Array, *HashEntry:
 			return WrapValues(flattenElements(av.elements, make([]px.Value, 0, len(av.elements)*2)))
 		}
 	}
@@ -450,7 +445,7 @@ func (av *ArrayValue) Flatten() px.List {
 func flattenElements(elements, receiver []px.Value) []px.Value {
 	for _, e := range elements {
 		switch e := e.(type) {
-		case *ArrayValue:
+		case *Array:
 			receiver = flattenElements(e.elements, receiver)
 		case *HashEntry:
 			receiver = flattenElements([]px.Value{e.key, e.value}, receiver)
@@ -461,38 +456,34 @@ func flattenElements(elements, receiver []px.Value) []px.Value {
 	return receiver
 }
 
-func (av *ArrayValue) IsEmpty() bool {
+func (av *Array) IsEmpty() bool {
 	return len(av.elements) == 0
 }
 
-func (av *ArrayValue) IsHashStyle() bool {
+func (av *Array) IsHashStyle() bool {
 	return false
 }
 
-func (av *ArrayValue) Iterator() px.Iterator {
-	return &indexedIterator{av.ElementType(), -1, av}
-}
-
-func (av *ArrayValue) Len() int {
+func (av *Array) Len() int {
 	return len(av.elements)
 }
 
-func (av *ArrayValue) Map(mapper px.Mapper) px.List {
+func (av *Array) Map(mapper px.Mapper) px.List {
 	return WrapValues(px.Map(av.elements, mapper))
 }
 
-func (av *ArrayValue) Reduce(redactor px.BiMapper) px.Value {
+func (av *Array) Reduce(redactor px.BiMapper) px.Value {
 	if av.IsEmpty() {
 		return undef
 	}
 	return reduceSlice(av.elements[1:], av.At(0), redactor)
 }
 
-func (av *ArrayValue) Reduce2(initialValue px.Value, redactor px.BiMapper) px.Value {
+func (av *Array) Reduce2(initialValue px.Value, redactor px.BiMapper) px.Value {
 	return reduceSlice(av.elements, initialValue, redactor)
 }
 
-func (av *ArrayValue) Reflect(c px.Context) reflect.Value {
+func (av *Array) Reflect(c px.Context) reflect.Value {
 	at, ok := ReflectType(c, av.PType())
 	if !ok {
 		at = reflect.TypeOf([]interface{}{})
@@ -505,7 +496,7 @@ func (av *ArrayValue) Reflect(c px.Context) reflect.Value {
 	return s
 }
 
-func (av *ArrayValue) ReflectTo(c px.Context, value reflect.Value) {
+func (av *Array) ReflectTo(c px.Context, value reflect.Value) {
 	vt := value.Type()
 	ptr := vt.Kind() == reflect.Ptr
 	if ptr {
@@ -525,15 +516,15 @@ func (av *ArrayValue) ReflectTo(c px.Context, value reflect.Value) {
 	value.Set(s)
 }
 
-func (av *ArrayValue) Reject(predicate px.Predicate) px.List {
+func (av *Array) Reject(predicate px.Predicate) px.List {
 	return WrapValues(px.Reject(av.elements, predicate))
 }
 
-func (av *ArrayValue) Select(predicate px.Predicate) px.List {
+func (av *Array) Select(predicate px.Predicate) px.List {
 	return WrapValues(px.Select(av.elements, predicate))
 }
 
-func (av *ArrayValue) Slice(i int, j int) px.List {
+func (av *Array) Slice(i int, j int) px.List {
 	return WrapValues(av.elements[i:j])
 }
 
@@ -558,22 +549,22 @@ func (s *arraySorter) Swap(i, j int) {
 	vs[j] = v
 }
 
-func (av *ArrayValue) Sort(comparator px.Comparator) px.List {
+func (av *Array) Sort(comparator px.Comparator) px.List {
 	s := &arraySorter{make([]px.Value, len(av.elements)), comparator}
 	copy(s.values, av.elements)
 	sort.Sort(s)
 	return WrapValues(s.values)
 }
 
-func (av *ArrayValue) String() string {
+func (av *Array) String() string {
 	return px.ToString2(av, None)
 }
 
-func (av *ArrayValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+func (av *Array) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	av.ToString2(b, s, px.GetFormat(s.FormatMap(), av.PType()), '[', g)
 }
 
-func (av *ArrayValue) ToString2(b io.Writer, s px.FormatContext, f px.Format, delim byte, g px.RDetect) {
+func (av *Array) ToString2(b io.Writer, s px.FormatContext, f px.Format, delim byte, g px.RDetect) {
 	if g == nil {
 		g = make(px.RDetect)
 	} else if g[av] {
@@ -665,7 +656,7 @@ func (av *ArrayValue) ToString2(b io.Writer, s px.FormatContext, f px.Format, de
 	delete(g, av)
 }
 
-func (av *ArrayValue) Unique() px.List {
+func (av *Array) Unique() px.List {
 	top := len(av.elements)
 	if top < 2 {
 		return av
@@ -700,7 +691,7 @@ func childToString(child px.Value, indent px.Indentation, parentCtx px.FormatCon
 
 func isContainer(child px.Value, s px.FormatContext) bool {
 	switch child.(type) {
-	case *ArrayValue, *HashValue:
+	case *Array, *Hash:
 		return true
 	case px.ObjectType, px.TypeSet:
 		if ex, ok := s.Property(`expanded`); ok && ex == `true` {
@@ -714,11 +705,11 @@ func isContainer(child px.Value, s px.FormatContext) bool {
 	}
 }
 
-func (av *ArrayValue) PType() px.Type {
+func (av *Array) PType() px.Type {
 	return av.privateReducedType()
 }
 
-func (av *ArrayValue) privateDetailedType() px.Type {
+func (av *Array) privateDetailedType() px.Type {
 	if av.detailedType == nil {
 		if len(av.elements) == 0 {
 			av.detailedType = av.privateReducedType()
@@ -736,7 +727,7 @@ func (av *ArrayValue) privateDetailedType() px.Type {
 	return av.detailedType
 }
 
-func (av *ArrayValue) privateReducedType() *ArrayType {
+func (av *Array) privateReducedType() *ArrayType {
 	if av.reducedType == nil {
 		top := len(av.elements)
 		if top == 0 {

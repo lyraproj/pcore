@@ -96,7 +96,7 @@ func Parse(s string) (px.Value, error) {
 			}
 			if arrayHash {
 				he := d.PopLast().(px.MapEntry)
-				d.Add(SingletonHash(he.Key(), he.Value()))
+				d.Add(singleMap(he.Key(), he.Value()))
 			}
 		case rightCurlyBrace:
 			if state != exHashComma && state != exKey {
@@ -183,7 +183,7 @@ func Parse(s string) (px.Value, error) {
 				tp = nil
 				d.AddArray(0, func() { err = scan(sr, sf) })
 				if arrayHash {
-					d.Add(fixArrayHash(d.PopLast().(*ArrayValue)))
+					d.Add(fixArrayHash(d.PopLast().(*Array)))
 				}
 				arrayHash = saveAh
 				if err != breakCollection {
@@ -198,7 +198,7 @@ func Parse(s string) (px.Value, error) {
 				if stp == nil {
 					break
 				}
-				ll := d.PopLast().(*ArrayValue)
+				ll := d.PopLast().(*Array)
 				var dp *DeferredType
 				if he, ok := stp.(*HashEntry); ok {
 					dp = he.Value().(*DeferredType)
@@ -225,7 +225,7 @@ func Parse(s string) (px.Value, error) {
 				if stp == nil {
 					break
 				}
-				ll := d.PopLast().(*ArrayValue)
+				ll := d.PopLast().(*Array)
 				if he, ok := stp.(*HashEntry); ok {
 					params := append(make([]px.Value, 0, ll.Len()+1), WrapString(he.Value().(*DeferredType).tn))
 					stp = WrapHashEntry(he.Key(), NewDeferred(`new`, ll.AppendTo(params)...))
@@ -285,7 +285,7 @@ func Parse(s string) (px.Value, error) {
 	return d.Value(), err
 }
 
-func fixArrayHash(av *ArrayValue) *ArrayValue {
+func fixArrayHash(av *Array) *Array {
 	es := make([]px.Value, 0, av.Len())
 
 	// Array may contain hash entries that must be concatenated into a single hash

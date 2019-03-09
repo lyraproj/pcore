@@ -111,21 +111,6 @@ func ExampleContext_ParseType2_error() {
 	// Output: expected one of ',' or ']', got 'EOF' (line: 1, column: 9)
 }
 
-func ExampleObjectType_fromReflectedValue() {
-	type TestStruct struct {
-		Message   string
-		Kind      string
-		IssueCode string `puppet:"name => issue_code"`
-	}
-
-	c := pcore.RootContext()
-	ts := &TestStruct{`the message`, `THE_KIND`, `THE_CODE`}
-	et, _ := px.Load(c, px.NewTypedName(px.NsType, `Error`))
-	ev := et.(px.ObjectType).FromReflectedValue(c, reflect.ValueOf(ts).Elem())
-	fmt.Println(ev)
-	// Output: Error('message' => 'the message', 'kind' => 'THE_KIND', 'issue_code' => 'THE_CODE')
-}
-
 func ExampleImplementationRegistry() {
 	type TestAddress struct {
 		Street string

@@ -44,7 +44,7 @@ func (t *ScalarType) IsAssignable(o px.Type, g px.Guard) bool {
 
 func (t *ScalarType) IsInstance(o px.Value, g px.Guard) bool {
 	switch o.(type) {
-	case stringValue, integerValue, floatValue, booleanValue, TimespanValue, *TimestampValue, *SemVerValue, *RegexpValue:
+	case stringValue, integerValue, floatValue, booleanValue, Timespan, *Timestamp, *SemVer, *Regexp:
 		return true
 	}
 	return false

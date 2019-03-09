@@ -22,8 +22,8 @@ func DefaultAnnotationType() px.Type {
 var typeAnnotations = NewHashType(NewTypeType(annotationTypeDefault), DefaultHashType(), nil)
 
 type annotatable struct {
-	annotations         *HashValue
-	resolvedAnnotations *HashValue
+	annotations         *Hash
+	resolvedAnnotations *Hash
 }
 
 func (a *annotatable) Annotations(c px.Context) px.OrderedMap {
@@ -43,7 +43,7 @@ func (a *annotatable) Annotations(c px.Context) px.OrderedMap {
 	return a.resolvedAnnotations
 }
 
-func (a *annotatable) initialize(initHash *HashValue) {
+func (a *annotatable) initialize(initHash *Hash) {
 	a.annotations = hashArg(initHash, keyAnnotations)
 }
 

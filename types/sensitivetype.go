@@ -5,7 +5,6 @@ import (
 
 	"github.com/lyraproj/pcore/utils"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -16,7 +15,7 @@ type (
 		typ px.Type
 	}
 
-	SensitiveValue struct {
+	Sensitive struct {
 		value px.Value
 	}
 )
@@ -64,9 +63,9 @@ func newSensitiveType2(args ...px.Value) *SensitiveType {
 		if containedType, ok := args[0].(px.Type); ok {
 			return NewSensitiveType(containedType)
 		}
-		panic(NewIllegalArgumentType(`Sensitive[]`, 0, `Type`, args[0]))
+		panic(illegalArgumentType(`Sensitive[]`, 0, `Type`, args[0]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`Sensitive[]`, `0 or 1`, len(args)))
+		panic(illegalArgumentCount(`Sensitive[]`, `0 or 1`, len(args)))
 	}
 }
 
@@ -102,7 +101,7 @@ func (t *SensitiveType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *SensitiveType) IsInstance(o px.Value, g px.Guard) bool {
-	if sv, ok := o.(*SensitiveValue); ok {
+	if sv, ok := o.(*Sensitive); ok {
 		return GuardedIsInstance(t.typ, sv.Unwrap(), g)
 	}
 	return false
@@ -148,26 +147,26 @@ func (t *SensitiveType) ToString(b io.Writer, s px.FormatContext, g px.RDetect) 
 	TypeToString(t, b, s, g)
 }
 
-func WrapSensitive(val px.Value) *SensitiveValue {
-	return &SensitiveValue{val}
+func WrapSensitive(val px.Value) *Sensitive {
+	return &Sensitive{val}
 }
 
-func (s *SensitiveValue) Equals(o interface{}, g px.Guard) bool {
+func (s *Sensitive) Equals(o interface{}, g px.Guard) bool {
 	return false
 }
 
-func (s *SensitiveValue) String() string {
+func (s *Sensitive) String() string {
 	return px.ToString2(s, None)
 }
 
-func (s *SensitiveValue) ToString(b io.Writer, f px.FormatContext, g px.RDetect) {
+func (s *Sensitive) ToString(b io.Writer, f px.FormatContext, g px.RDetect) {
 	utils.WriteString(b, `Sensitive [value redacted]`)
 }
 
-func (s *SensitiveValue) PType() px.Type {
+func (s *Sensitive) PType() px.Type {
 	return NewSensitiveType(s.Unwrap().PType())
 }
 
-func (s *SensitiveValue) Unwrap() px.Value {
+func (s *Sensitive) Unwrap() px.Value {
 	return s.value
 }

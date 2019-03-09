@@ -150,7 +150,7 @@ func (c *pxContext) ParseType(typeString px.Value) px.Type {
 	if sv, ok := typeString.(px.StringValue); ok {
 		return c.ParseType2(sv.String())
 	}
-	panic(types.NewIllegalArgumentType(`ParseType`, 0, `String`, typeString))
+	panic(px.Error(px.IllegalArgumentType, issue.H{`function`: `ParseType`, `index`: 0, `expected`: `String`, `actual`: px.DetailedValueType(typeString).String()}))
 }
 
 func (c *pxContext) ParseType2(str string) px.Type {

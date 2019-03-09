@@ -10,7 +10,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -170,7 +169,7 @@ var None = newFormatContext2(DefaultIndentation, DefaultFormats, nil)
 
 var Expanded = newFormatContext2(DefaultIndentation, DefaultFormats, map[string]string{`expanded`: `true`})
 
-var Program = newFormatContext2(DefaultIndentation, px.FormatMap(SingletonHash(DefaultAnyType(), DefaultObjectFormat)), nil)
+var Program = newFormatContext2(DefaultIndentation, px.FormatMap(singleMap(DefaultAnyType(), DefaultObjectFormat)), nil)
 
 func newFormatContext(t px.Type, format px.Format, indentation px.Indentation) px.FormatContext {
 	return &formatContext{indentation, WrapHash([]*HashEntry{WrapHashEntry(t, format)}), nil}
@@ -200,7 +199,7 @@ func newFormatContext3(value px.Value, format px.Value) (context px.FormatContex
 	case *DefaultValue:
 		context = px.DefaultFormatContext
 	default:
-		context = newFormatContext2(DefaultIndentation, mergeFormats(DefaultFormats, NewFormatMap(format.(*HashValue))), nil)
+		context = newFormatContext2(DefaultIndentation, mergeFormats(DefaultFormats, NewFormatMap(format.(*Hash))), nil)
 	}
 	return
 }
@@ -313,7 +312,7 @@ func typeRank(pt px.Type) int {
 
 var typeStringFormatTypeHash = NewHashType(DefaultTypeType(), NewVariantType(DefaultStringType(), DefaultHashType()), nil)
 
-func NewFormatMap(h *HashValue) px.FormatMap {
+func NewFormatMap(h *Hash) px.FormatMap {
 	px.AssertInstance(`String format type hash`, typeStringFormatTypeHash, h)
 	result := make([]*HashEntry, h.Len())
 	h.EachWithIndex(func(elem px.Value, idx int) {
@@ -323,7 +322,7 @@ func NewFormatMap(h *HashValue) px.FormatMap {
 		if s, ok := v.(stringValue); ok {
 			result[idx] = WrapHashEntry(pt, newFormat(s.String()))
 		} else {
-			result[idx] = WrapHashEntry(pt, FormatFromHash(v.(*HashValue)))
+			result[idx] = WrapHashEntry(pt, FormatFromHash(v.(*Hash)))
 		}
 	})
 	return px.FormatMap(WrapHash(result))
@@ -336,7 +335,7 @@ var typeStringFormatHash = NewStructType([]*StructElement{
 	NewStructElement(newOptionalType3(`string_formats`), DefaultHashType()),
 })
 
-func FormatFromHash(h *HashValue) px.Format {
+func FormatFromHash(h *Hash) px.Format {
 	px.AssertInstance(`String format hash`, typeStringFormatHash, h)
 
 	stringArg := func(key string, required bool) string {
@@ -351,7 +350,7 @@ func FormatFromHash(h *HashValue) px.Format {
 
 	var cf px.FormatMap
 	if v := h.Get5(`string_formats`, undef); !px.Equals(v, undef) {
-		cf = NewFormatMap(v.(*HashValue))
+		cf = NewFormatMap(v.(*Hash))
 	}
 	return parseFormat(stringArg(`format`, true), stringArg(`separator`, false), stringArg(`separator2`, false), cf)
 }
@@ -750,12 +749,12 @@ func fprintf(buf io.Writer, callerName string, s string, args ...px.Value) {
 		}
 		ctx, err := px.NewFormatContext3(v, stringValue(f.String()))
 		if err != nil {
-			panic(errors.NewIllegalArgument(callerName, 1, err.Error()))
+			panic(illegalArgument(callerName, 1, err.Error()))
 		}
 		px.ToString4(v, ctx, buf)
 	}
 
-	var hashArg *HashValue
+	var hashArg *Hash
 
 	pos := 0
 	top := len(args)
@@ -788,10 +787,10 @@ nextChar:
 			// This is a positional argument. It is allowed but there can only be one (for the
 			// hash as a whole)
 			if hashArg != nil {
-				panic(errors.NewArgumentsError(callerName, `keyed and positional format specifications cannot be mixed`))
+				panic(illegalArguments(callerName, `keyed and positional format specifications cannot be mixed`))
 			}
 			if pos >= top {
-				panic(errors.NewArgumentsError(callerName, `unbalanced format versus arguments`))
+				panic(illegalArguments(callerName, `unbalanced format versus arguments`))
 			}
 			consumeAndApplyPattern(args[pos])
 			pos++
@@ -799,15 +798,15 @@ nextChar:
 		}
 
 		if pos > 0 {
-			panic(errors.NewArgumentsError(callerName, `keyed and positional format specifications cannot be mixed`))
+			panic(illegalArguments(callerName, `keyed and positional format specifications cannot be mixed`))
 		}
 
 		if hashArg == nil {
 			if top == 1 {
-				hashArg, _ = args[0].(*HashValue)
+				hashArg, _ = args[0].(*Hash)
 			}
 			if hashArg == nil {
-				panic(errors.NewArgumentsError(callerName, `keyed format specifications requires one hash argument`))
+				panic(illegalArguments(callerName, `keyed format specifications requires one hash argument`))
 			}
 		}
 
@@ -827,10 +826,10 @@ nextChar:
 					}
 					continue nextChar
 				}
-				panic(errors.NewIllegalArgument(callerName, 1, fmt.Sprintf("key%c%s%c not found", b, key, c)))
+				panic(illegalArgument(callerName, 1, fmt.Sprintf("key%c%s%c not found", b, key, c)))
 			}
 			c, ok = rdr.Next()
 		}
-		panic(errors.NewArgumentsError(callerName, fmt.Sprintf(`unterminated %%%c`, b)))
+		panic(illegalArguments(callerName, fmt.Sprintf(`unterminated %%%c`, b)))
 	}
 }

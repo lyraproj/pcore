@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 	"github.com/lyraproj/semver/semver"
@@ -16,7 +15,7 @@ import (
 type (
 	SemVerRangeType struct{}
 
-	SemVerRangeValue struct {
+	SemVerRange struct {
 		rng semver.VersionRange
 	}
 )
@@ -42,7 +41,7 @@ func init() {
 			d.Function(func(c px.Context, args []px.Value) px.Value {
 				v, err := semver.ParseVersionRange(args[0].String())
 				if err != nil {
-					panic(errors.NewIllegalArgument(`SemVerRange`, 0, err.Error()))
+					panic(illegalArgument(`SemVerRange`, 0, err.Error()))
 				}
 				return WrapSemVerRange(v)
 			})
@@ -57,13 +56,13 @@ func init() {
 				if _, ok := args[0].(*DefaultValue); ok {
 					start = semver.Min
 				} else {
-					start = args[0].(*SemVerValue).Version()
+					start = args[0].(*SemVer).Version()
 				}
 				var end semver.Version
 				if _, ok := args[1].(*DefaultValue); ok {
 					end = semver.Max
 				} else {
-					end = args[1].(*SemVerValue).Version()
+					end = args[1].(*SemVer).Version()
 				}
 				excludeEnd := false
 				if len(args) > 2 {
@@ -76,15 +75,15 @@ func init() {
 		func(d px.Dispatch) {
 			d.Param(`SemVerRangeHash`)
 			d.Function(func(c px.Context, args []px.Value) px.Value {
-				hash := args[0].(*HashValue)
-				start := hash.Get5(`min`, nil).(*SemVerValue).Version()
+				hash := args[0].(*Hash)
+				start := hash.Get5(`min`, nil).(*SemVer).Version()
 
 				var end semver.Version
 				ev := hash.Get5(`max`, nil)
 				if ev == nil {
 					end = semver.Max
 				} else {
-					end = ev.(*SemVerValue).Version()
+					end = ev.(*SemVer).Version()
 				}
 
 				excludeEnd := false
@@ -137,7 +136,7 @@ func (t *SemVerRangeType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *SemVerRangeType) IsInstance(o px.Value, g px.Guard) bool {
-	_, ok := o.(*SemVerRangeValue)
+	_, ok := o.(*SemVerRange)
 	return ok
 }
 
@@ -153,26 +152,26 @@ func (t *SemVerRangeType) PType() px.Type {
 	return &TypeType{t}
 }
 
-func WrapSemVerRange(val semver.VersionRange) *SemVerRangeValue {
-	return &SemVerRangeValue{val}
+func WrapSemVerRange(val semver.VersionRange) *SemVerRange {
+	return &SemVerRange{val}
 }
 
-func (bv *SemVerRangeValue) VersionRange() semver.VersionRange {
+func (bv *SemVerRange) VersionRange() semver.VersionRange {
 	return bv.rng
 }
 
-func (bv *SemVerRangeValue) Equals(o interface{}, g px.Guard) bool {
-	if ov, ok := o.(*SemVerRangeValue); ok {
+func (bv *SemVerRange) Equals(o interface{}, g px.Guard) bool {
+	if ov, ok := o.(*SemVerRange); ok {
 		return bv.rng.Equals(ov.rng)
 	}
 	return false
 }
 
-func (bv *SemVerRangeValue) Reflect(c px.Context) reflect.Value {
+func (bv *SemVerRange) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf(bv.rng)
 }
 
-func (bv *SemVerRangeValue) ReflectTo(c px.Context, dest reflect.Value) {
+func (bv *SemVerRange) ReflectTo(c px.Context, dest reflect.Value) {
 	rv := bv.Reflect(c)
 	if !rv.Type().AssignableTo(dest.Type()) {
 		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
@@ -180,19 +179,19 @@ func (bv *SemVerRangeValue) ReflectTo(c px.Context, dest reflect.Value) {
 	dest.Set(rv)
 }
 
-func (bv *SemVerRangeValue) CanSerializeAsString() bool {
+func (bv *SemVerRange) CanSerializeAsString() bool {
 	return true
 }
 
-func (bv *SemVerRangeValue) SerializationString() string {
+func (bv *SemVerRange) SerializationString() string {
 	return bv.String()
 }
 
-func (bv *SemVerRangeValue) String() string {
+func (bv *SemVerRange) String() string {
 	return px.ToString2(bv, None)
 }
 
-func (bv *SemVerRangeValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+func (bv *SemVerRange) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	f := px.GetFormat(s.FormatMap(), bv.PType())
 	vr := bv.rng
 	switch f.FormatChar() {
@@ -215,12 +214,12 @@ func (bv *SemVerRangeValue) ToString(b io.Writer, s px.FormatContext, g px.RDete
 	}
 }
 
-func (bv *SemVerRangeValue) ToKey(b *bytes.Buffer) {
+func (bv *SemVerRange) ToKey(b *bytes.Buffer) {
 	b.WriteByte(1)
 	b.WriteByte(HkVersionRange)
 	bv.rng.ToString(b)
 }
 
-func (bv *SemVerRangeValue) PType() px.Type {
+func (bv *SemVerRange) PType() px.Type {
 	return DefaultSemVerRangeType()
 }

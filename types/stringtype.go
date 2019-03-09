@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -74,19 +73,9 @@ func init() {
 					var err error
 					f, err = px.NewFormatContext3(args[0], args[1])
 					if err != nil {
-						panic(errors.NewIllegalArgument(`String`, 1, err.Error()))
+						panic(illegalArgument(`String`, 1, err.Error()))
 					}
 				}
-
-				// Convert errors on first argument to argument errors
-				defer func() {
-					if r := recover(); r != nil {
-						if ge, ok := r.(errors.GenericError); ok {
-							panic(errors.NewIllegalArgument(`String`, 0, ge.Error()))
-						}
-						panic(r)
-					}
-				}()
 				return stringValue(px.ToString2(args[0], f))
 			})
 		},
@@ -123,7 +112,7 @@ func newStringType2(args ...px.Value) px.Type {
 			var min int64
 			min, ok = toInt(args[0])
 			if !ok {
-				panic(NewIllegalArgumentType(`String[]`, 0, `String, Integer or Type[Integer]`, args[0]))
+				panic(illegalArgumentType(`String[]`, 0, `String, Integer or Type[Integer]`, args[0]))
 			}
 			rng = NewIntegerType(min, math.MaxInt64)
 		}
@@ -131,15 +120,15 @@ func newStringType2(args ...px.Value) px.Type {
 		var min, max int64
 		min, ok = toInt(args[0])
 		if !ok {
-			panic(NewIllegalArgumentType(`String[]`, 0, `Integer`, args[0]))
+			panic(illegalArgumentType(`String[]`, 0, `Integer`, args[0]))
 		}
 		max, ok = toInt(args[1])
 		if !ok {
-			panic(NewIllegalArgumentType(`String[]`, 1, `Integer`, args[1]))
+			panic(illegalArgumentType(`String[]`, 1, `Integer`, args[1]))
 		}
 		rng = NewIntegerType(min, max)
 	default:
-		panic(errors.NewIllegalArgumentCount(`String[]`, `0 - 2`, len(args)))
+		panic(illegalArgumentCount(`String[]`, `0 - 2`, len(args)))
 	}
 	return NewStringType(rng, ``)
 }
@@ -369,6 +358,10 @@ func (sv stringValue) AppendTo(slice []px.Value) []px.Value {
 	return slice
 }
 
+func (sv stringValue) AsArray() px.List {
+	return WrapValues(sv.Elements())
+}
+
 func (sv stringValue) At(i int) px.Value {
 	if i >= 0 && i < len(sv.String()) {
 		return stringValue(sv.String()[i : i+1])
@@ -456,10 +449,6 @@ func (sv stringValue) IsEmpty() bool {
 
 func (sv stringValue) IsHashStyle() bool {
 	return false
-}
-
-func (sv stringValue) Iterator() px.Iterator {
-	return &indexedIterator{OneCharStringType, -1, sv}
 }
 
 func (sv stringValue) Len() int {

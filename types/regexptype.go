@@ -7,7 +7,6 @@ import (
 	"regexp"
 
 	"github.com/lyraproj/issue/issue"
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -17,8 +16,8 @@ type (
 		pattern *regexp.Regexp
 	}
 
-	// RegexpValue represents RegexpType as a value
-	RegexpValue RegexpType
+	// Regexp represents RegexpType as a value
+	Regexp RegexpType
 )
 
 var regexpTypeDefault = &RegexpType{pattern: regexp.MustCompile(``)}
@@ -43,7 +42,7 @@ func init() {
 			d.Param(`Variant[String,Regexp]`)
 			d.Function(func(c px.Context, args []px.Value) px.Value {
 				arg := args[0]
-				if s, ok := arg.(*RegexpValue); ok {
+				if s, ok := arg.(*Regexp); ok {
 					return s
 				}
 				return WrapRegexp(arg.String())
@@ -83,12 +82,12 @@ func newRegexpType2(args ...px.Value) *RegexpType {
 		if str, ok := rx.(stringValue); ok {
 			return NewRegexpType(string(str))
 		}
-		if rt, ok := rx.(*RegexpValue); ok {
+		if rt, ok := rx.(*Regexp); ok {
 			return rt.PType().(*RegexpType)
 		}
-		panic(NewIllegalArgumentType(`Regexp[]`, 0, `Variant[Regexp,String]`, args[0]))
+		panic(illegalArgumentType(`Regexp[]`, 0, `Variant[Regexp,String]`, args[0]))
 	default:
-		panic(errors.NewIllegalArgumentCount(`Regexp[]`, `0 - 1`, len(args)))
+		panic(illegalArgumentCount(`Regexp[]`, `0 - 1`, len(args)))
 	}
 }
 
@@ -122,7 +121,7 @@ func (t *RegexpType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *RegexpType) IsInstance(o px.Value, g px.Guard) bool {
-	rx, ok := o.(*RegexpValue)
+	rx, ok := o.(*Regexp)
 	return ok && (t.pattern.String() == `` || t.pattern.String() == rx.PatternString())
 }
 
@@ -200,42 +199,42 @@ func UniqueRegexps(regexpTypes []*RegexpType) []*RegexpType {
 	return result
 }
 
-func WrapRegexp(str string) *RegexpValue {
+func WrapRegexp(str string) *Regexp {
 	pattern, err := regexp.Compile(str)
 	if err != nil {
 		panic(px.Error(px.InvalidRegexp, issue.H{`pattern`: str, `detail`: err.Error()}))
 	}
-	return &RegexpValue{pattern}
+	return &Regexp{pattern}
 }
 
-func WrapRegexp2(pattern *regexp.Regexp) *RegexpValue {
-	return &RegexpValue{pattern}
+func WrapRegexp2(pattern *regexp.Regexp) *Regexp {
+	return &Regexp{pattern}
 }
 
-func (r *RegexpValue) Equals(o interface{}, g px.Guard) bool {
-	if ov, ok := o.(*RegexpValue); ok {
+func (r *Regexp) Equals(o interface{}, g px.Guard) bool {
+	if ov, ok := o.(*Regexp); ok {
 		return r.pattern.String() == ov.pattern.String()
 	}
 	return false
 }
 
-func (r *RegexpValue) Match(s string) []string {
+func (r *Regexp) Match(s string) []string {
 	return r.pattern.FindStringSubmatch(s)
 }
 
-func (r *RegexpValue) Regexp() *regexp.Regexp {
+func (r *Regexp) Regexp() *regexp.Regexp {
 	return r.pattern
 }
 
-func (r *RegexpValue) PatternString() string {
+func (r *Regexp) PatternString() string {
 	return r.pattern.String()
 }
 
-func (r *RegexpValue) Reflect(c px.Context) reflect.Value {
+func (r *Regexp) Reflect(c px.Context) reflect.Value {
 	return reflect.ValueOf(r.pattern)
 }
 
-func (r *RegexpValue) ReflectTo(c px.Context, dest reflect.Value) {
+func (r *Regexp) ReflectTo(c px.Context, dest reflect.Value) {
 	rv := r.Reflect(c).Elem()
 	if !rv.Type().AssignableTo(dest.Type()) {
 		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
@@ -243,21 +242,21 @@ func (r *RegexpValue) ReflectTo(c px.Context, dest reflect.Value) {
 	dest.Set(rv)
 }
 
-func (r *RegexpValue) String() string {
+func (r *Regexp) String() string {
 	return px.ToString2(r, None)
 }
 
-func (r *RegexpValue) ToKey(b *bytes.Buffer) {
+func (r *Regexp) ToKey(b *bytes.Buffer) {
 	b.WriteByte(1)
 	b.WriteByte(HkRegexp)
 	b.Write([]byte(r.pattern.String()))
 }
 
-func (r *RegexpValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
+func (r *Regexp) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	utils.RegexpQuote(b, r.pattern.String())
 }
 
-func (r *RegexpValue) PType() px.Type {
+func (r *Regexp) PType() px.Type {
 	rt := RegexpType(*r)
 	return &rt
 }

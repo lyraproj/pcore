@@ -4,7 +4,6 @@ import (
 	"io"
 	"math"
 
-	"github.com/lyraproj/pcore/errors"
 	"github.com/lyraproj/pcore/px"
 )
 
@@ -46,7 +45,7 @@ func newCollectionType2(args ...px.Value) *CollectionType {
 			sz, ok := toInt(arg)
 			if !ok {
 				if _, ok := arg.(*DefaultValue); !ok {
-					panic(NewIllegalArgumentType(`Collection[]`, 0, `Variant[Integer, Default, Type[Integer]]`, arg))
+					panic(illegalArgumentType(`Collection[]`, 0, `Variant[Integer, Default, Type[Integer]]`, arg))
 				}
 				sz = 0
 			}
@@ -58,7 +57,7 @@ func newCollectionType2(args ...px.Value) *CollectionType {
 		min, ok := toInt(arg)
 		if !ok {
 			if _, ok := arg.(*DefaultValue); !ok {
-				panic(NewIllegalArgumentType(`Collection[]`, 0, `Variant[Integer, Default]`, arg))
+				panic(illegalArgumentType(`Collection[]`, 0, `Variant[Integer, Default]`, arg))
 			}
 			min = 0
 		}
@@ -66,13 +65,13 @@ func newCollectionType2(args ...px.Value) *CollectionType {
 		max, ok := toInt(arg)
 		if !ok {
 			if _, ok := arg.(*DefaultValue); !ok {
-				panic(NewIllegalArgumentType(`Collection[]`, 1, `Variant[Integer, Default]`, arg))
+				panic(illegalArgumentType(`Collection[]`, 1, `Variant[Integer, Default]`, arg))
 			}
 			max = math.MaxInt64
 		}
 		return NewCollectionType(NewIntegerType(min, max))
 	default:
-		panic(errors.NewIllegalArgumentCount(`Collection[]`, `0 - 2`, len(args)))
+		panic(illegalArgumentCount(`Collection[]`, `0 - 2`, len(args)))
 	}
 }
 

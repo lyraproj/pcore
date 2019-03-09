@@ -70,7 +70,7 @@ func tupleFromArgs(callable bool, args px.List) *TupleType {
 	}
 
 	if argc == 1 || argc == 2 {
-		if ar, ok := args.At(0).(*ArrayValue); ok {
+		if ar, ok := args.At(0).(*Array); ok {
 			tupleArgs := ar.AppendTo(make([]px.Value, 0, ar.Len()+argc-1))
 			if argc == 2 {
 				tupleArgs = append(tupleArgs, args.At(1).(*IntegerType).Parameters()...)
@@ -138,7 +138,7 @@ func tupleFromArgs(callable bool, args px.List) *TupleType {
 			if callable {
 				name = `Callable[]`
 			}
-			panic(NewIllegalArgumentType(name, failIdx, `Type`, args.At(failIdx)))
+			panic(illegalArgumentType(name, failIdx, `Type`, args.At(failIdx)))
 		}
 	}
 	return &TupleType{rng, givenOrActualRng, tupleTypes}
@@ -261,7 +261,7 @@ func (t *TupleType) IsAssignable(o px.Type, g px.Guard) bool {
 }
 
 func (t *TupleType) IsInstance(v px.Value, g px.Guard) bool {
-	if iv, ok := v.(*ArrayValue); ok {
+	if iv, ok := v.(*Array); ok {
 		return t.IsInstance2(iv, g)
 	}
 	return false

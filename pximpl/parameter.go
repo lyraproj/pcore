@@ -106,7 +106,7 @@ func init() {
 		t := args[1].(px.Type)
 		h := false
 		if len(args) > 2 {
-			h = args[2].(px.BooleanValue).Bool()
+			h = args[2].(px.Boolean).Bool()
 		}
 		var v px.Value
 		if len(args) > 3 {
@@ -114,14 +114,14 @@ func init() {
 		}
 		c := false
 		if len(args) > 4 {
-			c = args[4].(px.BooleanValue).Bool()
+			c = args[4].(px.Boolean).Bool()
 		}
 		if h && v == nil {
 			v = px.Undef
 		}
 		return newParameter(n, t, v, c)
 	}, func(ctx px.Context, args []px.Value) px.Value {
-		h := args[0].(*types.HashValue)
+		h := args[0].(*types.Hash)
 		n := h.Get5(`name`, px.EmptyString).String()
 		t := h.Get5(`type`, types.DefaultDataType()).(px.Type)
 		var v px.Value
@@ -130,11 +130,11 @@ func init() {
 		}
 		hv := false
 		if x, ok := h.Get4(`has_value`); ok {
-			hv = x.(px.BooleanValue).Bool()
+			hv = x.(px.Boolean).Bool()
 		}
 		c := false
 		if x, ok := h.Get4(`captures_rest`); ok {
-			c = x.(px.BooleanValue).Bool()
+			c = x.(px.Boolean).Bool()
 		}
 		if hv && v == nil {
 			v = px.Undef
