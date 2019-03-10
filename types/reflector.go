@@ -339,8 +339,11 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh px.OrderedMap) (
 			as = append(as, v.(*HashEntry))
 		}
 		if v, ok := fh.Get4(keyType); ok {
-			if t, ok := v.(px.Type); ok {
-				typ = t
+			switch v := v.(type) {
+			case *DeferredType:
+				typ = v.Resolve(r.c)
+			case px.Type:
+				typ = v
 			}
 		}
 	}

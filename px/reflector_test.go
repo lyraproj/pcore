@@ -105,6 +105,7 @@ func TestReflectorAndImplRepo(t *testing.T) {
 	}
 	type Person struct {
 		Name    string
+		Gender  string `puppet:"type=>Enum[male,female,other]"`
 		Address ObscurelyNamedAddress
 	}
 
@@ -113,7 +114,7 @@ func TestReflectorAndImplRepo(t *testing.T) {
 			reflect.TypeOf(&ObscurelyNamedAddress{}), reflect.TypeOf(&Person{}))
 		px.AddTypes(c, typeSet)
 		tss := typeSet.String()
-		exp := `TypeSet[{pcore_uri => 'http://puppet.com/2016.1/pcore', pcore_version => '1.0.0', name_authority => 'http://puppet.com/2016.1/runtime', name => 'My', version => '1.0.0', types => {Address => {attributes => {'street' => String, 'zip_code' => String}}, Person => {attributes => {'name' => String, 'address' => Address}}}}]`
+		exp := `TypeSet[{pcore_uri => 'http://puppet.com/2016.1/pcore', pcore_version => '1.0.0', name_authority => 'http://puppet.com/2016.1/runtime', name => 'My', version => '1.0.0', types => {Address => {attributes => {'street' => String, 'zip_code' => String}}, Person => {attributes => {'name' => String, 'gender' => Enum['male', 'female', 'other'], 'address' => Address}}}}]`
 		if tss != exp {
 			t.Errorf("Expected %s, got %s\n", exp, tss)
 		}
