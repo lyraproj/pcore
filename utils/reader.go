@@ -42,6 +42,17 @@ func (r *StringReader) Next() rune {
 	return c
 }
 
+func (r *StringReader) Peek() rune {
+	if r.p >= len(r.s) {
+		return 0
+	}
+	c := rune(r.s[r.p])
+	if c >= utf8.RuneSelf {
+		c, _ = utf8.DecodeRuneInString(r.s[r.p:])
+	}
+	return c
+}
+
 func (r *StringReader) Column() int {
 	return r.c
 }

@@ -24,12 +24,14 @@ const (
 	exHashComma   = 9 // Expect comma or end of hash
 )
 
-var breakCollection = errors.New(`break`)
+var breakCollection = errors.New(`bc`)
 
-const parseError = `PARSE_ERROR`
+var breakScan = errors.New(`b`)
+
+const ParseError = `PARSE_ERROR`
 
 func init() {
-	issue.Hard(parseError, `%{message}`)
+	issue.Hard(ParseError, `%{message}`)
 }
 
 func expect(state int) (s string) {
@@ -141,15 +143,16 @@ func Parse(s string) (px.Value, error) {
 			}
 		default:
 			entry := state == exEntryValue || state == exPEntryValue
-			if state == exElement || state == exEntryValue {
+			switch state {
+			case exElement, exEntryValue:
 				state = exListComma
-			} else if state == exParam || state == exPEntryValue {
+			case exParam, exPEntryValue:
 				state = exParamsComma
-			} else if state == exKey {
+			case exKey:
 				state = exRocket
-			} else if state == exValue {
+			case exValue:
 				state = exHashComma
-			} else {
+			default:
 				err = badSyntax(t)
 			}
 			switch t.i {
@@ -278,11 +281,63 @@ func Parse(s string) (px.Value, error) {
 		}
 		return err
 	}
-	err := scan(sr, sf)
-	if err != nil {
-		err = px.Error2(issue.NewLocation(``, sr.Line(), sr.Column()), parseError, issue.H{`message`: err.Error()})
+
+	// Initial lex receiver deals with alias syntax "type X = <the rest>"
+	typeName := ``
+	initial := func(t token) (err error) {
+		if t.i == identifier && t.s == `type` {
+			err = scan(sr, func(t token) (err error) {
+				switch t.i {
+				case name:
+					typeName = t.s
+					err = scan(sr, func(t token) (err error) {
+						if t.i == equal {
+							err = scan(sr, sf)
+							if err == nil {
+								err = breakScan
+							}
+						} else {
+							err = badSyntax(t)
+						}
+						return
+					})
+				case comma:
+					state = exElement
+					d.Add(WrapString(`type`))
+					err = scan(sr, sf)
+				case rocket:
+					state = exEntryValue
+					d.Add(WrapString(`type`))
+					err = scan(sr, sf)
+				default:
+					err = badSyntax(t)
+				}
+				if err == nil {
+					err = breakScan
+				}
+				return
+			})
+		} else {
+			err = sf(t)
+			if err == nil && state != end {
+				err = scan(sr, sf)
+			}
+		}
+		if err == nil {
+			err = breakScan
+		}
+		return
 	}
-	return d.Value(), err
+
+	err := scan(sr, initial)
+	if err != nil && err != breakScan {
+		return nil, px.Error2(issue.NewLocation(``, sr.Line(), sr.Column()), ParseError, issue.H{`message`: err.Error()})
+	}
+	dv := d.Value()
+	if typeName != `` {
+		dv = NamedType(px.RuntimeNameAuthority, typeName, dv)
+	}
+	return dv, nil
 }
 
 func fixArrayHash(av *Array) *Array {
