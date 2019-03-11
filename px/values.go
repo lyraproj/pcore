@@ -122,10 +122,15 @@ type (
 		Value() Value
 	}
 
+	Keyed interface {
+		Get(key Value) (Value, bool)
+	}
+
 	// OrderedMap represents a Hash. The iterative methods will not catch break exceptions. If
 	// that is desired, then use an Iterator instead.
 	OrderedMap interface {
 		List
+		Keyed
 		AllPairs(BiPredicate) bool
 		AnyPair(BiPredicate) bool
 		AllKeysAreStrings() bool
@@ -134,7 +139,6 @@ type (
 		EachPair(BiConsumer)
 		EachValue(Consumer)
 
-		Get(key Value) (Value, bool)
 		Get2(key Value, dflt Value) Value
 		Get3(key Value, dflt Producer) Value
 		Get4(key string) (Value, bool)

@@ -80,7 +80,7 @@ func resolveValue(c px.Context, v px.Value) (rv px.Value) {
 	case *DeferredType:
 		rv = v.Resolve(c)
 	case Deferred:
-		rv = v.Resolve(c)
+		rv = v.Resolve(c, emptyMap)
 	case *Array:
 		rv = v.Map(func(e px.Value) px.Value { return resolveValue(c, e) })
 	case *HashEntry:

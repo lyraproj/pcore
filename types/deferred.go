@@ -3,19 +3,12 @@ package types
 import (
 	"io"
 
+	"github.com/lyraproj/issue/issue"
+
 	"github.com/lyraproj/pcore/px"
 )
 
 var DeferredMetaType px.ObjectType
-
-var DeferredResolve = func(d Deferred, c px.Context) px.Value {
-	fn := d.Name()
-	args := d.Arguments().AppendTo(make([]px.Value, 0, d.Arguments().Len()))
-	for i, a := range args {
-		args[i] = ResolveDeferred(c, a)
-	}
-	return px.Call(c, fn, args, nil)
-}
 
 func init() {
 	DeferredMetaType = newObjectType(`Deferred`, `{
@@ -39,7 +32,7 @@ type Deferred interface {
 
 	Arguments() *Array
 
-	Resolve(c px.Context) px.Value
+	Resolve(c px.Context, scope px.Keyed) px.Value
 }
 
 type deferred struct {
@@ -116,23 +109,46 @@ func (e *deferred) InitHash() px.OrderedMap {
 	return WrapHash([]*HashEntry{WrapHashEntry2(`name`, stringValue(e.name)), WrapHashEntry2(`arguments`, e.arguments)})
 }
 
-func (e *deferred) Resolve(c px.Context) px.Value {
-	return DeferredResolve(e, c)
+func (e *deferred) Resolve(c px.Context, scope px.Keyed) px.Value {
+	fn := e.Name()
+	da := e.Arguments()
+
+	var args []px.Value
+	if fn[0] == '$' {
+		vn := fn[1:]
+		vv, ok := scope.Get(stringValue(vn))
+		if !ok {
+			panic(px.Error(px.UnknownVariable, issue.H{`name`: vn}))
+		}
+		if da.Len() == 0 {
+			// No point digging with zero arguments
+			return vv
+		}
+		fn = `dig`
+		args = append(make([]px.Value, 0, 1+da.Len()), vv)
+	} else {
+		args = make([]px.Value, 0, da.Len())
+	}
+	args = da.AppendTo(args)
+	for i, a := range args {
+		args[i] = ResolveDeferred(c, a, scope)
+	}
+	return px.Call(c, fn, args, nil)
 }
 
 // ResolveDeferred will resolve all occurrences of a DeferredValue in its
 // given argument. Array and Hash arguments will be resolved recursively.
-func ResolveDeferred(c px.Context, a px.Value) px.Value {
+func ResolveDeferred(c px.Context, a px.Value, scope px.Keyed) px.Value {
 	switch a := a.(type) {
 	case Deferred:
-		return a.Resolve(c)
+		return a.Resolve(c, scope)
 	case *Array:
 		return a.Map(func(v px.Value) px.Value {
-			return ResolveDeferred(c, v)
+			return ResolveDeferred(c, v, scope)
 		})
 	case *Hash:
 		return a.MapEntries(func(v px.MapEntry) px.MapEntry {
-			return WrapHashEntry(ResolveDeferred(c, v.Key()), ResolveDeferred(c, v.Value()))
+			return WrapHashEntry(ResolveDeferred(c, v.Key(), scope), ResolveDeferred(c, v.Value(), scope))
 		})
 	default:
 		return a

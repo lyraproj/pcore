@@ -91,6 +91,7 @@ const (
 	UnableToReadFile                      = `EVAL_UNABLE_TO_READ_FILE`
 	UnhandledPcoreVersion                 = `EVAL_UNHANDLED_PCORE_VERSION`
 	UnknownFunction                       = `EVAL_UNKNOWN_FUNCTION`
+	UnknownVariable                       = `EVAL_UNKNOWN_VARIABLE`
 	UnreflectableType                     = `EVAL_UNREFLECTABLE_TYPE`
 	UnreflectableValue                    = `EVAL_UNREFLECTABLE_VALUE`
 	UnresolvedType                        = `EVAL_UNRESOLVED_TYPE`
@@ -276,6 +277,8 @@ func init() {
 	issue.Hard(UnhandledPcoreVersion, `The pcore version for TypeSet '%{name}' is not understood by this runtime. Expected range %{expected_range}, got %{pcore_version}`)
 
 	issue.Hard(UnknownFunction, `Unknown function: '%{name}'`)
+
+	issue.Hard(UnknownVariable, `Unknown variable: '$%{name}'`)
 
 	issue.Hard(UnreflectableType, `Unable to create a pcore.Type from value of type '%{type}'`)
 
