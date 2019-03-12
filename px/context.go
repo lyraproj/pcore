@@ -12,6 +12,20 @@ import (
 
 const PuppetContextKey = `puppet.context`
 
+type VariableState int
+
+const NotFound = VariableState(0)
+const Global = VariableState(1)
+const Local = VariableState(2)
+
+// VariableStates is implemented by an evaluation scope that wishes to differentiate between
+// local and global states. The difference is significant for modules like Hiera that relies
+// on that global variables remain unchanged during evaluation.
+type VariableStates interface {
+	// State returns NotFound, Global, or Local for the given name.
+	State(name string) VariableState
+}
+
 // An Context holds all state during evaluation. Since it contains the stack, each
 // thread of execution must use a context of its own. It's expected that multiple
 // contexts share common parents for scope and loaders.
@@ -70,6 +84,11 @@ type Context interface {
 	// Reflector returns a Reflector capable of converting to and from reflected values
 	// and types
 	Reflector() Reflector
+
+	// Scope returns an optional variable scope. This method is intended to be used when
+	// the context is used as an evaluation context. The method returns an empty OrderedMap
+	// by default.
+	Scope() Keyed
 
 	// Set adds or replaces the context variable for the given key with the given value
 	Set(key string, value interface{})

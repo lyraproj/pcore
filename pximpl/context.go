@@ -193,6 +193,10 @@ func resolveResolvables(c px.Context) {
 	}
 }
 
+func (c *pxContext) Scope() px.Keyed {
+	return px.EmptyMap
+}
+
 func (c *pxContext) Set(key string, value interface{}) {
 	if c.vars == nil {
 		c.vars = map[string]interface{}{key: value}
