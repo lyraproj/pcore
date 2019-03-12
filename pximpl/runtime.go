@@ -231,6 +231,7 @@ func (p *rt) RootContext() px.Context {
 	c := WithParent(context.Background(), px.NewParentedLoader(p.EnvironmentLoader()), p.logger, topImplRegistry)
 	threadlocal.Init()
 	threadlocal.Set(px.PuppetContextKey, c)
+	px.ResolveResolvables(c)
 	return c
 }
 
@@ -245,6 +246,7 @@ func (p *rt) DoWithParent(parentCtx context.Context, actor func(px.Context)) {
 		ctx = ec.Fork()
 	} else {
 		ctx = WithParent(parentCtx, px.NewParentedLoader(p.EnvironmentLoader()), p.logger, topImplRegistry)
+		px.ResolveResolvables(ctx)
 	}
 	px.DoWithContext(ctx, actor)
 }
