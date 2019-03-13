@@ -55,9 +55,9 @@ func init() {
 	oneArgCtor := func(ctx px.Context, args []px.Value) px.Value {
 		return newTypeSetType2(args[0].(*Hash), ctx.Loader())
 	}
-	TypeSetMetaType = NewParentedObjectType(`Pcore::TypeSet`, AnyMetaType,
+	TypeSetMetaType = MakeObjectType(`Pcore::TypeSet`, AnyMetaType,
 		WrapStringToValueMap(map[string]px.Value{
-			`attributes`: singletonMap(`_pcore_init_hash`, typeTypesetInit)}),
+			`attributes`: singletonMap(`_pcore_init_hash`, typeTypesetInit)}), true,
 		// Hash constructor is equal to the positional arguments constructor
 		oneArgCtor, oneArgCtor)
 }

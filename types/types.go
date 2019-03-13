@@ -884,13 +884,13 @@ func createMetaType2(na px.URI, name string, typeName string, parentName string,
 	if parentName == `` {
 		switch typeName {
 		case `Object`:
-			return NewParentedObjectType(name, nil, hash)
+			return MakeObjectType(name, nil, hash, false)
 		default:
 			return NewTypeSet(na, name, hash)
 		}
 	}
 
-	return NewParentedObjectType(name, NewTypeReferenceType(parentName), hash)
+	return MakeObjectType(name, NewTypeReferenceType(parentName), hash, false)
 }
 
 func argError(key string, e px.Type, a px.Value) issue.Reported {

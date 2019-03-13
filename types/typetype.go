@@ -37,7 +37,7 @@ func init() {
 		func(d px.Dispatch) {
 			d.Param2(TypeObjectInitHash)
 			d.Function(func(c px.Context, args []px.Value) px.Value {
-				return NewParentedObjectType(``, nil, args[0].(px.OrderedMap)).Resolve(c)
+				return MakeObjectType(``, nil, args[0].(px.OrderedMap), false).Resolve(c)
 			})
 		})
 }

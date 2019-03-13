@@ -22,9 +22,9 @@ func init() {
 	oneArgCtor := func(ctx px.Context, args []px.Value) px.Value {
 		return newObjectType2(ctx, args...)
 	}
-	ObjectMetaType = NewParentedObjectType(`Pcore::ObjectType`, AnyMetaType,
+	ObjectMetaType = MakeObjectType(`Pcore::ObjectType`, AnyMetaType,
 		WrapStringToValueMap(map[string]px.Value{
-			`attributes`: singletonMap(`_pcore_init_hash`, TypeObjectInitHash)}),
+			`attributes`: singletonMap(`_pcore_init_hash`, TypeObjectInitHash)}), true,
 		oneArgCtor, oneArgCtor)
 }
 
@@ -1250,7 +1250,7 @@ func newObjectType(name, typeDecl string, creators ...px.DispatchFunction) px.Ob
 	}
 	if h, ok := ta.(*Hash); ok {
 		// "type = {}"
-		return NewParentedObjectType(name, nil, h, creators...)
+		return MakeObjectType(name, nil, h, true, creators...)
 	}
 	if dt, ok := ta.(*DeferredType); ok {
 		ps := dt.Parameters()
@@ -1260,7 +1260,7 @@ func newObjectType(name, typeDecl string, creators ...px.DispatchFunction) px.Ob
 				if pn := dt.Name(); pn != `TypeSet` && pn != `Object` {
 					p = NewTypeReferenceType(pn)
 				}
-				return NewParentedObjectType(name, p, h, creators...)
+				return MakeObjectType(name, p, h, true, creators...)
 			}
 		}
 	}
@@ -1289,7 +1289,10 @@ func newObjectType2(c px.Context, args ...px.Value) *objectType {
 	}
 }
 
-func NewParentedObjectType(name string, parent px.Type, initHash px.OrderedMap, creators ...px.DispatchFunction) *objectType {
+// MakeObjectType creates a new object type and optionally registers it as a resolvable to be picked up for resolution
+// on the next call to px.ResolveResolvables if the given register flag is true. This flag should only be set to true
+// when the call stems from a static init() function where no context is available.
+func MakeObjectType(name string, parent px.Type, initHash px.OrderedMap, register bool, creators ...px.DispatchFunction) *objectType {
 	if name == `` {
 		name = initHash.Get5(`name`, emptyString).String()
 	}
@@ -1298,7 +1301,9 @@ func NewParentedObjectType(name string, parent px.Type, initHash px.OrderedMap, 
 	obj.initHashExpression = initHash
 	obj.parent = parent
 	obj.setCreators(creators...)
-	registerResolvableType(obj)
+	if register {
+		registerResolvableType(obj)
+	}
 	return obj
 }
 
