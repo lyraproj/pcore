@@ -1,7 +1,6 @@
 package loader
 
 import (
-	"reflect"
 	"sort"
 	"sync"
 
@@ -119,7 +118,7 @@ func (l *basicLoader) SetEntry(name px.TypedName, entry px.LoaderEntry) px.Loade
 	l.lock.Lock()
 	if old, ok := l.namedEntries[name.MapKey()]; ok && old.Value() != nil {
 		l.lock.Unlock()
-		if reflect.ValueOf(old.Value()).Pointer() == reflect.ValueOf(entry.Value()).Pointer() {
+		if old.Value() == entry.Value() {
 			return old
 		}
 		panic(px.Error(px.AttemptToRedefine, issue.H{`name`: name}))

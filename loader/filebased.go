@@ -21,13 +21,10 @@ type (
 
 	fileBasedLoader struct {
 		parentedLoader
-		path            string
-		moduleName      string
-		initPlanName    px.TypedName
-		initTaskName    px.TypedName
-		initTypeSetName px.TypedName
-		paths           map[px.Namespace][]SmartPath
-		index           map[string][]string
+		path       string
+		moduleName string
+		paths      map[px.Namespace][]SmartPath
+		index      map[string][]string
 	}
 
 	SmartPathFactory func(loader px.ModuleLoader, moduleNameRelative bool) SmartPath
@@ -47,19 +44,18 @@ func newFileBasedLoader(parent px.Loader, path, moduleName string, lds ...px.Pat
 		parentedLoader: parentedLoader{
 			basicLoader: basicLoader{namedEntries: make(map[string]px.LoaderEntry, 64)},
 			parent:      parent},
-		path:            path,
-		initPlanName:    px.NewTypedName2(px.NsPlan, `init`, parent.NameAuthority()),
-		initTaskName:    px.NewTypedName2(px.NsTask, `init`, parent.NameAuthority()),
-		initTypeSetName: px.NewTypedName2(px.NsType, `init_typeset`, parent.NameAuthority()),
-		moduleName:      moduleName,
-		paths:           paths}
+		path:       path,
+		moduleName: moduleName,
+		paths:      paths}
 
 	for _, p := range lds {
 		path := loader.newSmartPath(p, !(moduleName == `` || moduleName == `environment`))
-		if sa, ok := paths[path.Namespace()]; ok {
-			paths[path.Namespace()] = append(sa, path)
-		} else {
-			paths[path.Namespace()] = []SmartPath{path}
+		for _, ns := range path.Namespaces() {
+			if sa, ok := paths[ns]; ok {
+				paths[ns] = append(sa, path)
+			} else {
+				paths[ns] = []SmartPath{path}
+			}
 		}
 	}
 	return loader
@@ -73,7 +69,7 @@ func (l *fileBasedLoader) newSmartPath(pathType px.PathType, moduleNameRelative 
 }
 
 func newPuppetTypePath(loader px.ModuleLoader, moduleNameRelative bool) SmartPath {
-	return NewSmartPath(`types`, `.pp`, loader, px.NsType, moduleNameRelative, false, InstantiatePuppetType)
+	return NewSmartPath(`types`, `.pp`, loader, []px.Namespace{px.NsType}, moduleNameRelative, false, InstantiatePuppetType)
 }
 
 func (l *fileBasedLoader) LoadEntry(c px.Context, name px.TypedName) px.LoaderEntry {
@@ -101,6 +97,9 @@ func (l *fileBasedLoader) isGlobal() bool {
 }
 
 func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
+	if name.Namespace() == px.NsConstructor || name.Namespace() == px.NsAllocator {
+		return nil
+	}
 	if name.IsQualified() {
 		// The name is in a name space.
 		if l.moduleName != `` && l.moduleName != name.Parts()[0] {
@@ -118,36 +117,6 @@ func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 		switch name.Namespace() {
 		case px.NsFunction:
 			// Can be defined in module using a global name. No action required
-		case px.NsPlan:
-			if !l.isGlobal() {
-				// Global name must be the name of the module
-				if l.moduleName != name.Parts()[0] {
-					// Global name must be the name of the module
-					return nil
-				}
-
-				// Look for special 'init' plan
-				origins, smartPath := l.findExistingPath(l.initPlanName)
-				if smartPath == nil {
-					return nil
-				}
-				return l.instantiate(c, smartPath, name, origins)
-			}
-		case px.NsTask:
-			if !l.isGlobal() {
-				// Global name must be the name of the module
-				if l.moduleName != name.Parts()[0] {
-					// Global name must be the name of the module
-					return nil
-				}
-
-				// Look for special 'init' task
-				origins, smartPath := l.findExistingPath(l.initTaskName)
-				if smartPath == nil {
-					return nil
-				}
-				return l.instantiate(c, smartPath, name, origins)
-			}
 		case px.NsType:
 			if !l.isGlobal() {
 				// Global name must be the name of the module
@@ -157,7 +126,7 @@ func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 				}
 
 				// Look for special 'init_typeset' TypeSet
-				origins, smartPath := l.findExistingPath(l.initTypeSetName)
+				origins, smartPath := l.findExistingPath(px.NewTypedName2(name.Namespace(), `init_typeset`, l.NameAuthority()))
 				if smartPath == nil {
 					return nil
 				}
@@ -171,7 +140,20 @@ func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 				panic(px.Error(px.NotExpectedTypeset, issue.H{`source`: origins[0], `name`: utils.CapitalizeSegment(l.moduleName)}))
 			}
 		default:
-			return nil
+			if !l.isGlobal() {
+				// Global name must be the name of the module
+				if l.moduleName != name.Parts()[0] {
+					// Global name must be the name of the module
+					return nil
+				}
+
+				// Look for special 'init' file
+				origins, smartPath := l.findExistingPath(px.NewTypedName2(name.Namespace(), `init`, l.NameAuthority()))
+				if smartPath == nil {
+					return nil
+				}
+				return l.instantiate(c, smartPath, name, origins)
+			}
 		}
 	}
 
@@ -180,26 +162,27 @@ func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 		return l.instantiate(c, smartPath, name, origins)
 	}
 
-	if !(name.Namespace() == px.NsType && name.IsQualified()) {
+	if !name.IsQualified() {
 		return nil
 	}
 
-	// Search for TypeSet using parent name
+	// Search using parent name. If a parent is found, load it and check if that load fulfilled the
+	// request of the qualified name
 	tsName := name.Parent()
 	for tsName != nil {
 		tse := l.GetEntry(tsName)
 		if tse == nil {
 			tse = l.find(c, tsName)
-		}
-		if tse != nil && tse.Value() != nil {
-			if ts, ok := tse.Value().(px.TypeSet); ok {
-				c.DoWithLoader(l, func() {
-					ts.(px.ResolvableType).Resolve(c)
-				})
-				te := l.GetEntry(name)
-				if te != nil {
-					return te
+			if tse != nil && tse.Value() != nil {
+				if ts, ok := tse.Value().(px.TypeSet); ok {
+					c.DoWithLoader(l, func() {
+						ts.(px.ResolvableType).Resolve(c)
+					})
 				}
+			}
+			te := l.GetEntry(name)
+			if te != nil {
+				return te
 			}
 		}
 		tsName = tsName.Parent()
@@ -308,8 +291,7 @@ func (l *fileBasedLoader) addToIndex(smartPath SmartPath) {
 			if noExtension || strings.HasSuffix(path, ext) {
 				rel, err := filepath.Rel(generic, path)
 				if err == nil {
-					tn := smartPath.TypedName(l.NameAuthority(), rel)
-					if tn != nil {
+					for _, tn := range smartPath.TypedNames(l.NameAuthority(), rel) {
 						if paths, ok := l.index[tn.MapKey()]; ok {
 							l.index[tn.MapKey()] = append(paths, path)
 						} else {
