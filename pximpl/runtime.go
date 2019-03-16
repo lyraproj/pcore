@@ -228,7 +228,7 @@ func (p *rt) Logger() px.Logger {
 
 func (p *rt) RootContext() px.Context {
 	InitializeRuntime()
-	c := WithParent(context.Background(), px.NewParentedLoader(p.EnvironmentLoader()), p.logger, topImplRegistry)
+	c := WithParent(context.Background(), p.EnvironmentLoader(), p.logger, topImplRegistry)
 	threadlocal.Init()
 	threadlocal.Set(px.PuppetContextKey, c)
 	px.ResolveResolvables(c)
@@ -241,14 +241,16 @@ func (p *rt) Do(actor func(px.Context)) {
 
 func (p *rt) DoWithParent(parentCtx context.Context, actor func(px.Context)) {
 	InitializeRuntime()
-	var ctx px.Context
 	if ec, ok := parentCtx.(px.Context); ok {
-		ctx = ec.Fork()
+		ctx := ec.Fork()
+		px.DoWithContext(ctx, actor)
 	} else {
-		ctx = WithParent(parentCtx, px.NewParentedLoader(p.EnvironmentLoader()), p.logger, topImplRegistry)
-		px.ResolveResolvables(ctx)
+		ctx := WithParent(parentCtx, p.EnvironmentLoader(), p.logger, topImplRegistry)
+		px.DoWithContext(ctx, func(ctx px.Context) {
+			px.ResolveResolvables(ctx)
+			actor(ctx)
+		})
 	}
-	px.DoWithContext(ctx, actor)
 }
 
 func (p *rt) Try(actor func(px.Context) error) (err error) {
