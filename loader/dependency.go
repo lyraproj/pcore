@@ -11,7 +11,10 @@ type dependencyLoader struct {
 func newDependencyLoader(loaders []px.ModuleLoader) px.Loader {
 	index := make(map[string]px.ModuleLoader, len(loaders))
 	for _, ml := range loaders {
-		index[ml.ModuleName()] = ml
+		n := ml.ModuleName()
+		if n != `` {
+			index[n] = ml
+		}
 	}
 	return &dependencyLoader{
 		basicLoader: basicLoader{namedEntries: make(map[string]px.LoaderEntry, 32)},
@@ -40,11 +43,11 @@ func (l *dependencyLoader) LoaderFor(moduleName string) px.ModuleLoader {
 }
 
 func (l *dependencyLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
-	if name.IsQualified() {
+	if len(l.index) > 0 && name.IsQualified() {
+		// Explicit loader for given name takes precedence
 		if ml, ok := l.index[name.Parts()[0]]; ok {
 			return ml.LoadEntry(c, name)
 		}
-		return nil
 	}
 
 	for _, ml := range l.loaders {
