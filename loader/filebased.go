@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/px"
@@ -21,13 +22,12 @@ type (
 
 	fileBasedLoader struct {
 		parentedLoader
-		path            string
-		moduleName      string
-		initPlanName    px.TypedName
-		initTaskName    px.TypedName
-		initTypeSetName px.TypedName
-		paths           map[px.Namespace][]SmartPath
-		index           map[string][]string
+		path       string
+		moduleName string
+		paths      map[px.Namespace][]SmartPath
+		index      map[string][]string
+		locks      map[string]*sync.Mutex
+		locksLock  sync.Mutex
 	}
 
 	SmartPathFactory func(loader px.ModuleLoader, moduleNameRelative bool) SmartPath
@@ -47,19 +47,19 @@ func newFileBasedLoader(parent px.Loader, path, moduleName string, lds ...px.Pat
 		parentedLoader: parentedLoader{
 			basicLoader: basicLoader{namedEntries: make(map[string]px.LoaderEntry, 64)},
 			parent:      parent},
-		path:            path,
-		initPlanName:    px.NewTypedName2(px.NsPlan, `init`, parent.NameAuthority()),
-		initTaskName:    px.NewTypedName2(px.NsTask, `init`, parent.NameAuthority()),
-		initTypeSetName: px.NewTypedName2(px.NsType, `init_typeset`, parent.NameAuthority()),
-		moduleName:      moduleName,
-		paths:           paths}
+		path:       path,
+		moduleName: moduleName,
+		paths:      paths,
+		locks:      make(map[string]*sync.Mutex)}
 
 	for _, p := range lds {
 		path := loader.newSmartPath(p, !(moduleName == `` || moduleName == `environment`))
-		if sa, ok := paths[path.Namespace()]; ok {
-			paths[path.Namespace()] = append(sa, path)
-		} else {
-			paths[path.Namespace()] = []SmartPath{path}
+		for _, ns := range path.Namespaces() {
+			if sa, ok := paths[ns]; ok {
+				paths[ns] = append(sa, path)
+			} else {
+				paths[ns] = []SmartPath{path}
+			}
 		}
 	}
 	return loader
@@ -73,17 +73,29 @@ func (l *fileBasedLoader) newSmartPath(pathType px.PathType, moduleNameRelative 
 }
 
 func newPuppetTypePath(loader px.ModuleLoader, moduleNameRelative bool) SmartPath {
-	return NewSmartPath(`types`, `.pp`, loader, px.NsType, moduleNameRelative, false, InstantiatePuppetType)
+	return NewSmartPath(`types`, `.pp`, loader, []px.Namespace{px.NsType}, moduleNameRelative, false, InstantiatePuppetType)
 }
 
 func (l *fileBasedLoader) LoadEntry(c px.Context, name px.TypedName) px.LoaderEntry {
 	entry := l.parentedLoader.LoadEntry(c, name)
+	if entry != nil {
+		return entry
+	}
+
+	if name.Namespace() == px.NsConstructor || name.Namespace() == px.NsAllocator {
+		// Process internal. Never found in file system
+		return nil
+	}
+
+	entry = l.GetEntry(name)
+	if entry != nil {
+		return entry
+	}
+
+	entry = l.find(c, name)
 	if entry == nil {
-		entry = l.find(c, name)
-		if entry == nil {
-			entry = &loaderEntry{nil, nil}
-			l.SetEntry(name, entry)
-		}
+		entry = &loaderEntry{nil, nil}
+		l.SetEntry(name, entry)
 	}
 	return entry
 }
@@ -118,36 +130,6 @@ func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 		switch name.Namespace() {
 		case px.NsFunction:
 			// Can be defined in module using a global name. No action required
-		case px.NsPlan:
-			if !l.isGlobal() {
-				// Global name must be the name of the module
-				if l.moduleName != name.Parts()[0] {
-					// Global name must be the name of the module
-					return nil
-				}
-
-				// Look for special 'init' plan
-				origins, smartPath := l.findExistingPath(l.initPlanName)
-				if smartPath == nil {
-					return nil
-				}
-				return l.instantiate(c, smartPath, name, origins)
-			}
-		case px.NsTask:
-			if !l.isGlobal() {
-				// Global name must be the name of the module
-				if l.moduleName != name.Parts()[0] {
-					// Global name must be the name of the module
-					return nil
-				}
-
-				// Look for special 'init' task
-				origins, smartPath := l.findExistingPath(l.initTaskName)
-				if smartPath == nil {
-					return nil
-				}
-				return l.instantiate(c, smartPath, name, origins)
-			}
 		case px.NsType:
 			if !l.isGlobal() {
 				// Global name must be the name of the module
@@ -157,7 +139,7 @@ func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 				}
 
 				// Look for special 'init_typeset' TypeSet
-				origins, smartPath := l.findExistingPath(l.initTypeSetName)
+				origins, smartPath := l.findExistingPath(px.NewTypedName2(name.Namespace(), `init_typeset`, l.NameAuthority()))
 				if smartPath == nil {
 					return nil
 				}
@@ -171,7 +153,20 @@ func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 				panic(px.Error(px.NotExpectedTypeset, issue.H{`source`: origins[0], `name`: utils.CapitalizeSegment(l.moduleName)}))
 			}
 		default:
-			return nil
+			if !l.isGlobal() {
+				// Global name must be the name of the module
+				if l.moduleName != name.Parts()[0] {
+					// Global name must be the name of the module
+					return nil
+				}
+
+				// Look for special 'init' file
+				origins, smartPath := l.findExistingPath(px.NewTypedName2(name.Namespace(), `init`, l.NameAuthority()))
+				if smartPath == nil {
+					return nil
+				}
+				return l.instantiate(c, smartPath, name, origins)
+			}
 		}
 	}
 
@@ -180,26 +175,27 @@ func (l *fileBasedLoader) find(c px.Context, name px.TypedName) px.LoaderEntry {
 		return l.instantiate(c, smartPath, name, origins)
 	}
 
-	if !(name.Namespace() == px.NsType && name.IsQualified()) {
+	if !name.IsQualified() {
 		return nil
 	}
 
-	// Search for TypeSet using parent name
+	// Search using parent name. If a parent is found, load it and check if that load fulfilled the
+	// request of the qualified name
 	tsName := name.Parent()
 	for tsName != nil {
 		tse := l.GetEntry(tsName)
 		if tse == nil {
 			tse = l.find(c, tsName)
-		}
-		if tse != nil && tse.Value() != nil {
-			if ts, ok := tse.Value().(px.TypeSet); ok {
-				c.DoWithLoader(l, func() {
-					ts.(px.ResolvableType).Resolve(c)
-				})
-				te := l.GetEntry(name)
-				if te != nil {
-					return te
+			if tse != nil && tse.Value() != nil {
+				if ts, ok := tse.Value().(px.TypeSet); ok {
+					c.DoWithLoader(l, func() {
+						ts.(px.ResolvableType).Resolve(c)
+					})
 				}
+			}
+			te := l.GetEntry(name)
+			if te != nil {
+				return te
 			}
 		}
 		tsName = tsName.Parent()
@@ -241,8 +237,37 @@ func (l *fileBasedLoader) ensureIndexed(sp SmartPath) {
 }
 
 func (l *fileBasedLoader) instantiate(c px.Context, smartPath SmartPath, name px.TypedName, origins []string) px.LoaderEntry {
-	smartPath.Instantiator()(c, l, name, origins)
-	return l.GetEntry(name)
+	rn := name
+
+	// The name of the thing to instantiate must be based on the first namespace when the SmartPath supports more than one
+	ns := smartPath.Namespaces()
+	if len(ns) > 1 && name.Namespace() != ns[0] {
+		name = px.NewTypedName2(ns[0], name.Name(), name.Authority())
+	}
+
+	// Lock the on the name. Several instantiations of different names must be allowed to execute in parallel
+	var nameLock *sync.Mutex
+	l.locksLock.Lock()
+	if lk, ok := l.locks[name.MapKey()]; ok {
+		nameLock = lk
+	} else {
+		nameLock = &sync.Mutex{}
+		l.locks[name.MapKey()] = nameLock
+	}
+	l.locksLock.Unlock()
+
+	nameLock.Lock()
+	defer func() {
+		nameLock.Unlock()
+		l.locksLock.Lock()
+		delete(l.locks, name.MapKey())
+		l.locksLock.Unlock()
+	}()
+
+	if l.GetEntry(name) == nil {
+		smartPath.Instantiator()(c, l, name, origins)
+	}
+	return l.GetEntry(rn)
 }
 
 func (l *fileBasedLoader) Discover(c px.Context, predicate func(px.TypedName) bool) []px.TypedName {
@@ -308,8 +333,7 @@ func (l *fileBasedLoader) addToIndex(smartPath SmartPath) {
 			if noExtension || strings.HasSuffix(path, ext) {
 				rel, err := filepath.Rel(generic, path)
 				if err == nil {
-					tn := smartPath.TypedName(l.NameAuthority(), rel)
-					if tn != nil {
+					for _, tn := range smartPath.TypedNames(l.NameAuthority(), rel) {
 						if paths, ok := l.index[tn.MapKey()]; ok {
 							l.index[tn.MapKey()] = append(paths, path)
 						} else {

@@ -17,10 +17,10 @@ type (
 		EffectivePath(name px.TypedName) string
 		Extension() string
 		RelativePath() string
-		Namespace() px.Namespace
+		Namespaces() []px.Namespace
 		IsMatchMany() bool
 		PreferredOrigin(i []string) string
-		TypedName(nameAuthority px.URI, relativePath string) px.TypedName
+		TypedNames(nameAuthority px.URI, relativePath string) []px.TypedName
 		Instantiator() Instantiator
 		Indexed() bool
 		SetIndexed()
@@ -29,7 +29,7 @@ type (
 	smartPath struct {
 		relativePath string
 		loader       px.ModuleLoader
-		namespace    px.Namespace
+		namespaces   []px.Namespace
 		extension    string
 
 		// Paths are not supposed to contain module name
@@ -41,10 +41,10 @@ type (
 )
 
 func NewSmartPath(relativePath, extension string,
-	loader px.ModuleLoader, namespace px.Namespace, moduleNameRelative,
+	loader px.ModuleLoader, namespaces []px.Namespace, moduleNameRelative,
 	matchMany bool, instantiator Instantiator) SmartPath {
 	return &smartPath{relativePath: relativePath, extension: extension,
-		loader: loader, namespace: namespace, moduleNameRelative: moduleNameRelative,
+		loader: loader, namespaces: namespaces, moduleNameRelative: moduleNameRelative,
 		matchMany: matchMany, instantiator: instantiator, indexed: false}
 }
 
@@ -87,8 +87,8 @@ func (p *smartPath) GenericPath() string {
 	return filepath.Join(parts...)
 }
 
-func (p *smartPath) Namespace() px.Namespace {
-	return p.namespace
+func (p *smartPath) Namespaces() []px.Namespace {
+	return p.namespaces
 }
 
 func (p *smartPath) Extension() string {
@@ -107,7 +107,7 @@ func (p *smartPath) PreferredOrigin(origins []string) string {
 	if len(origins) == 1 {
 		return origins[0]
 	}
-	if p.namespace == px.NsTask {
+	if p.namespaces[0] == px.NsTask {
 		// Prefer .json file if present
 		for _, origin := range origins {
 			if strings.HasSuffix(origin, `.json`) {
@@ -120,7 +120,7 @@ func (p *smartPath) PreferredOrigin(origins []string) string {
 
 var dropExtension = regexp.MustCompile(`\.[^\\/]*\z`)
 
-func (p *smartPath) TypedName(nameAuthority px.URI, relativePath string) px.TypedName {
+func (p *smartPath) TypedNames(nameAuthority px.URI, relativePath string) []px.TypedName {
 	parts := strings.Split(relativePath, `/`)
 	l := len(parts) - 1
 	s := parts[l]
@@ -134,7 +134,11 @@ func (p *smartPath) TypedName(nameAuthority px.URI, relativePath string) px.Type
 	if p.moduleNameRelative && !(len(parts) == 1 && (s == `init` || s == `init_typeset`)) {
 		parts = append([]string{p.loader.ModuleName()}, parts...)
 	}
-	return px.NewTypedName2(p.namespace, strings.Join(parts, `::`), nameAuthority)
+	ts := make([]px.TypedName, len(p.namespaces))
+	for i, n := range p.namespaces {
+		ts[i] = px.NewTypedName2(n, strings.Join(parts, `::`), nameAuthority)
+	}
+	return ts
 }
 
 func (p *smartPath) Instantiator() Instantiator {

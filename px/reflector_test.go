@@ -46,16 +46,17 @@ func ExampleImplementationRegistry() {
 		panic(err)
 	}
 
-	c := pcore.RootContext()
-	px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
+	pcore.Do(func(c px.Context) {
+		px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
 
-	ir := c.ImplementationRegistry()
-	ir.RegisterType(c.ParseType(`My::Address`), reflect.TypeOf(TestAddress{}))
-	ir.RegisterType(c.ParseType(`My::Person`), reflect.TypeOf(TestPerson{}))
+		ir := c.ImplementationRegistry()
+		ir.RegisterType(c.ParseType(`My::Address`), reflect.TypeOf(TestAddress{}))
+		ir.RegisterType(c.ParseType(`My::Person`), reflect.TypeOf(TestPerson{}))
 
-	ts := &TestPerson{`Bob Tester`, 34, &TestAddress{`Example Road 23`, `12345`}, true}
-	ev := px.Wrap(c, ts)
-	fmt.Println(ev)
+		ts := &TestPerson{`Bob Tester`, 34, &TestAddress{`Example Road 23`, `12345`}, true}
+		ev := px.Wrap(c, ts)
+		fmt.Println(ev)
+	})
 	// Output: My::Person('name' => 'Bob Tester', 'age' => 34, 'address' => My::Address('street' => 'Example Road 23', 'zip' => '12345'), 'active' => true)
 }
 
@@ -85,16 +86,17 @@ func ExampleImplementationRegistry_tags() {
       enabled => Boolean,
 		}`)
 
-	c := pcore.RootContext()
-	px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
+	pcore.Do(func(c px.Context) {
+		px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
 
-	ir := c.ImplementationRegistry()
-	ir.RegisterType(c.ParseType(`My::Address`), reflect.TypeOf(TestAddress{}))
-	ir.RegisterType(c.ParseType(`My::Person`), reflect.TypeOf(TestPerson{}))
+		ir := c.ImplementationRegistry()
+		ir.RegisterType(c.ParseType(`My::Address`), reflect.TypeOf(TestAddress{}))
+		ir.RegisterType(c.ParseType(`My::Person`), reflect.TypeOf(TestPerson{}))
 
-	ts := &TestPerson{`Bob Tester`, 34, &TestAddress{`Example Road 23`, `12345`}, true}
-	ev := px.Wrap(c, ts)
-	fmt.Println(ev)
+		ts := &TestPerson{`Bob Tester`, 34, &TestAddress{`Example Road 23`, `12345`}, true}
+		ev := px.Wrap(c, ts)
+		fmt.Println(ev)
+	})
 	// Output: My::Person('name' => 'Bob Tester', 'age' => 34, 'address' => My::Address('street' => 'Example Road 23', 'zip_code' => '12345'), 'enabled' => true)
 }
 
@@ -122,15 +124,15 @@ func TestReflectorAndImplRepo(t *testing.T) {
 }
 
 func ExampleReflector_reflectArray() {
-	c := pcore.RootContext()
+	pcore.Do(func(c px.Context) {
+		av := px.Wrap(nil, []interface{}{`hello`, 3}).(*types.Array)
+		ar := c.Reflector().Reflect(av)
+		fmt.Printf("%s %v\n", ar.Type(), ar)
 
-	av := px.Wrap(nil, []interface{}{`hello`, 3}).(*types.Array)
-	ar := c.Reflector().Reflect(av)
-	fmt.Printf("%s %v\n", ar.Type(), ar)
-
-	av = px.Wrap(nil, []interface{}{`hello`, `world`}).(*types.Array)
-	ar = c.Reflector().Reflect(av)
-	fmt.Printf("%s %v\n", ar.Type(), ar)
+		av = px.Wrap(nil, []interface{}{`hello`, `world`}).(*types.Array)
+		ar = c.Reflector().Reflect(av)
+		fmt.Printf("%s %v\n", ar.Type(), ar)
+	})
 	// Output:
 	// []interface {} [hello 3]
 	// []string [hello world]
@@ -142,23 +144,23 @@ func ExampleReflector_reflectToArray() {
 		Interfaces []interface{}
 		Values     []px.Value
 	}
+	pcore.Do(func(c px.Context) {
+		ts := &TestStruct{}
+		rv := reflect.ValueOf(ts).Elem()
 
-	c := pcore.RootContext()
-	ts := &TestStruct{}
-	rv := reflect.ValueOf(ts).Elem()
+		av := px.Wrap(nil, []string{`hello`, `world`})
 
-	av := px.Wrap(nil, []string{`hello`, `world`})
+		rf := c.Reflector()
+		rf.ReflectTo(av, rv.Field(0))
+		rf.ReflectTo(av, rv.Field(1))
+		rf.ReflectTo(av, rv.Field(2))
+		fmt.Println(ts)
 
-	rf := c.Reflector()
-	rf.ReflectTo(av, rv.Field(0))
-	rf.ReflectTo(av, rv.Field(1))
-	rf.ReflectTo(av, rv.Field(2))
-	fmt.Println(ts)
-
-	rf.ReflectTo(px.Undef, rv.Field(0))
-	rf.ReflectTo(px.Undef, rv.Field(1))
-	rf.ReflectTo(px.Undef, rv.Field(2))
-	fmt.Println(ts)
+		rf.ReflectTo(px.Undef, rv.Field(0))
+		rf.ReflectTo(px.Undef, rv.Field(1))
+		rf.ReflectTo(px.Undef, rv.Field(2))
+		fmt.Println(ts)
+	})
 	// Output:
 	// &{[hello world] [hello world] [hello world]}
 	// &{[] [] []}
@@ -169,23 +171,24 @@ func ExampleReflector_reflectToHash() {
 	var interfaces map[string]interface{}
 	var values map[string]px.Value
 
-	c := pcore.RootContext()
-	hv := px.Wrap(nil, map[string]string{`x`: `hello`, `y`: `world`})
+	pcore.Do(func(c px.Context) {
+		hv := px.Wrap(nil, map[string]string{`x`: `hello`, `y`: `world`})
 
-	rf := c.Reflector()
-	rf.ReflectTo(hv, reflect.ValueOf(&strings).Elem())
-	rf.ReflectTo(hv, reflect.ValueOf(&interfaces).Elem())
-	rf.ReflectTo(hv, reflect.ValueOf(&values).Elem())
-	fmt.Printf("%s %s\n", strings[`x`], strings[`y`])
-	fmt.Printf("%s %s\n", interfaces[`x`], interfaces[`y`])
-	fmt.Printf("%s %s\n", values[`x`], values[`y`])
+		rf := c.Reflector()
+		rf.ReflectTo(hv, reflect.ValueOf(&strings).Elem())
+		rf.ReflectTo(hv, reflect.ValueOf(&interfaces).Elem())
+		rf.ReflectTo(hv, reflect.ValueOf(&values).Elem())
+		fmt.Printf("%s %s\n", strings[`x`], strings[`y`])
+		fmt.Printf("%s %s\n", interfaces[`x`], interfaces[`y`])
+		fmt.Printf("%s %s\n", values[`x`], values[`y`])
 
-	rf.ReflectTo(px.Undef, reflect.ValueOf(&strings).Elem())
-	rf.ReflectTo(px.Undef, reflect.ValueOf(&interfaces).Elem())
-	rf.ReflectTo(px.Undef, reflect.ValueOf(&values).Elem())
-	fmt.Println(strings)
-	fmt.Println(interfaces)
-	fmt.Println(values)
+		rf.ReflectTo(px.Undef, reflect.ValueOf(&strings).Elem())
+		rf.ReflectTo(px.Undef, reflect.ValueOf(&interfaces).Elem())
+		rf.ReflectTo(px.Undef, reflect.ValueOf(&values).Elem())
+		fmt.Println(strings)
+		fmt.Println(interfaces)
+		fmt.Println(values)
+	})
 	// Output:
 	// hello world
 	// hello world
@@ -198,15 +201,15 @@ func ExampleReflector_reflectToHash() {
 func ExampleReflector_reflectToBytes() {
 	var buf []byte
 
-	c := pcore.RootContext()
+	pcore.Do(func(c px.Context) {
+		rf := c.Reflector()
+		bv := px.Wrap(nil, []byte{1, 2, 3})
+		rf.ReflectTo(bv, reflect.ValueOf(&buf).Elem())
+		fmt.Println(buf)
 
-	rf := c.Reflector()
-	bv := px.Wrap(nil, []byte{1, 2, 3})
-	rf.ReflectTo(bv, reflect.ValueOf(&buf).Elem())
-	fmt.Println(buf)
-
-	rf.ReflectTo(px.Undef, reflect.ValueOf(&buf).Elem())
-	fmt.Println(buf)
+		rf.ReflectTo(px.Undef, reflect.ValueOf(&buf).Elem())
+		fmt.Println(buf)
+	})
 	// Output:
 	// [1 2 3]
 	// []
@@ -220,16 +223,17 @@ func ExampleReflector_reflectToFloat() {
 		IValue     interface{}
 	}
 
-	c := pcore.RootContext()
-	rf := c.Reflector()
-	ts := &TestStruct{}
-	rv := reflect.ValueOf(ts).Elem()
-	n := rv.NumField()
-	for i := 0; i < n; i++ {
-		fv := px.Wrap(nil, float64(10+i+1)/10.0)
-		rf.ReflectTo(fv, rv.Field(i))
-	}
-	fmt.Println(ts)
+	pcore.Do(func(c px.Context) {
+		rf := c.Reflector()
+		ts := &TestStruct{}
+		rv := reflect.ValueOf(ts).Elem()
+		n := rv.NumField()
+		for i := 0; i < n; i++ {
+			fv := px.Wrap(nil, float64(10+i+1)/10.0)
+			rf.ReflectTo(fv, rv.Field(i))
+		}
+		fmt.Println(ts)
+	})
 	// Output: &{1.1 1.2 1.3 1.4}
 }
 
@@ -249,57 +253,66 @@ func ExampleReflector_reflectToInt() {
 		IValue   interface{}
 	}
 
-	c := pcore.RootContext()
-	rf := c.Reflector()
-	ts := &TestStruct{}
-	rv := reflect.ValueOf(ts).Elem()
-	n := rv.NumField()
-	for i := 0; i < n; i++ {
-		rf.ReflectTo(px.Wrap(nil, 10+i), rv.Field(i))
-	}
-	fmt.Println(ts)
+	pcore.Do(func(c px.Context) {
+		rf := c.Reflector()
+		ts := &TestStruct{}
+		rv := reflect.ValueOf(ts).Elem()
+		n := rv.NumField()
+		for i := 0; i < n; i++ {
+			rf.ReflectTo(px.Wrap(nil, 10+i), rv.Field(i))
+		}
+		fmt.Println(ts)
+	})
 	// Output: &{10 11 12 13 14 15 16 17 18 19 20 21}
 }
 
 func ExampleReflector_reflectToRegexp() {
-	var expr regexp.Regexp
+	pcore.Do(func(c px.Context) {
+		var expr regexp.Regexp
 
-	rx := px.Wrap(nil, regexp.MustCompile("[a-z]*"))
-	pcore.RootContext().Reflector().ReflectTo(rx, reflect.ValueOf(&expr).Elem())
+		rx := px.Wrap(c, regexp.MustCompile("[a-z]*"))
+		c.Reflector().ReflectTo(rx, reflect.ValueOf(&expr).Elem())
 
-	fmt.Println(expr.String())
+		fmt.Println(expr.String())
+	})
 	// Output: [a-z]*
 }
 
 func ExampleReflector_reflectToTimespan() {
-	var span time.Duration
+	pcore.Do(func(c px.Context) {
+		var span time.Duration
 
-	rx := px.Wrap(nil, time.Duration(1234))
-	pcore.RootContext().Reflector().ReflectTo(rx, reflect.ValueOf(&span).Elem())
+		rx := px.Wrap(c, time.Duration(1234))
+		c.Reflector().ReflectTo(rx, reflect.ValueOf(&span).Elem())
 
-	fmt.Println(span)
+		fmt.Println(span)
+	})
 	// Output: 1.234µs
 }
 
 func ExampleReflector_reflectToTimestamp() {
-	var tx time.Time
+	pcore.Do(func(c px.Context) {
+		var tx time.Time
 
-	tm, _ := time.Parse(time.RFC3339, "2018-05-11T06:31:22+01:00")
-	tv := px.Wrap(nil, tm)
-	pcore.RootContext().Reflector().ReflectTo(tv, reflect.ValueOf(&tx).Elem())
+		tm, _ := time.Parse(time.RFC3339, "2018-05-11T06:31:22+01:00")
+		tv := px.Wrap(c, tm)
+		c.Reflector().ReflectTo(tv, reflect.ValueOf(&tx).Elem())
 
-	fmt.Println(tx.Format(time.RFC3339))
+		fmt.Println(tx.Format(time.RFC3339))
+	})
 	// Output: 2018-05-11T06:31:22+01:00
 }
 
 func ExampleReflector_reflectToVersion() {
-	var version semver.Version
+	pcore.Do(func(c px.Context) {
+		var version semver.Version
 
-	ver, _ := semver.ParseVersion(`1.2.3`)
-	vv := px.Wrap(nil, ver)
-	pcore.RootContext().Reflector().ReflectTo(vv, reflect.ValueOf(&version).Elem())
+		ver, _ := semver.ParseVersion(`1.2.3`)
+		vv := px.Wrap(c, ver)
+		c.Reflector().ReflectTo(vv, reflect.ValueOf(&version).Elem())
 
-	fmt.Println(version)
+		fmt.Println(version)
+	})
 	// Output: 1.2.3
 }
 
@@ -317,30 +330,29 @@ func ExampleReflector_typeFromReflect() {
 		Age    *int
 		Active bool `puppet:"name=>enabled"`
 	}
+	pcore.Do(func(c px.Context) {
+		rtAddress := reflect.TypeOf(&TestAddress{})
+		rtPerson := reflect.TypeOf(&TestPerson{})
+		rtExtPerson := reflect.TypeOf(&TestExtendedPerson{})
 
-	c := pcore.RootContext()
-	rtAddress := reflect.TypeOf(&TestAddress{})
-	rtPerson := reflect.TypeOf(&TestPerson{})
-	rtExtPerson := reflect.TypeOf(&TestExtendedPerson{})
+		rf := c.Reflector()
+		tAddress := rf.TypeFromTagged(`My::Address`, nil, px.NewTaggedType(rtAddress, map[string]string{`Zip`: `name=>zip_code`}), nil)
+		tPerson := rf.TypeFromReflect(`My::Person`, nil, rtPerson)
+		tExtPerson := rf.TypeFromReflect(`My::ExtendedPerson`, tPerson, rtExtPerson)
+		px.AddTypes(c, tAddress, tPerson, tExtPerson)
 
-	rf := c.Reflector()
-	tAddress := rf.TypeFromTagged(`My::Address`, nil, px.NewTaggedType(rtAddress, map[string]string{`Zip`: `name=>zip_code`}), nil)
-	tPerson := rf.TypeFromReflect(`My::Person`, nil, rtPerson)
-	tExtPerson := rf.TypeFromReflect(`My::ExtendedPerson`, tPerson, rtExtPerson)
-	px.AddTypes(c, tAddress, tPerson, tExtPerson)
+		tAddress.ToString(os.Stdout, types.Expanded, nil)
+		fmt.Println()
+		tPerson.ToString(os.Stdout, types.Expanded, nil)
+		fmt.Println()
+		tExtPerson.ToString(os.Stdout, types.Expanded, nil)
+		fmt.Println()
 
-	tAddress.ToString(os.Stdout, types.Expanded, nil)
-	fmt.Println()
-	tPerson.ToString(os.Stdout, types.Expanded, nil)
-	fmt.Println()
-	tExtPerson.ToString(os.Stdout, types.Expanded, nil)
-	fmt.Println()
-
-	age := 34
-	ts := &TestExtendedPerson{TestPerson{`Bob Tester`, &TestAddress{`Example Road 23`, `12345`}}, &age, true}
-	ev := px.Wrap(c, ts)
-	fmt.Println(ev)
-
+		age := 34
+		ts := &TestExtendedPerson{TestPerson{`Bob Tester`, &TestAddress{`Example Road 23`, `12345`}}, &age, true}
+		ev := px.Wrap(c, ts)
+		fmt.Println(ev)
+	})
 	// Output:
 	// Object[{name => 'My::Address', attributes => {'street' => String, 'zip_code' => String}}]
 	// Object[{name => 'My::Person', attributes => {'name' => String, 'address' => {'type' => Optional[My::Address], 'value' => undef}}}]
@@ -373,40 +385,40 @@ func (b B) Y(a A) A {
 }
 
 func ExampleReflector_typeFromReflectInterface() {
-	c := pcore.RootContext()
+	pcore.Do(func(c px.Context) {
+		// Create ObjectType from reflected type
+		xa := c.Reflector().TypeFromReflect(`X::A`, nil, reflect.TypeOf((*A)(nil)).Elem())
+		xb := c.Reflector().TypeFromReflect(`X::B`, nil, reflect.TypeOf(B(0)))
 
-	// Create ObjectType from reflected type
-	xa := c.Reflector().TypeFromReflect(`X::A`, nil, reflect.TypeOf((*A)(nil)).Elem())
-	xb := c.Reflector().TypeFromReflect(`X::B`, nil, reflect.TypeOf(B(0)))
+		// Ensure that the type is resolved
+		px.AddTypes(c, xa, xb)
 
-	// Ensure that the type is resolved
-	px.AddTypes(c, xa, xb)
+		// Print the created Interface Type in human readable form
+		xa.ToString(os.Stdout, px.PrettyExpanded, nil)
+		fmt.Println()
 
-	// Print the created Interface Type in human readable form
-	xa.ToString(os.Stdout, px.PrettyExpanded, nil)
-	fmt.Println()
+		// Print the created Implementation Type in human readable form
+		xb.ToString(os.Stdout, px.PrettyExpanded, nil)
+		fmt.Println()
 
-	// Print the created Implementation Type in human readable form
-	xb.ToString(os.Stdout, px.PrettyExpanded, nil)
-	fmt.Println()
+		// Invoke method 'x' on the interface on a receiver
+		m, _ := xb.Member(`x`)
+		gm := m.(px.CallableGoMember)
 
-	// Invoke method 'x' on the interface on a receiver
-	m, _ := xb.Member(`x`)
-	gm := m.(px.CallableGoMember)
+		fmt.Println(gm.CallGo(c, NewA(32))[0])
+		fmt.Println(gm.CallGo(c, B(25))[0])
 
-	fmt.Println(gm.CallGo(c, NewA(32))[0])
-	fmt.Println(gm.CallGo(c, B(25))[0])
+		// Invoke method 'x' on the interface on a receiver
+		m, _ = xb.Member(`y`)
 
-	// Invoke method 'x' on the interface on a receiver
-	m, _ = xb.Member(`y`)
+		// Call Go function using CallableGoMember
+		gv := m.(px.CallableGoMember).CallGo(c, B(25), NewA(15))[0]
+		fmt.Printf("%T %v\n", gv, gv)
 
-	// Call Go function using CallableGoMember
-	gv := m.(px.CallableGoMember).CallGo(c, B(25), NewA(15))[0]
-	fmt.Printf("%T %v\n", gv, gv)
-
-	// Call Go function using CallableMember and pcore.Value
-	pv := m.Call(c, px.New(c, xb, px.Wrap(c, 25)), nil, []px.Value{px.New(c, xb, px.Wrap(c, 15))})
-	fmt.Println(pv)
+		// Call Go function using CallableMember and pcore.Value
+		pv := m.Call(c, px.New(c, xb, px.Wrap(c, 25)), nil, []px.Value{px.New(c, xb, px.Wrap(c, 15))})
+		fmt.Println(pv)
+	})
 
 	// Output:
 	// Object[{
