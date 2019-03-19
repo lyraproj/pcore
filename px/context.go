@@ -151,8 +151,7 @@ func CurrentContext() Context {
 	if ctx, ok := threadlocal.Get(PuppetContextKey); ok {
 		return ctx.(Context)
 	}
-	_, file, line, _ := runtime.Caller(1)
-	panic(issue.NewReported(NoCurrentContext, issue.SEVERITY_ERROR, issue.NO_ARGS, issue.NewLocation(file, line, 0)))
+	panic(issue.NewReported(NoCurrentContext, issue.SEVERITY_ERROR, issue.NO_ARGS, 0))
 }
 
 // Fork calls the given function in a new go routine. The given context is forked and becomes
