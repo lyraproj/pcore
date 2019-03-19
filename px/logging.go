@@ -61,11 +61,11 @@ var LogLevels = []LogLevel{ALERT, CRIT, DEBUG, EMERG, ERR, INFO, NOTICE, WARNING
 func (l LogLevel) Severity() issue.Severity {
 	switch l {
 	case CRIT, EMERG, ERR:
-		return issue.SEVERITY_ERROR
+		return issue.SeverityError
 	case ALERT, WARNING:
-		return issue.SEVERITY_WARNING
+		return issue.SeverityWarning
 	default:
-		return issue.SEVERITY_IGNORE
+		return issue.SeverityIgnore
 	}
 }
 
@@ -129,7 +129,7 @@ func (l *ArrayLogger) Logf(level LogLevel, format string, args ...interface{}) {
 }
 
 func (l *ArrayLogger) LogIssue(i issue.Reported) {
-	if i.Severity() != issue.SEVERITY_IGNORE {
+	if i.Severity() != issue.SeverityIgnore {
 		l.entries = append(l.entries, &ReportedEntry{i})
 	}
 }
@@ -156,9 +156,9 @@ func (re *ReportedEntry) Issue() issue.Reported {
 
 func LogLevelFromSeverity(severity issue.Severity) LogLevel {
 	switch severity {
-	case issue.SEVERITY_ERROR:
+	case issue.SeverityError:
 		return ERR
-	case issue.SEVERITY_WARNING, issue.SEVERITY_DEPRECATION:
+	case issue.SeverityWarning, issue.SeverityDeprecation:
 		return WARNING
 	default:
 		return IGNORE
