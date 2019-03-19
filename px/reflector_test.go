@@ -607,7 +607,7 @@ func ExampleReflector_TypeFromReflect_twoValueReturnErrorFail() {
 		return nil
 	})
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println(err.Error()[:70])
 	}
 	// Output:
 	// Go function ReturnTwoAndErrorFail returned error 'bad things happened'
