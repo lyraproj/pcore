@@ -1026,7 +1026,7 @@ func (s *fragmentSegment) createFormat() string {
 
 func (s *fragmentSegment) nanoseconds(group string, multiplier int) int64 {
 	if s.useTotal {
-		panic(px.Error(px.TimespanFormatSpecNotHigher, issue.NO_ARGS))
+		panic(px.Error(px.TimespanFormatSpecNotHigher, issue.NoArgs))
 	}
 	n := s.valueSegment.nanoseconds(group, multiplier)
 	p := int64(9 - len(group))

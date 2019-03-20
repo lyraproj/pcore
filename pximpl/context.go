@@ -100,7 +100,7 @@ func (c *pxContext) Error(location issue.Location, issueCode issue.Code, args is
 	if location == nil {
 		location = c.StackTop()
 	}
-	return issue.NewReported(issueCode, issue.SEVERITY_ERROR, args, location)
+	return issue.NewReported(issueCode, issue.SeverityError, args, location)
 }
 
 func (c *pxContext) Fork() px.Context {

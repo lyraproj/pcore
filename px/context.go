@@ -129,7 +129,7 @@ func Call(c Context, name string, args []Value, block Lambda) Value {
 	if f, ok := Load(c, tn); ok {
 		return f.(Function).Call(c, block, args...)
 	}
-	panic(issue.NewReported(UnknownFunction, issue.SEVERITY_ERROR, issue.H{`name`: tn.String()}, c.StackTop()))
+	panic(issue.NewReported(UnknownFunction, issue.SeverityError, issue.H{`name`: tn.String()}, c.StackTop()))
 }
 
 // DoWithContext sets the given context to be the current context of the executing Go routine, calls
@@ -151,7 +151,7 @@ func CurrentContext() Context {
 	if ctx, ok := threadlocal.Get(PuppetContextKey); ok {
 		return ctx.(Context)
 	}
-	panic(issue.NewReported(NoCurrentContext, issue.SEVERITY_ERROR, issue.NO_ARGS, 0))
+	panic(issue.NewReported(NoCurrentContext, issue.SeverityError, issue.NoArgs, 0))
 }
 
 // Fork calls the given function in a new go routine. The given context is forked and becomes
