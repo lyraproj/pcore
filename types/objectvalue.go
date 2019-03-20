@@ -326,8 +326,16 @@ func (o *reflectedObject) Get(key string) (px.Value, bool) {
 }
 
 func (o *reflectedObject) Equals(other interface{}, g px.Guard) bool {
+	if o == other {
+		return true
+	}
 	if ov, ok := other.(*reflectedObject); ok {
-		return o.typ.Equals(ov.typ, g) && reflect.DeepEqual(o.value.Interface(), ov.value.Interface())
+		for _, a := range o.typ.AttributesInfo().Attributes() {
+			if !a.Get(o).Equals(a.Get(ov), g) {
+				return false
+			}
+		}
+		return true
 	}
 	return false
 }
