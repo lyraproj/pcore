@@ -97,6 +97,7 @@ type (
 	}
 
 	AnnotatedMember interface {
+		Annotatable
 		Equality
 		CallableMember
 

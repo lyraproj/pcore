@@ -35,10 +35,6 @@ func (a *annotatedMember) Accept(v px.Visitor, g px.Guard) {
 	visitAnnotations(a.annotations, v, g)
 }
 
-func (a *annotatedMember) Annotations() *Hash {
-	return a.annotations
-}
-
 func (a *annotatedMember) Call(c px.Context, receiver px.Value, block px.Lambda, args []px.Value) px.Value {
 	// TODO:
 	panic("implement me")
