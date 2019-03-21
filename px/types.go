@@ -124,6 +124,14 @@ type (
 
 	AttributeKind string
 
+	TagsAnnotation interface {
+		PuppetObject
+
+		Tag(key string) string
+
+		Tags() OrderedMap
+	}
+
 	Attribute interface {
 		AnnotatedMember
 		Kind() AttributeKind
@@ -143,6 +151,9 @@ type (
 		// GoName Returns the name of the struct field that this attribute maps to when applicable or
 		// an empty string.
 		GoName() string
+
+		// Tags returns the TagAnnotation for this attribute or nil if the attribute has no tags.
+		Tags(Context) TagsAnnotation
 	}
 
 	ObjFunc interface {

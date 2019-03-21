@@ -51,6 +51,10 @@ type AnnotatedType interface {
 	// 'puppet' tag parsed into an OrderedMap. The map is merged with possible
 	// overrides given when the AnnotatedType instance was created
 	Tags() map[string]OrderedMap
+
+	// Tags returns a map, keyed by field names, containing a map of all tags besides
+	// the 'puppet' tag
+	OtherTags() map[string]map[string]string
 }
 
 // NewTaggedType returns a new instance of a AnnotatedType
@@ -81,7 +85,7 @@ type Reflector interface {
 
 	// ReflectFieldTags reflects the name, type, and value from a reflect.StructField
 	// using the field tags and the optionally given puppetTag
-	ReflectFieldTags(f *reflect.StructField, puppetTag OrderedMap) (name string, decl OrderedMap)
+	ReflectFieldTags(f *reflect.StructField, puppetTag OrderedMap, otherTags map[string]string) (name string, decl OrderedMap)
 
 	// ReflectTo assigns the native value of src to dest
 	ReflectTo(src Value, dest reflect.Value)
