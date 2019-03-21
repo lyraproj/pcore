@@ -6,6 +6,7 @@ import (
 	"math"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/lyraproj/pcore/hash"
 	"github.com/lyraproj/pcore/px"
@@ -1035,6 +1036,15 @@ func (hv *Hash) Get6(key string, dflt px.Producer) px.Value {
 func (hv *Hash) GetEntry(key string) (px.MapEntry, bool) {
 	if pos, ok := hv.valueIndex()[px.HashKey(key)]; ok {
 		return hv.entries[pos], true
+	}
+	return nil, false
+}
+
+func (hv *Hash) GetEntryFold(key string) (px.MapEntry, bool) {
+	for _, e := range hv.entries {
+		if strings.EqualFold(e.key.String(), key) {
+			return e, true
+		}
 	}
 	return nil, false
 }

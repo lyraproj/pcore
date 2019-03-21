@@ -147,7 +147,11 @@ type (
 
 		// GetEntry returns the entry that represents the mapping between
 		// the given key and its value
-		GetEntry(key string) (MapEntry, bool)
+		GetEntry(key string) (entry MapEntry, found bool)
+
+		// GetEntryFold retuns the first entry that has a key which, in string form
+		// equals the given key using case insensitive comparison
+		GetEntryFold(key string) (entry MapEntry, found bool)
 
 		IncludesKey(o Value) bool
 
