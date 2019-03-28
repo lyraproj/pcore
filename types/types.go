@@ -1053,6 +1053,21 @@ func coerceTo(c px.Context, path []string, caseSensitive bool, typ px.Type, valu
 			})
 		}
 		result = px.AssertInstance(func() { strings.Join(path, `/`) }, t, value)
+	case *StructType:
+		hm := t.HashedMembers()
+		if oh, ok := value.(*Hash); ok {
+			value = oh.MapEntries(func(e px.MapEntry) px.MapEntry {
+				var s px.StringValue
+				if s, ok = e.Key().(px.StringValue); ok {
+					var se *StructElement
+					if se, ok = hm[s.String()]; ok {
+						return WrapHashEntry(s, coerceTo(c, append(path, s.String()), caseSensitive, se.Value(), e.Value()))
+					}
+				}
+				return e
+			})
+		}
+		result = px.AssertInstance(func() { strings.Join(path, `/`) }, t, value)
 	case px.ObjectType:
 		ai := t.AttributesInfo()
 		switch o := value.(type) {
@@ -1064,7 +1079,7 @@ func coerceTo(c px.Context, path []string, caseSensitive bool, typ px.Type, valu
 				}
 				el[i] = coerceTo(c, []string{ca.Label()}, caseSensitive, ca.Type(), o.At(i))
 			}
-			result = px.New(c, t, el...)
+			result = newInstance(c, t, el...)
 		case *Hash:
 			el := make([]*HashEntry, 0, o.Len())
 			var ok bool
@@ -1079,14 +1094,14 @@ func coerceTo(c px.Context, path []string, caseSensitive bool, typ px.Type, valu
 					el = append(el, WrapHashEntry(e.Key(), coerceTo(c, []string{ca.Label()}, caseSensitive, ca.Type(), e.Value())))
 				}
 			}
-			result = px.New(c, t, o.Merge(WrapHash(el)))
+			result = newInstance(c, t, o.Merge(WrapHash(el)))
 		default:
-			result = px.New(c, t, o)
+			result = newInstance(c, t, o)
 		}
 	default:
 		// Create using single argument. This takes care of coercions from String to Version,
 		// Number to Timespan, etc.
-		result = px.New(c, t, value)
+		result = newInstance(c, t, value)
 	}
 	return
 }
