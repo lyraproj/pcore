@@ -61,3 +61,13 @@ func ExampleParse_entry() {
 	// }
 	//
 }
+
+func ExampleParse_hash() {
+	v, err := types.Parse(`{value=>-1}`)
+	if err == nil {
+		fmt.Println(v)
+	} else {
+		fmt.Println(err)
+	}
+	// Output: {'value' => -1}
+}
