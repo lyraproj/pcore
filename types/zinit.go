@@ -2,6 +2,7 @@ package types
 
 import (
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/lyraproj/pcore/px"
@@ -95,6 +96,7 @@ func init() {
 		reflect.TypeOf((*px.OrderedMap)(nil)).Elem():   DefaultHashType(),
 		reflect.TypeOf(integerValue(0)):                DefaultIntegerType(),
 		reflect.TypeOf((*px.Integer)(nil)).Elem():      DefaultIntegerType(),
+		reflect.TypeOf(&regexp.Regexp{}):               DefaultRegexpType(),
 		reflect.TypeOf(&Regexp{}):                      DefaultRegexpType(),
 		reflect.TypeOf(&SemVer{}):                      DefaultSemVerType(),
 		reflect.TypeOf(&Sensitive{}):                   DefaultSensitiveType(),
