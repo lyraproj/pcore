@@ -94,9 +94,9 @@ func (dv *DefaultValue) ToString(b io.Writer, s px.FormatContext, g px.RDetect) 
 	f := px.GetFormat(s.FormatMap(), dv.PType())
 	switch f.FormatChar() {
 	case 'd', 's', 'p':
-		f.ApplyStringFlags(b, `default`, f.IsAlt())
+		f.ApplyStringFlags(b, `default`, false)
 	case 'D':
-		f.ApplyStringFlags(b, `Default`, f.IsAlt())
+		f.ApplyStringFlags(b, `Default`, false)
 	default:
 		panic(s.UnsupportedFormat(dv.PType(), `dDsp`, f))
 	}
