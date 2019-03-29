@@ -4,6 +4,7 @@ import "github.com/lyraproj/issue/issue"
 
 const (
 	AttemptToRedefine                     = `PCORE_ATTEMPT_TO_REDEFINE`
+	AttemptToRedefineType                 = `PCORE_ATTEMPT_TO_REDEFINE_TYPE`
 	AttemptToSetUnsettable                = `PCORE_ATTEMPT_TO_SET_UNSETTABLE`
 	AttemptToSetWrongKind                 = `PCORE_ATTEMPT_TO_SET_WRONG_KIND`
 	AttributeHasNoValue                   = `PCORE_ATTRIBUTE_HAS_NO_VALUE`
@@ -102,6 +103,8 @@ const (
 
 func init() {
 	issue.Hard(AttemptToRedefine, `attempt to redefine %{name}`)
+
+	issue.Hard(AttemptToRedefineType, "attempt to redefine type %{name}. Old:\n%{old}\nNew:\n%{new}\n")
 
 	issue.Hard(AttemptToSetUnsettable, `attempt to set a value of kind %{kind} in an unsettable reflect.Value`)
 

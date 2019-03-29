@@ -166,9 +166,11 @@ func scan(sr *utils.StringReader, tf func(t token) error) (err error) {
 			}
 			continue
 		case '-', '+':
-			if r >= '0' && r <= '9' {
+			n := sr.Next()
+			if n >= '0' && n <= '9' {
 				var tkn tokenType
-				tkn, err = consumeNumber(sr, r, buf, integer)
+				buf.WriteRune(r)
+				tkn, err = consumeNumber(sr, n, buf, integer)
 				if err != nil {
 					return err
 				}

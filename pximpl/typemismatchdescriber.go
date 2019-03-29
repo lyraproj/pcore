@@ -652,10 +652,12 @@ func describeArrayType(expected *types.ArrayType, original, actual px.Type, path
 			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), ta.Size()))
 		}
 	} else if aa, ok := actual.(*types.ArrayType); ok {
-		if px.IsAssignable(expected.Size(), aa.Size()) {
-			descriptions = append(descriptions, newTypeMismatch(path, original, types.NewArrayType(aa.ElementType(), nil)))
-		} else {
-			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), aa.Size()))
+		if !px.IsAssignable(expected, aa) {
+			if px.IsAssignable(expected.Size(), aa.Size()) {
+				descriptions = append(descriptions, newTypeMismatch(path, original, types.NewArrayType(aa.ElementType(), nil)))
+			} else {
+				descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), aa.Size()))
+			}
 		}
 	} else {
 		descriptions = append(descriptions, newTypeMismatch(path, original, actual))
@@ -677,10 +679,12 @@ func describeHashType(expected *types.HashType, original, actual px.Type, path [
 			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), sa.Size()))
 		}
 	} else if ha, ok := actual.(*types.HashType); ok {
-		if px.IsAssignable(expected.Size(), ha.Size()) {
-			descriptions = append(descriptions, newTypeMismatch(path, original, types.NewHashType(ha.KeyType(), ha.ValueType(), nil)))
-		} else {
-			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), ha.Size()))
+		if !px.IsAssignable(expected, ha) {
+			if px.IsAssignable(expected.Size(), ha.Size()) {
+				descriptions = append(descriptions, newTypeMismatch(path, original, types.NewHashType(ha.KeyType(), ha.ValueType(), nil)))
+			} else {
+				descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), ha.Size()))
+			}
 		}
 	} else {
 		descriptions = append(descriptions, newTypeMismatch(path, original, actual))
@@ -710,10 +714,12 @@ func describeStructType(expected *types.StructType, original, actual px.Type, pa
 			descriptions = append(descriptions, newExtraneousKey(path, key))
 		}
 	} else if ha, ok := actual.(*types.HashType); ok {
-		if px.IsAssignable(expected.Size(), ha.Size()) {
-			descriptions = append(descriptions, newTypeMismatch(path, original, types.NewHashType(ha.KeyType(), ha.ValueType(), nil)))
-		} else {
-			descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), ha.Size()))
+		if !px.IsAssignable(expected, ha) {
+			if px.IsAssignable(expected.Size(), ha.Size()) {
+				descriptions = append(descriptions, newTypeMismatch(path, original, types.NewHashType(ha.KeyType(), ha.ValueType(), nil)))
+			} else {
+				descriptions = append(descriptions, newSizeMismatch(path, expected.Size(), ha.Size()))
+			}
 		}
 	} else {
 		descriptions = append(descriptions, newTypeMismatch(path, original, actual))
@@ -731,7 +737,7 @@ func describeArgumentTuple(expected *types.TupleType, actual px.Type, path []*pa
 
 func describeTuple(expected *types.TupleType, original, actual px.Type, path []*pathElement, sm sizeMismatchFunc) []mismatch {
 	if aa, ok := actual.(*types.ArrayType); ok {
-		if len(expected.Types()) == 0 {
+		if len(expected.Types()) == 0 || px.IsAssignable(expected, aa) {
 			return NoMismatch
 		}
 		t2Entry := aa.ElementType()
@@ -754,7 +760,7 @@ func describeTuple(expected *types.TupleType, original, actual px.Type, path []*
 	}
 
 	if at, ok := actual.(*types.TupleType); ok {
-		if expected.Equals(actual, nil) {
+		if expected.Equals(actual, nil) || px.IsAssignable(expected, at) {
 			return NoMismatch
 		}
 
@@ -965,7 +971,7 @@ func init() {
 	px.DescribeSignatures = describeSignatures
 
 	px.DescribeMismatch = func(name string, expected, actual px.Type) string {
-		result := describe(expected, actual, []*pathElement{{name, subject}})
+		result := describe(expected, actual, []*pathElement{{fmt.Sprintf("function %s:", name), subject}})
 		switch len(result) {
 		case 0:
 			return ``
@@ -984,13 +990,18 @@ func init() {
 func describeSignatures(signatures []px.Signature, argsTuple px.Type, block px.Lambda) string {
 	errorArrays := make([][]mismatch, len(signatures))
 	allSet := true
+
+	ne := 0
 	for ix, sg := range signatures {
 		ae := describeSignatureArguments(sg, argsTuple, []*pathElement{{strconv.Itoa(ix), signature}})
 		errorArrays[ix] = ae
 		if len(ae) == 0 {
 			allSet = false
+		} else {
+			ne++
 		}
 	}
+
 	// Skip block checks if all signatures have argument errors
 	if !allSet {
 		blockArrays := make([][]mismatch, len(signatures))
@@ -1016,6 +1027,49 @@ func describeSignatures(signatures []px.Signature, argsTuple px.Type, block px.L
 	}
 	if len(errorArrays) == 0 {
 		return ``
+	}
+
+	if ne > 1 {
+		// If the argsTuple is of size one and the argument is a Struct, then skip the positional
+		// signature since that output just decreases readability.
+		isStruct := false
+		switch args := argsTuple.(type) {
+		case *types.TupleType:
+			if len(args.Types()) == 1 {
+				_, isStruct = args.Types()[0].(*types.StructType)
+			}
+		case *types.ArrayType:
+			aSize := args.Size()
+			if aSize.Max() == 1 {
+				_, isStruct = args.ElementType().(*types.StructType)
+			}
+		}
+
+		if isStruct {
+			structArg := -1
+			for ix, sg := range signatures {
+				ae := errorArrays[ix]
+				if len(ae) > 0 {
+					paramsTuple := sg.ParametersType().(*types.TupleType)
+					tps := paramsTuple.Types()
+					if len(tps) >= 1 && paramsTuple.Size().Min() <= 1 {
+						if _, ok := tps[0].(*types.StructType); ok {
+							if structArg >= 0 {
+								// Multiple struct args. Break out
+								structArg = -1
+								break
+							}
+							structArg = ix
+						}
+					}
+				}
+			}
+			if structArg >= 0 {
+				// Strip other errors
+				errorArrays = errorArrays[structArg : structArg+1]
+				signatures = signatures[structArg : structArg+1]
+			}
+		}
 	}
 
 	errors := make([]mismatch, 0)

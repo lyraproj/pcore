@@ -1,6 +1,8 @@
 package serialization
 
 import (
+	"bytes"
+
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
@@ -68,7 +70,11 @@ func (ds *dsContext) convert(value px.Value) px.Value {
 							if t.Equals(lt, nil) {
 								return lt.(px.Value)
 							}
-							panic(px.Error(px.AttemptToRedefine, issue.H{`name`: tn}))
+							ob := bytes.NewBufferString(``)
+							lt.(px.Type).ToString(ob, px.PrettyExpanded, nil)
+							nb := bytes.NewBufferString(``)
+							t.(px.Type).ToString(nb, px.PrettyExpanded, nil)
+							panic(px.Error(px.AttemptToRedefineType, issue.H{`name`: tn, `old`: ob.String(), `new`: nb.String()}))
 						}
 						ds.newTypes = append(ds.newTypes, v.(px.Type))
 					}

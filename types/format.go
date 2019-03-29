@@ -93,6 +93,7 @@ func init() {
 	DefaultArrayContainerFormat.(*format).containerFormats = DefaultContainerFormats
 	DefaultHashContainerFormat.(*format).containerFormats = DefaultContainerFormats
 	DefaultObjectContainerFormat.(*format).containerFormats = DefaultContainerFormats
+	PrettyProgramFormat.(*format).containerFormats = PrettyContainerFormats
 
 	px.DefaultFormat = DefaultAnyFormat
 	px.DefaultFormatContext = None

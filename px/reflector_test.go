@@ -327,7 +327,7 @@ func ExampleReflector_typeFromReflect() {
 	}
 	type TestExtendedPerson struct {
 		TestPerson
-		Age    *int
+		Age    *int `other:"stuff"`
 		Active bool `puppet:"name=>enabled"`
 	}
 	pcore.Do(func(c px.Context) {
@@ -356,7 +356,7 @@ func ExampleReflector_typeFromReflect() {
 	// Output:
 	// Object[{name => 'My::Address', attributes => {'street' => String, 'zip_code' => String}}]
 	// Object[{name => 'My::Person', attributes => {'name' => String, 'address' => {'type' => Optional[My::Address], 'value' => undef}}}]
-	// Object[{name => 'My::ExtendedPerson', parent => My::Person, attributes => {'age' => {'type' => Optional[Integer], 'value' => undef}, 'enabled' => Boolean}}]
+	// Object[{name => 'My::ExtendedPerson', parent => My::Person, attributes => {'age' => {'annotations' => {TagsAnnotation => {'other' => 'stuff'}}, 'type' => Optional[Integer], 'value' => undef}, 'enabled' => Boolean}}]
 	// My::ExtendedPerson('name' => 'Bob Tester', 'enabled' => true, 'address' => My::Address('street' => 'Example Road 23', 'zip_code' => '12345'), 'age' => 34)
 }
 
@@ -1272,4 +1272,26 @@ func ExampleReflector_TypeFromReflect_structAnonField() {
 	//     'a' => String
 	//   }
 	// }]
+}
+
+type nestedInterface struct {
+	A []map[string]interface{} `puppet:"type=>Array[Struct[v=>Array[String]]]"`
+}
+
+func ExampleReflector_TypeFromReflect_nestedSliceToInterface() {
+	pcore.Do(func(c px.Context) {
+		x := c.Reflector().TypeFromReflect(`X`, nil, reflect.TypeOf(&nestedInterface{}))
+		px.AddTypes(c, x)
+		v := types.CoerceTo(c, "test", true, x, px.Wrap(c, map[string][]map[string][]string{`a`: {{`v`: {`a`, `b`}}}}))
+		v.ToString(os.Stdout, px.Pretty, nil)
+		fmt.Println()
+	})
+
+	// Output:
+	// X(
+	//   'a' => [
+	//     {
+	//       'v' => ['a', 'b']
+	//     }]
+	// )
 }

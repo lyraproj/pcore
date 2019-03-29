@@ -94,6 +94,13 @@ func (a *attribute) GoName() string {
 	return a.goName
 }
 
+func (a *attribute) Tags(c px.Context) px.TagsAnnotation {
+	if ta, ok := a.Annotations(c).Get(TagsAnnotationType); ok {
+		return ta.(px.TagsAnnotation)
+	}
+	return nil
+}
+
 func (a *attribute) Kind() px.AttributeKind {
 	return a.kind
 }

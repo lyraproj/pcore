@@ -105,17 +105,23 @@ func (r *reflector) Reflect2(src px.Value, rt reflect.Type) reflect.Value {
 
 // ReflectTo assigns the native value of src to dest
 func (r *reflector) ReflectTo(src px.Value, dest reflect.Value) {
+	dt := dest.Type()
 	assertSettable(&dest)
-	if dest.Kind() == reflect.Interface && dest.Type().AssignableTo(pValueType) {
+	if dt.Kind() == reflect.Interface && dt.AssignableTo(pValueType) {
 		sv := reflect.ValueOf(src)
-		if !sv.Type().AssignableTo(dest.Type()) {
+		if !sv.Type().AssignableTo(dt) {
 			panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: sv.Type().String(), `actual`: dest.Type().String()}))
 		}
 		dest.Set(sv)
 	} else {
 		switch src := src.(type) {
 		case px.Reflected:
-			src.ReflectTo(r.c, dest)
+			if dt.Kind() == reflect.Interface && dt.Name() == `` {
+				// Destination is an interface{}, derive type from source
+				dest.Set(src.Reflect(r.c))
+			} else {
+				src.ReflectTo(r.c, dest)
+			}
 		case px.PuppetObject:
 			src.PType().(px.ObjectType).ToReflectedValue(r.c, src, dest)
 		default:
@@ -255,6 +261,7 @@ func (r *reflector) InitializerFromTagged(typeName string, parent px.Type, tg px
 		ie = append(ie, WrapHashEntry2(keyFunctions, singletonMap(`do`, r.FunctionDeclFromReflect(fn, rf, false))))
 	} else {
 		tags := tg.Tags()
+		otherTags := tg.OtherTags()
 		fs := r.Fields(rf)
 		nf := len(fs)
 		var pt reflect.Type
@@ -272,7 +279,7 @@ func (r *reflector) InitializerFromTagged(typeName string, parent px.Type, tg px
 					continue
 				}
 
-				name, decl := r.ReflectFieldTags(&f, tags[f.Name])
+				name, decl := r.ReflectFieldTags(&f, tags[f.Name], otherTags[f.Name])
 				es = append(es, WrapHashEntry2(name, decl))
 			}
 			ie = append(ie, WrapHashEntry2(keyAttributes, WrapHash(es)))
@@ -322,7 +329,7 @@ func (r *reflector) TypeFromTagged(typeName string, parent px.Type, tg px.Annota
 	})
 }
 
-func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh px.OrderedMap) (name string, decl px.OrderedMap) {
+func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh px.OrderedMap, otherTags map[string]string) (name string, decl px.OrderedMap) {
 	as := make([]*HashEntry, 0)
 	var val px.Value
 	var typ px.Type
@@ -383,6 +390,9 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh px.OrderedMap) (
 
 	as = append(as, WrapHashEntry2(keyType, typ))
 	as = append(as, WrapHashEntry2(KeyGoName, stringValue(f.Name)))
+	if len(otherTags) > 0 {
+		as = append(as, WrapHashEntry2(keyAnnotations, singleMap(TagsAnnotationType, WrapStringToStringMap(otherTags))))
+	}
 	if name == `` {
 		name = issue.FirstToLower(f.Name)
 	}

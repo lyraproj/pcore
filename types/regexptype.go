@@ -235,7 +235,10 @@ func (r *Regexp) Reflect(c px.Context) reflect.Value {
 }
 
 func (r *Regexp) ReflectTo(c px.Context, dest reflect.Value) {
-	rv := r.Reflect(c).Elem()
+	rv := r.Reflect(c)
+	if rv.Kind() == reflect.Ptr && dest.Kind() != reflect.Ptr {
+		rv = rv.Elem()
+	}
 	if !rv.Type().AssignableTo(dest.Type()) {
 		panic(px.Error(px.AttemptToSetWrongKind, issue.H{`expected`: rv.Type().String(), `actual`: dest.Type().String()}))
 	}
