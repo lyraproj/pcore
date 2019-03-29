@@ -1022,7 +1022,16 @@ func CoerceTo(c px.Context, label string, caseSensitive bool, typ px.Type, value
 	return coerceTo(c, []string{label}, caseSensitive, typ, value)
 }
 
-func coerceTo(c px.Context, path []string, caseSensitive bool, typ px.Type, value px.Value) (result px.Value) {
+type path []string
+
+func (p path) with(n string) path {
+	np := make(path, len(p)+1)
+	copy(np, p)
+	np[len(p)] = n
+	return np
+}
+
+func coerceTo(c px.Context, path path, caseSensitive bool, typ px.Type, value px.Value) (result px.Value) {
 	if typ.IsInstance(value, nil) {
 		result = value
 		return
@@ -1035,24 +1044,24 @@ func coerceTo(c px.Context, path []string, caseSensitive bool, typ px.Type, valu
 	switch t := typ.(type) {
 	case *ArrayType:
 		et := t.ElementType()
-		ep := append(path, `[]`)
+		ep := path.with(`[]`)
 		if oa, ok := value.(*Array); ok {
 			value = oa.Map(func(e px.Value) px.Value { return coerceTo(c, ep, caseSensitive, et, e) })
 		} else {
 			value = WrapValues([]px.Value{coerceTo(c, ep, caseSensitive, et, value)})
 		}
-		result = px.AssertInstance(func() { strings.Join(path, `/`) }, t, value)
+		result = px.AssertInstance(func() string { return strings.Join(path, `/`) }, t, value)
 	case *HashType:
 		kt := t.KeyType()
 		vt := t.ValueType()
-		kp := append(path, `key`)
+		kp := path.with(`key`)
 		if oh, ok := value.(*Hash); ok {
 			value = oh.MapEntries(func(e px.MapEntry) px.MapEntry {
 				kv := coerceTo(c, kp, caseSensitive, kt, e.Key())
-				return WrapHashEntry(kv, coerceTo(c, append(path, kv.String()), caseSensitive, vt, e.Value()))
+				return WrapHashEntry(kv, coerceTo(c, path.with(kv.String()), caseSensitive, vt, e.Value()))
 			})
 		}
-		result = px.AssertInstance(func() { strings.Join(path, `/`) }, t, value)
+		result = px.AssertInstance(func() string { return strings.Join(path, `/`) }, t, value)
 	case *StructType:
 		hm := t.HashedMembers()
 		if oh, ok := value.(*Hash); ok {
@@ -1061,13 +1070,13 @@ func coerceTo(c px.Context, path []string, caseSensitive bool, typ px.Type, valu
 				if s, ok = e.Key().(px.StringValue); ok {
 					var se *StructElement
 					if se, ok = hm[s.String()]; ok {
-						return WrapHashEntry(s, coerceTo(c, append(path, s.String()), caseSensitive, se.Value(), e.Value()))
+						return WrapHashEntry(s, coerceTo(c, path.with(s.String()), caseSensitive, se.Value(), e.Value()))
 					}
 				}
 				return e
 			})
 		}
-		result = px.AssertInstance(func() { strings.Join(path, `/`) }, t, value)
+		result = px.AssertInstance(func() string { return strings.Join(path, `/`) }, t, value)
 	case px.ObjectType:
 		ai := t.AttributesInfo()
 		switch o := value.(type) {
