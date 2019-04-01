@@ -825,8 +825,8 @@ func interfaceOrNil(vr reflect.Value) interface{} {
 
 func newNamedType(name, typeDecl string) px.Type {
 	dt, err := Parse(typeDecl)
-	_, fileName, fileLine, _ := runtime.Caller(1)
 	if err != nil {
+		_, fileName, fileLine, _ := runtime.Caller(1)
 		err = convertReported(err, fileName, fileLine)
 		panic(err)
 	}

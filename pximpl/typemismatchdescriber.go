@@ -372,7 +372,7 @@ func (tm *typeMismatch) text() string {
 		if reportDetailed(el, a) {
 			as = detailedToActualToS(el, a)
 			for i, e := range el {
-				els[i] = e.String()
+				els[i] = shortName(e)
 			}
 		} else {
 			for i, e := range el {
@@ -413,6 +413,9 @@ func (tm *typeMismatch) text() string {
 func shortName(t px.Type) string {
 	if tc, ok := t.(px.TypeWithContainedType); ok && !(tc.ContainedType() == nil || tc.ContainedType() == types.DefaultAnyType()) {
 		return fmt.Sprintf("%s[%s]", t.Name(), tc.ContainedType().Name())
+	}
+	if t.Name() == `` {
+		return `Object`
 	}
 	return t.Name()
 }
@@ -468,6 +471,8 @@ func specialization(e px.Type, a px.Type) (result bool) {
 		_, result = a.(*types.HashType)
 	case *types.TupleType:
 		_, result = a.(*types.ArrayType)
+	case px.ObjectType:
+		_, result = a.(*types.StructType)
 	default:
 		result = false
 	}

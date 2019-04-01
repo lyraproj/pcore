@@ -142,6 +142,8 @@ func ResolveDeferred(c px.Context, a px.Value, scope px.Keyed) px.Value {
 	switch a := a.(type) {
 	case Deferred:
 		return a.Resolve(c, scope)
+	case *DeferredType:
+		return a.Resolve(c)
 	case *Array:
 		return a.Map(func(v px.Value) px.Value {
 			return ResolveDeferred(c, v, scope)

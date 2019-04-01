@@ -798,11 +798,13 @@ func (t *objectType) basicTypeToString(b io.Writer, f px.Format, s px.FormatCont
 	typeSetName, inTypeSet := s.Property(`typeSet`)
 	if ex, ok := s.Property(`expanded`); !(ok && ex == `true`) {
 		name := t.Name()
-		if inTypeSet {
-			name = stripTypeSetName(typeSetName, name)
+		if name != `` {
+			if inTypeSet {
+				name = stripTypeSetName(typeSetName, name)
+			}
+			utils.WriteString(b, name)
+			return
 		}
-		utils.WriteString(b, name)
-		return
 	}
 
 	// Avoid nested expansions

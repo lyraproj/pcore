@@ -58,6 +58,10 @@ func (ds *dsContext) convert(value px.Value) px.Value {
 						// Ensure that type is made known to current loader
 						rt := v.(px.ResolvableType)
 						n := rt.Name()
+						if n == `` {
+							// Anonymous type. Just resolve.
+							return rt.Resolve(ds.context)
+						}
 						// Duplicates can be found here if serialization was made with dedupLevel NoDedup
 						for _, nt := range ds.newTypes {
 							if n == nt.Name() {

@@ -128,6 +128,7 @@ func Parse(s string) (px.Value, error) {
 			} else if state == exParamsComma {
 				// Entry
 				state = exPEntryValue
+				arrayHash = true
 			} else {
 				err = badSyntax(t)
 			}
@@ -213,9 +214,15 @@ func Parse(s string) (px.Value, error) {
 			case leftParen:
 				stp := tp
 				sv := state
+				saveAh := arrayHash
+				arrayHash = false
 				state = exParam
 				tp = nil
 				d.AddArray(0, func() { err = scan(sr, sf) })
+				if arrayHash {
+					d.Add(fixArrayHash(d.PopLast().(*Array)))
+				}
+				arrayHash = saveAh
 				if err != breakCollection {
 					if err == nil {
 						state = exParamsComma
