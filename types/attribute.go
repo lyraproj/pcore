@@ -67,7 +67,11 @@ func (a *attribute) initialize(c px.Context, name string, container *objectType,
 				a.typ = NewOptionalType(a.typ)
 			}
 		}
-		a.value = nil // Not to be confused with undef
+		if _, ok := a.typ.(*OptionalType); ok {
+			a.value = undef // Optional attributes have an implicit value of undef
+		} else {
+			a.value = nil // Not to be confused with undef
+		}
 	}
 	if gn, ok := initHash.Get4(KeyGoName); ok {
 		a.goName = gn.String()
@@ -115,7 +119,13 @@ func (a *attribute) initHash() *hash.StringHash {
 		h.Put(keyKind, stringValue(string(a.kind)))
 	}
 	if a.value != nil {
-		h.Put(keyValue, a.value)
+		opt := a.value.Equals(undef, nil)
+		if opt {
+			_, opt = a.typ.(*OptionalType)
+		}
+		if !opt {
+			h.Put(keyValue, a.value)
+		}
 	}
 	return h
 }
