@@ -805,8 +805,6 @@ func (t *objectType) basicTypeToString(b io.Writer, f px.Format, s px.FormatCont
 			utils.WriteString(b, name)
 			return
 		}
-		// Anonymous object type
-		utils.WriteString(b, `Object`)
 	}
 
 	// Avoid nested expansions
