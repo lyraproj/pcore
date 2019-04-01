@@ -355,8 +355,8 @@ func ExampleReflector_typeFromReflect() {
 	})
 	// Output:
 	// Object[{name => 'My::Address', attributes => {'street' => String, 'zip_code' => String}}]
-	// Object[{name => 'My::Person', attributes => {'name' => String, 'address' => {'type' => Optional[My::Address], 'value' => undef}}}]
-	// Object[{name => 'My::ExtendedPerson', parent => My::Person, attributes => {'age' => {'annotations' => {TagsAnnotation => {'other' => 'stuff'}}, 'type' => Optional[Integer], 'value' => undef}, 'enabled' => Boolean}}]
+	// Object[{name => 'My::Person', attributes => {'name' => String, 'address' => Optional[My::Address]}}]
+	// Object[{name => 'My::ExtendedPerson', parent => My::Person, attributes => {'age' => {'annotations' => {TagsAnnotation => {'other' => 'stuff'}}, 'type' => Optional[Integer]}, 'enabled' => Boolean}}]
 	// My::ExtendedPerson('name' => 'Bob Tester', 'enabled' => true, 'address' => My::Address('street' => 'Example Road 23', 'zip_code' => '12345'), 'age' => 34)
 }
 
@@ -522,10 +522,7 @@ func ExampleReflector_typeSetFromReflect() {
 	//     Person => {
 	//       attributes => {
 	//         'name' => String,
-	//         'address' => {
-	//           'type' => Optional[Address],
-	//           'value' => undef
-	//         }
+	//         'address' => Optional[Address]
 	//       },
 	//       functions => {
 	//         'visit' => Callable[
@@ -535,14 +532,8 @@ func ExampleReflector_typeSetFromReflect() {
 	//     },
 	//     ExtendedPerson => Person{
 	//       attributes => {
-	//         'birth' => {
-	//           'type' => Optional[Timestamp],
-	//           'value' => undef
-	//         },
-	//         'timeSinceVisit' => {
-	//           'type' => Optional[Timespan],
-	//           'value' => undef
-	//         },
+	//         'birth' => Optional[Timestamp],
+	//         'timeSinceVisit' => Optional[Timespan],
 	//         'enabled' => Boolean
 	//       }
 	//     }
@@ -666,10 +657,7 @@ func ExampleReflector_TypeFromReflect_optionalString() {
 	//   name => 'X',
 	//   attributes => {
 	//     'a' => String,
-	//     'b' => {
-	//       'type' => Optional[String],
-	//       'value' => undef
-	//     }
+	//     'b' => Optional[String]
 	//   }
 	// }]
 }
@@ -764,10 +752,7 @@ func ExampleReflector_TypeFromReflect_optionalBoolean() {
 	//   name => 'X',
 	//   attributes => {
 	//     'a' => Boolean,
-	//     'b' => {
-	//       'type' => Optional[Boolean],
-	//       'value' => undef
-	//     }
+	//     'b' => Optional[Boolean]
 	//   }
 	// }]
 }
@@ -865,22 +850,10 @@ func ExampleReflector_TypeFromReflect_optionalInt() {
 	//   name => 'X',
 	//   attributes => {
 	//     'a' => Integer,
-	//     'b' => {
-	//       'type' => Optional[Integer],
-	//       'value' => undef
-	//     },
-	//     'c' => {
-	//       'type' => Optional[Integer[0, 255]],
-	//       'value' => undef
-	//     },
-	//     'd' => {
-	//       'type' => Optional[Integer[-32768, 32767]],
-	//       'value' => undef
-	//     },
-	//     'e' => {
-	//       'type' => Optional[Integer[0, 4294967295]],
-	//       'value' => undef
-	//     }
+	//     'b' => Optional[Integer],
+	//     'c' => Optional[Integer[0, 255]],
+	//     'd' => Optional[Integer[-32768, 32767]],
+	//     'e' => Optional[Integer[0, 4294967295]]
 	//   }
 	// }]
 }
@@ -997,14 +970,8 @@ func ExampleReflector_TypeFromReflect_optionalFloat() {
 	//   name => 'X',
 	//   attributes => {
 	//     'a' => Float,
-	//     'b' => {
-	//       'type' => Optional[Float],
-	//       'value' => undef
-	//     },
-	//     'c' => {
-	//       'type' => Optional[Float[-3.4028234663852886e+38, 3.4028234663852886e+38]],
-	//       'value' => undef
-	//     }
+	//     'b' => Optional[Float],
+	//     'c' => Optional[Float[-3.4028234663852886e+38, 3.4028234663852886e+38]]
 	//   }
 	// }]
 }
@@ -1107,14 +1074,8 @@ func ExampleReflector_TypeFromReflect_optionalIntSlice() {
 	//   name => 'X',
 	//   attributes => {
 	//     'a' => Array[Integer],
-	//     'b' => {
-	//       'type' => Optional[Array[Integer]],
-	//       'value' => undef
-	//     },
-	//     'c' => {
-	//       'type' => Optional[Hash[String, Integer[-2147483648, 2147483647]]],
-	//       'value' => undef
-	//     }
+	//     'b' => Optional[Array[Integer]],
+	//     'c' => Optional[Hash[String, Integer[-2147483648, 2147483647]]]
 	//   }
 	// }]
 }
@@ -1190,14 +1151,8 @@ func ExampleReflector_TypeFromReflect_structSlice() {
 	//   name => 'Y',
 	//   attributes => {
 	//     'a' => Array[X],
-	//     'b' => {
-	//       'type' => Optional[Array[X]],
-	//       'value' => undef
-	//     },
-	//     'c' => {
-	//       'type' => Optional[Array[Optional[X]]],
-	//       'value' => undef
-	//     }
+	//     'b' => Optional[Array[X]],
+	//     'c' => Optional[Array[Optional[X]]]
 	//   }
 	// }]
 }
