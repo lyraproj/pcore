@@ -77,8 +77,10 @@ var members = map[string]uriMemberFunc{
 }
 
 func init() {
-	newNamedType(`Pcore::URIStringParam`, `Variant[String[1],Regexp,Type[Pattern],Type[Enum],Type[NotUndef],Type[Undef]]`)
-	newNamedType(`Pcore::URIIntParam`, `Variant[Integer[0],Type[NotUndef],Type[Undef]]`)
+	registerResolvableType(
+		newNamedType(`Pcore::URIStringParam`, `Variant[String[1],Regexp,Type[Pattern],Type[Enum],Type[NotUndef],Type[Undef]]`).(px.ResolvableType))
+	registerResolvableType(
+		newNamedType(`Pcore::URIIntParam`, `Variant[Integer[0],Type[NotUndef],Type[Undef]]`).(px.ResolvableType))
 
 	URIMetaType = newObjectType(`Pcore::URIType`,
 		`Pcore::AnyType{
