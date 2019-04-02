@@ -1237,7 +1237,7 @@ func ExampleReflector_TypeFromReflect_nestedSliceToInterface() {
 	pcore.Do(func(c px.Context) {
 		x := c.Reflector().TypeFromReflect(`X`, nil, reflect.TypeOf(&nestedInterface{}))
 		px.AddTypes(c, x)
-		v := types.CoerceTo(c, "test", true, x, px.Wrap(c, map[string][]map[string][]string{`a`: {{`v`: {`a`, `b`}}}}))
+		v := types.CoerceTo(c, "test", x, px.Wrap(c, map[string][]map[string][]string{`a`: {{`v`: {`a`, `b`}}}}))
 		v.ToString(os.Stdout, px.Pretty, nil)
 		fmt.Println()
 	})

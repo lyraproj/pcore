@@ -280,16 +280,24 @@ var DefaultFor func(t Type) Type
 
 func AssertType(pfx interface{}, expected, actual Type) Type {
 	if !IsAssignable(expected, actual) {
-		panic(Error(TypeMismatch, issue.H{`detail`: DescribeMismatch(getPrefix(pfx), expected, actual)}))
+		panic(TypeMismatchError(pfx, expected, actual))
 	}
 	return actual
 }
 
 func AssertInstance(pfx interface{}, expected Type, value Value) Value {
 	if !IsInstance(expected, value) {
-		panic(Error(TypeMismatch, issue.H{`detail`: DescribeMismatch(getPrefix(pfx), expected, DetailedValueType(value))}))
+		panic(MismatchError(pfx, expected, value))
 	}
 	return value
+}
+
+func MismatchError(pfx interface{}, expected Type, value Value) issue.Reported {
+	return Error(TypeMismatch, issue.H{`detail`: DescribeMismatch(getPrefix(pfx), expected, DetailedValueType(value))})
+}
+
+func TypeMismatchError(pfx interface{}, expected Type, actual Type) issue.Reported {
+	return Error(TypeMismatch, issue.H{`detail`: DescribeMismatch(getPrefix(pfx), expected, actual)})
 }
 
 // New creates a new instance of type t

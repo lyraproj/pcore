@@ -184,19 +184,19 @@ func UniqueValues(values []px.Value) []px.Value {
 }
 
 func illegalArgument(name string, index int, arg string) issue.Reported {
-	return px.Error(px.IllegalArgument, issue.H{`function`: name, `index`: index, `arg`: arg})
+	return issue.NewReported(px.IllegalArgument, issue.SeverityError, issue.H{`function`: name, `index`: index, `arg`: arg}, 1)
 }
 
 func illegalArguments(name string, message string) issue.Reported {
-	return px.Error(px.IllegalArguments, issue.H{`function`: name, `message`: message})
+	return issue.NewReported(px.IllegalArguments, issue.SeverityError, issue.H{`function`: name, `message`: message}, 1)
 }
 
 func illegalArgumentType(name string, index int, expected string, actual px.Value) issue.Reported {
-	return px.Error(px.IllegalArgumentType, issue.H{`function`: name, `index`: index, `expected`: expected, `actual`: px.DetailedValueType(actual).String()})
+	return issue.NewReported(px.IllegalArgumentType, issue.SeverityError, issue.H{`function`: name, `index`: index, `expected`: expected, `actual`: px.DetailedValueType(actual).String()}, 1)
 }
 
 func illegalArgumentCount(name string, expected string, actual int) issue.Reported {
-	return px.Error(px.IllegalArgumentCount, issue.H{`function`: name, `expected`: expected, `actual`: actual})
+	return issue.NewReported(px.IllegalArgumentCount, issue.SeverityError, issue.H{`function`: name, `expected`: expected, `actual`: actual}, 1)
 }
 
 func TypeToString(t px.Type, b io.Writer, s px.FormatContext, g px.RDetect) {
@@ -218,6 +218,10 @@ func TypeToString(t px.Type, b io.Writer, s px.FormatContext, g px.RDetect) {
 
 func basicTypeToString(t px.Type, b io.Writer, s px.FormatContext, g px.RDetect) {
 	name := t.Name()
+	if tp, ok := s.Property(`typeSetParent`); ok && tp == `true` {
+		s = s.WithProperties(map[string]string{`typeSetParent`: `false`})
+	}
+
 	if ex, ok := s.Property(`expanded`); !(ok && ex == `true`) {
 		switch t.(type) {
 		case *TypeAliasType:
@@ -1007,110 +1011,4 @@ func versionRangeArg(hash px.OrderedMap, key string, d semver.VersionRange) semv
 		return sv.VersionRange()
 	}
 	panic(argError(key, DefaultSemVerType(), v))
-}
-
-// CoerceTo will deep coerce the given value into an instance of the given type t. The coercion will
-// recurse down into hashes, arrays, and objects and take key, value, and attribute types into account.
-//
-// The label is used in potential type assertion errors. It should indicate what it is that is being
-// coerced.
-//
-// The caseSensitive flag is only meaningful while coercing hashes into objects and affects the way
-// values are obtained from the hash using the attribute names of the object type. If caseSensitive is
-// false, a case insensitive comparison is performed between the keys of the hash and the attribute names.
-func CoerceTo(c px.Context, label string, caseSensitive bool, typ px.Type, value px.Value) (result px.Value) {
-	return coerceTo(c, []string{label}, caseSensitive, typ, value)
-}
-
-type path []string
-
-func (p path) with(n string) path {
-	np := make(path, len(p)+1)
-	copy(np, p)
-	np[len(p)] = n
-	return np
-}
-
-func coerceTo(c px.Context, path path, caseSensitive bool, typ px.Type, value px.Value) (result px.Value) {
-	if typ.IsInstance(value, nil) {
-		result = value
-		return
-	}
-
-	if opt, ok := typ.(*OptionalType); ok {
-		typ = opt.ContainedType()
-	}
-
-	switch t := typ.(type) {
-	case *ArrayType:
-		et := t.ElementType()
-		ep := path.with(`[]`)
-		if oa, ok := value.(*Array); ok {
-			value = oa.Map(func(e px.Value) px.Value { return coerceTo(c, ep, caseSensitive, et, e) })
-		} else {
-			value = WrapValues([]px.Value{coerceTo(c, ep, caseSensitive, et, value)})
-		}
-		result = px.AssertInstance(func() string { return strings.Join(path, `/`) }, t, value)
-	case *HashType:
-		kt := t.KeyType()
-		vt := t.ValueType()
-		kp := path.with(`key`)
-		if oh, ok := value.(*Hash); ok {
-			value = oh.MapEntries(func(e px.MapEntry) px.MapEntry {
-				kv := coerceTo(c, kp, caseSensitive, kt, e.Key())
-				return WrapHashEntry(kv, coerceTo(c, path.with(kv.String()), caseSensitive, vt, e.Value()))
-			})
-		}
-		result = px.AssertInstance(func() string { return strings.Join(path, `/`) }, t, value)
-	case *StructType:
-		hm := t.HashedMembers()
-		if oh, ok := value.(*Hash); ok {
-			value = oh.MapEntries(func(e px.MapEntry) px.MapEntry {
-				var s px.StringValue
-				if s, ok = e.Key().(px.StringValue); ok {
-					var se *StructElement
-					if se, ok = hm[s.String()]; ok {
-						return WrapHashEntry(s, coerceTo(c, path.with(s.String()), caseSensitive, se.Value(), e.Value()))
-					}
-				}
-				return e
-			})
-		}
-		result = px.AssertInstance(func() string { return strings.Join(path, `/`) }, t, value)
-	case px.ObjectType:
-		ai := t.AttributesInfo()
-		switch o := value.(type) {
-		case *Array:
-			el := make([]px.Value, o.Len())
-			for i, ca := range ai.Attributes() {
-				if i >= o.Len() {
-					break
-				}
-				el[i] = coerceTo(c, []string{ca.Label()}, caseSensitive, ca.Type(), o.At(i))
-			}
-			result = newInstance(c, t, el...)
-		case *Hash:
-			el := make([]*HashEntry, 0, o.Len())
-			var ok bool
-			var e px.MapEntry
-			for _, ca := range ai.Attributes() {
-				if caseSensitive {
-					e, ok = o.GetEntry(ca.Name())
-				} else {
-					e, ok = o.GetEntryFold(ca.Name())
-				}
-				if ok {
-					el = append(el, WrapHashEntry(e.Key(), coerceTo(c, []string{ca.Label()}, caseSensitive, ca.Type(), e.Value())))
-				}
-			}
-			result = newInstance(c, t, o.Merge(WrapHash(el)))
-		default:
-			result = newInstance(c, t, o)
-		}
-	default:
-		// Create using single argument. This takes care of coercions from String to Version,
-		// Number to Timespan, etc.
-		result = newInstance(c, t, value)
-	}
-	return
 }

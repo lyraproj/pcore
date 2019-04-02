@@ -479,7 +479,7 @@ func (t *typeSet) basicTypeToString(b io.Writer, f px.Format, s px.FormatContext
 		utils.WriteString(b, name)
 		return
 	}
-	s = s.WithProperties(map[string]string{`typeSet`: t.Name()})
+	s = s.WithProperties(map[string]string{`typeSet`: t.Name(), `typeSetParent`: `true`})
 
 	utils.WriteString(b, `TypeSet[{`)
 	indent1 := s.Indentation()
