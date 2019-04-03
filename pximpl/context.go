@@ -243,19 +243,16 @@ func resolveTypes(c px.Context, types ...px.ResolvableType) {
 	typeSets := make([]px.TypeSet, 0)
 	allAnnotated := make([]px.Annotatable, 0, len(types))
 	for _, rt := range types {
-		t := rt.Resolve(c)
-		if ts, ok := t.(px.TypeSet); ok {
-			typeSets = append(typeSets, ts)
-		} else {
-			var ot px.ObjectType
-			if ot, ok = t.(px.ObjectType); ok {
-				if ctor := ot.Constructor(c); ctor != nil {
-					l.SetEntry(px.NewTypedName(px.NsConstructor, t.Name()), px.NewLoaderEntry(ctor, nil))
-				}
+		switch t := rt.Resolve(c).(type) {
+		case px.TypeSet:
+			typeSets = append(typeSets, t)
+		case px.ObjectType:
+			if ctor := t.Constructor(c); ctor != nil {
+				l.SetEntry(px.NewTypedName(px.NsConstructor, t.Name()), px.NewLoaderEntry(ctor, nil))
 			}
-		}
-		if a, ok := t.(px.Annotatable); ok {
-			allAnnotated = append(allAnnotated, a)
+			allAnnotated = append(allAnnotated, t)
+		case px.Annotatable:
+			allAnnotated = append(allAnnotated, t)
 		}
 	}
 
