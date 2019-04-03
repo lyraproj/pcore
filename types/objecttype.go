@@ -16,6 +16,9 @@ import (
 	"github.com/lyraproj/pcore/utils"
 )
 
+// TODO: Implement Type.CanCoerce(Value)
+//   Object.IsInstance is true if value is a Hash matching the attribute requirements
+//   where each entry value can be coerced into the attribute´s type
 var ObjectMetaType px.ObjectType
 
 func init() {
@@ -183,7 +186,7 @@ func (t *objectType) AttributesInfo() px.AttributesInfo {
 }
 
 func (t *objectType) Constructor(c px.Context) px.Function {
-	if t.ctor == nil && t.name != `` {
+	if t.ctor == nil {
 		t.createNewFunction(c)
 	}
 	return t.ctor
@@ -795,7 +798,13 @@ func (t *objectType) basicTypeToString(b io.Writer, f px.Format, s px.FormatCont
 		return
 	}
 
+	typeSetParent := false
 	typeSetName, inTypeSet := s.Property(`typeSet`)
+	if tp, ok := s.Property(`typeSetParent`); ok && tp == `true` {
+		s = s.WithProperties(map[string]string{`typeSetParent`: `false`})
+		typeSetParent = true
+	}
+
 	if ex, ok := s.Property(`expanded`); !(ok && ex == `true`) {
 		name := t.Name()
 		if name != `` {
@@ -835,10 +844,11 @@ func (t *objectType) basicTypeToString(b io.Writer, f px.Format, s px.FormatCont
 		if t.parent != nil {
 			utils.WriteString(b, stripTypeSetName(typeSetName, t.parent.Name()))
 		}
-		utils.WriteString(b, `{`)
-	} else {
-		utils.WriteString(b, `Object[{`)
 	}
+	if !typeSetParent {
+		utils.WriteString(b, `Object[`)
+	}
+	utils.WriteString(b, `{`)
 
 	first2 := true
 	ih := t.initHash(!inTypeSet)
@@ -902,7 +912,7 @@ func (t *objectType) basicTypeToString(b io.Writer, f px.Format, s px.FormatCont
 		utils.WriteString(b, padding1)
 	}
 	utils.WriteString(b, "}")
-	if !inTypeSet {
+	if !typeSetParent {
 		utils.WriteString(b, "]")
 	}
 }
@@ -1036,12 +1046,6 @@ func (t *objectType) createInitType() *StructType {
 
 func (t *objectType) createNewFunction(c px.Context) {
 	pi := t.AttributesInfo()
-	var dl px.DefiningLoader
-	if t.loader == nil {
-		dl = c.DefiningLoader()
-	} else {
-		dl = t.loader.(px.DefiningLoader)
-	}
 
 	var functions []px.DispatchFunction
 	if t.creators != nil {
@@ -1051,12 +1055,20 @@ func (t *objectType) createNewFunction(c px.Context) {
 			return
 		}
 	} else {
-		tn := px.NewTypedName(px.NsAllocator, t.name)
-		le := dl.LoadEntry(c, tn)
-		if le == nil || le.Value() == nil {
-			dl.SetEntry(tn, px.NewLoaderEntry(px.MakeGoAllocator(func(ctx px.Context, args []px.Value) px.Value {
-				return AllocObjectValue(t)
-			}), nil))
+		if t.name != `` {
+			var dl px.DefiningLoader
+			if t.loader == nil {
+				dl = c.DefiningLoader()
+			} else {
+				dl = t.loader.(px.DefiningLoader)
+			}
+			tn := px.NewTypedName(px.NsAllocator, t.name)
+			le := dl.LoadEntry(c, tn)
+			if le == nil || le.Value() == nil {
+				dl.SetEntry(tn, px.NewLoaderEntry(px.MakeGoAllocator(func(ctx px.Context, args []px.Value) px.Value {
+					return AllocObjectValue(t)
+				}), nil))
+			}
 		}
 
 		functions = []px.DispatchFunction{
@@ -1066,21 +1078,35 @@ func (t *objectType) createNewFunction(c px.Context) {
 			},
 			// Named argument creator
 			func(c px.Context, args []px.Value) px.Value {
-				return newObjectValue2(c, t, args[0].(*Hash))
+				ai := t.AttributesInfo()
+				if oh, ok := args[0].(*Hash); ok {
+					el := make([]*HashEntry, 0, oh.Len())
+					for _, ca := range ai.Attributes() {
+						if e, ok := oh.GetEntry(ca.Name()); ok {
+							el = append(el, WrapHashEntry(e.Key(), coerceTo(c, []string{ca.Label()}, ca.Type(), e.Value())))
+						}
+					}
+					return newObjectValue2(c, t, oh.Merge(WrapHash(el)).(*Hash))
+				}
+				panic(px.MismatchError(t.Label(), t, args[0]))
 			}}
 	}
 
 	paCreator := func(d px.Dispatch) {
 		for i, attr := range pi.Attributes() {
+			at := attr.Type()
+			if ot, ok := at.(px.ObjectType); ok {
+				at = typeAndInit(ot)
+			}
 			switch attr.Kind() {
 			case constant, derived:
 			case givenOrDerived:
-				d.OptionalParam2(attr.Type())
+				d.OptionalParam2(at)
 			default:
 				if i >= pi.RequiredCount() {
-					d.OptionalParam2(attr.Type())
+					d.OptionalParam2(at)
 				} else {
-					d.Param2(attr.Type())
+					d.Param2(at)
 				}
 			}
 		}
@@ -1091,7 +1117,7 @@ func (t *objectType) createNewFunction(c px.Context) {
 	if len(functions) > 1 {
 		// A named argument constructor exists. Place it first.
 		creators = []px.DispatchCreator{func(d px.Dispatch) {
-			d.Param2(t.createInitType())
+			d.Param2(typeAndInit(t.createInitType()))
 			d.Function(functions[1])
 		}, paCreator}
 	} else {
@@ -1099,6 +1125,41 @@ func (t *objectType) createNewFunction(c px.Context) {
 	}
 
 	t.ctor = px.MakeGoConstructor(t.name, creators...).Resolve(c)
+}
+
+func typeAndInit(t px.Type) px.Type {
+	switch t := t.(type) {
+	case *objectType:
+		return NewVariantType(t, typeAndInit(t.createInitType()))
+	case *HashType:
+		return NewHashType(typeAndInit(t.keyType), typeAndInit(t.valueType), t.size)
+	case *ArrayType:
+		return NewArrayType(typeAndInit(t.ElementType()), t.size)
+	case *StructType:
+		ses := make([]*StructElement, len(t.elements))
+		for i, se := range t.elements {
+			ses[i] = &StructElement{key: se.key, name: se.name, value: typeAndInit(se.value)}
+		}
+		return NewStructType(ses)
+	case *TupleType:
+		tts := make([]px.Type, len(t.types))
+		for i, tt := range t.types {
+			tts[i] = typeAndInit(tt)
+		}
+		return &TupleType{types: tts, size: t.size, givenOrActualSize: t.givenOrActualSize}
+	case *VariantType:
+		tts := make([]px.Type, len(t.types))
+		for i, tt := range t.types {
+			tts[i] = typeAndInit(tt)
+		}
+		return &VariantType{types: tts}
+	case *OptionalType:
+		return &OptionalType{typ: typeAndInit(t.typ)}
+	case *NotUndefType:
+		return &OptionalType{typ: typeAndInit(t.typ)}
+	default:
+		return t
+	}
 }
 
 func (t *objectType) findEqualityDefiner(attrName string) *objectType {
