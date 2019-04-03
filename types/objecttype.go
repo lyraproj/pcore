@@ -102,6 +102,7 @@ type objectType struct {
 	ctor                px.Function
 	goType              px.AnnotatedType
 	isInterface         bool
+	initType            *StructType
 }
 
 func (t *objectType) ReflectType(c px.Context) (reflect.Type, bool) {
@@ -713,29 +714,32 @@ func (t *objectType) Parent() px.Type {
 }
 
 func (t *objectType) Resolve(c px.Context) px.Type {
-	if t.initHashExpression != nil {
-		ihe := t.initHashExpression
-		t.initHashExpression = nil
-
-		if prt, ok := t.parent.(px.ResolvableType); ok {
-			t.parent = resolveTypeRefs(c, prt).(px.Type)
-		}
-
-		var initHash px.OrderedMap
-		if hv, ok := ihe.(px.OrderedMap); ok {
-			initHash = resolveTypeRefs(c, hv).(px.OrderedMap)
-		} else if tg, ok := ihe.(*taggedType); ok {
-			t.goType = tg
-			initHash = c.Reflector().InitializerFromTagged(t.name, t.parent, tg)
-			c.ImplementationRegistry().RegisterType(t, tg.Type())
-		} else {
-			tg := px.NewTaggedType(reflect.TypeOf(ihe), nil)
-			t.goType = tg
-			initHash = c.Reflector().InitializerFromTagged(t.name, t.parent, tg)
-			c.ImplementationRegistry().RegisterType(t, tg.Type())
-		}
-		t.InitFromHash(c, initHash)
+	if t.initHashExpression == nil {
+		return t
 	}
+
+	ihe := t.initHashExpression
+	t.initHashExpression = nil
+
+	if prt, ok := t.parent.(px.ResolvableType); ok {
+		t.parent = resolveTypeRefs(c, prt).(px.Type)
+	}
+
+	var initHash px.OrderedMap
+	switch ihe := ihe.(type) {
+	case px.OrderedMap:
+		initHash = resolveTypeRefs(c, ihe).(px.OrderedMap)
+	case *taggedType:
+		t.goType = ihe
+		initHash = c.Reflector().InitializerFromTagged(t.name, t.parent, ihe)
+		c.ImplementationRegistry().RegisterType(t, ihe.Type())
+	default:
+		tg := px.NewTaggedType(reflect.TypeOf(ihe), nil)
+		t.goType = tg
+		initHash = c.Reflector().InitializerFromTagged(t.name, t.parent, tg)
+		c.ImplementationRegistry().RegisterType(t, tg.Type())
+	}
+	t.InitFromHash(c, initHash)
 	return t
 }
 
@@ -1025,23 +1029,34 @@ func (t *objectType) createAttributesInfo() *attributesInfo {
 }
 
 func (t *objectType) createInitType() *StructType {
-	elements := make([]*StructElement, 0)
-	t.EachAttribute(true, func(attr px.Attribute) {
-		switch attr.Kind() {
-		case constant, derived:
-		case givenOrDerived:
-			elements = append(elements, NewStructElement(newOptionalType3(attr.Name()), attr.Type()))
-		default:
-			var key px.Type
-			if attr.HasValue() {
-				key = newOptionalType3(attr.Name())
-			} else {
-				key = NewStringType(nil, attr.Name())
-			}
-			elements = append(elements, NewStructElement(key, attr.Type()))
+	if t.initType == nil {
+		ai := t.attrInfo
+		if ai == nil {
+			// Default Object. It has no attributes
+			t.initType = NewStructType([]*StructElement{})
+			return t.initType
 		}
-	})
-	return NewStructType(elements)
+		attrs := ai.attributes
+		elements := make([]*StructElement, len(attrs))
+		t.initType = NewStructType(elements)
+		for i, attr := range attrs {
+			at := typeAndInit(attr.Type())
+			switch attr.Kind() {
+			case constant, derived:
+			case givenOrDerived:
+				elements[i] = NewStructElement(newOptionalType3(attr.Name()), at)
+			default:
+				var key px.Type
+				if attr.HasValue() {
+					key = newOptionalType3(attr.Name())
+				} else {
+					key = NewStringType(nil, attr.Name())
+				}
+				elements[i] = NewStructElement(key, at)
+			}
+		}
+	}
+	return t.initType
 }
 
 func (t *objectType) createNewFunction(c px.Context) {
@@ -1117,7 +1132,7 @@ func (t *objectType) createNewFunction(c px.Context) {
 	if len(functions) > 1 {
 		// A named argument constructor exists. Place it first.
 		creators = []px.DispatchCreator{func(d px.Dispatch) {
-			d.Param2(typeAndInit(t.createInitType()))
+			d.Param2(t.createInitType())
 			d.Function(functions[1])
 		}, paCreator}
 	} else {
@@ -1130,7 +1145,7 @@ func (t *objectType) createNewFunction(c px.Context) {
 func typeAndInit(t px.Type) px.Type {
 	switch t := t.(type) {
 	case *objectType:
-		return NewVariantType(t, typeAndInit(t.createInitType()))
+		return NewVariantType(t, t.createInitType())
 	case *HashType:
 		return NewHashType(typeAndInit(t.keyType), typeAndInit(t.valueType), t.size)
 	case *ArrayType:
