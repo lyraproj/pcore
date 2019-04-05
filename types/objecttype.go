@@ -118,8 +118,16 @@ func ObjectToString(o px.PuppetObject, s px.FormatContext, b io.Writer, g px.RDe
 		utils.WriteString(b, "\n")
 		utils.WriteString(b, indent.Padding())
 	}
-	utils.WriteString(b, o.PType().Name())
-	o.InitHash().(*Hash).ToString2(b, s, px.GetFormat(s.FormatMap(), o.PType()), '(', g)
+	n := o.PType().Name()
+	ih := o.InitHash().(*Hash)
+	if n == `` {
+		// Anonymous objects can't be written in constructor call form. They are instead
+		// written as a Hash
+		ih.ToString(b, s, g)
+	} else {
+		utils.WriteString(b, n)
+		ih.ToString2(b, s, px.GetFormat(s.FormatMap(), o.PType()), '(', g)
+	}
 }
 
 var objectTypeDefault = &objectType{
