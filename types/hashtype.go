@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/lyraproj/issue/issue"
+
 	"github.com/lyraproj/pcore/hash"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
@@ -373,10 +375,19 @@ func (t *HashType) PType() px.Type {
 }
 
 func WrapHashEntry(key px.Value, value px.Value) *HashEntry {
+	if key == nil {
+		panic(px.Error(px.NilHashKey, issue.NoArgs))
+	}
+	if value == nil {
+		panic(px.Error(px.NilHashValue, issue.H{`key`: key}))
+	}
 	return &HashEntry{key, value}
 }
 
 func WrapHashEntry2(key string, value px.Value) *HashEntry {
+	if value == nil {
+		panic(px.Error(px.NilHashValue, issue.H{`key`: key}))
+	}
 	return &HashEntry{stringValue(key), value}
 }
 

@@ -53,6 +53,9 @@ const (
 	MemberNameConflict                    = `PCORE_MEMBER_NAME_CONFLICT`
 	MissingRequiredAttribute              = `PCORE_MISSING_REQUIRED_ATTRIBUTE`
 	MissingTypeParameter                  = `PCORE_MISSING_TYPE_PARAMETER`
+	NilArrayElement                       = `NIL_ARRAY_ELEMENT`
+	NilHashKey                            = `NIL_HASH_KEY`
+	NilHashValue                          = `NIL_HASH_VALUE`
 	NoAttributeReader                     = `PCORE_NO_ATTRIBUTE_READER`
 	NoCurrentContext                      = `PCORE_NO_CURRENT_CONTEXT`
 	NoDefinition                          = `PCORE_NO_DEFINITION`
@@ -204,6 +207,12 @@ func init() {
 	issue.Hard(MissingTypeParameter, `'%{name}' is not a known type parameter for %{label}-Type`)
 
 	issue.Hard(ObjectInheritsSelf, `The Object type '%{label}' inherits from itself`)
+
+	issue.Hard(NilArrayElement, `Attempt to create array with nil element at index %{index}`)
+
+	issue.Hard(NilHashKey, `Attempt to create hash with nil key`)
+
+	issue.Hard(NilHashValue, `Attempt to create hash with nil value for key '%{key}'`)
 
 	issue.Hard(NoAttributeReader, `No attribute reader is implemented for %{label}`)
 

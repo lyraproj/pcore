@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/lyraproj/issue/issue"
+
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/utils"
 )
@@ -286,12 +288,20 @@ func SingletonArray(element px.Value) *Array {
 func WrapTypes(elements []px.Type) *Array {
 	els := make([]px.Value, len(elements))
 	for i, e := range elements {
+		if e == nil {
+			panic(px.Error(px.NilArrayElement, issue.H{`index`: i}))
+		}
 		els[i] = e
 	}
 	return &Array{elements: els}
 }
 
 func WrapValues(elements []px.Value) *Array {
+	for i, e := range elements {
+		if e == nil {
+			panic(px.Error(px.NilArrayElement, issue.H{`index`: i}))
+		}
+	}
 	return &Array{elements: elements}
 }
 
