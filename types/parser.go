@@ -237,11 +237,23 @@ func Parse(s string) (px.Value, error) {
 				}
 				ll := d.PopLast().(*Array)
 				if he, ok := stp.(*HashEntry); ok {
-					params := append(make([]px.Value, 0, ll.Len()+1), WrapString(he.Value().(*DeferredType).tn))
-					stp = WrapHashEntry(he.Key(), NewDeferred(`new`, ll.AppendTo(params)...))
+					dt := he.Value().(*DeferredType).tn
+					if dt != `Deferred` {
+						params := append(make([]px.Value, 0, ll.Len()+1), WrapString(dt))
+						stp = WrapHashEntry(he.Key(), NewDeferred(`new`, ll.AppendTo(params)...))
+					} else {
+						params := ll.Slice(1, ll.Len()).AppendTo(make([]px.Value, 0, ll.Len()-1))
+						stp = WrapHashEntry(he.Key(), NewDeferred(ll.At(0).String(), params...))
+					}
 				} else {
-					params := append(make([]px.Value, 0, ll.Len()+1), WrapString(stp.(*DeferredType).tn))
-					stp = NewDeferred(`new`, ll.AppendTo(params)...)
+					dt := stp.(*DeferredType).tn
+					if dt != `Deferred` {
+						params := append(make([]px.Value, 0, ll.Len()+1), WrapString(dt))
+						stp = NewDeferred(`new`, ll.AppendTo(params)...)
+					} else {
+						params := ll.Slice(1, ll.Len()).AppendTo(make([]px.Value, 0, ll.Len()-1))
+						stp = NewDeferred(ll.At(0).String(), params...)
+					}
 				}
 				d.Add(stp)
 			case integer:
