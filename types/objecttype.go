@@ -935,8 +935,7 @@ func (t *objectType) PType() px.Type {
 
 func (t *objectType) appendAttributeValues(c px.Context, entries []*HashEntry, src *reflect.Value) []*HashEntry {
 	dt := src.Type()
-	rf := c.Reflector()
-	fs := rf.Fields(dt)
+	fs := Fields(dt)
 
 	for i, field := range fs {
 		sf := src.Field(i)
@@ -946,7 +945,7 @@ func (t *objectType) appendAttributeValues(c px.Context, entries []*HashEntry, s
 		if field.Anonymous && i == 0 && t.parent != nil {
 			entries = t.resolvedParent().appendAttributeValues(c, entries, &sf)
 		} else {
-			entries = append(entries, WrapHashEntry2(rf.FieldName(&field), wrap(c, sf)))
+			entries = append(entries, WrapHashEntry2(FieldName(&field), wrap(c, sf)))
 		}
 	}
 	return entries

@@ -76,7 +76,11 @@ func (r *reflector) Fields(t reflect.Type) []reflect.StructField {
 }
 
 func (r *reflector) FieldName(f *reflect.StructField) string {
-	if tagHash, ok := r.TagHash(f); ok {
+	return FieldName(f)
+}
+
+func FieldName(f *reflect.StructField) string {
+	if tagHash, ok := TagHash(f); ok {
 		if nv, ok := tagHash.Get4(`name`); ok {
 			return nv.String()
 		}

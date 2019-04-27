@@ -56,5 +56,8 @@ func (l *dependencyLoader) find(c px.Context, name px.TypedName) px.LoaderEntry 
 			return e
 		}
 	}
-	return nil
+
+	// Recursion or parallel go routines might have set the entry now. Returning
+	// nil here might therefore be a lie.
+	return l.basicLoader.LoadEntry(c, name)
 }

@@ -265,6 +265,8 @@ func (l *fileBasedLoader) instantiate(c px.Context, smartPath SmartPath, name px
 	}()
 
 	if l.GetEntry(name) == nil {
+		// Make absolutely sure that we don't recurse into instantiate again
+		l.SetEntry(name, px.NewLoaderEntry(nil, nil))
 		smartPath.Instantiator()(c, l, name, origins)
 	}
 	return l.GetEntry(rn)
