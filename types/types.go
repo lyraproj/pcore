@@ -683,7 +683,8 @@ func wrapReflected(c px.Context, vr reflect.Value) (pv px.Value) {
 		}
 	}
 
-	if _, ok := wellKnown[vr.Type()]; ok {
+	vt := vr.Type()
+	if _, ok := wellKnown[vt]; ok {
 		iv := vr.Interface()
 		if pv, ok = iv.(px.Value); ok {
 			return
@@ -704,7 +705,7 @@ func wrapReflected(c px.Context, vr reflect.Value) (pv px.Value) {
 		return pv
 	}
 
-	switch vr.Kind() {
+	switch vt.Kind() {
 	case reflect.Slice, reflect.Array:
 		top := vr.Len()
 		els := make([]px.Value, top)
@@ -720,7 +721,23 @@ func wrapReflected(c px.Context, vr reflect.Value) (pv px.Value) {
 		}
 		pv = sortedMap(els)
 	case reflect.Ptr:
-		return wrapReflected(c, vr.Elem())
+		pv = wrapReflected(c, vr.Elem())
+	case reflect.Struct:
+		// Unknown struct. Map this to a Hash<String,Any>
+		nf := vt.NumField()
+		els := make([]*HashEntry, 0, nf)
+		for i := 0; i < nf; i++ {
+			vv := vr.Field(i)
+			switch vv.Kind() {
+			case reflect.Slice, reflect.Map, reflect.Interface, reflect.Ptr:
+				if vv.IsNil() {
+					continue
+				}
+			}
+			ft := vt.Field(i)
+			els = append(els, WrapHashEntry2(FieldName(&ft), wrap(c, interfaceOrNil(vv))))
+		}
+		pv = sortedMap(els)
 	default:
 		if vr.IsValid() && vr.CanInterface() {
 			ix := vr.Interface()

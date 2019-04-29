@@ -945,7 +945,15 @@ func (t *objectType) appendAttributeValues(c px.Context, entries []*HashEntry, s
 		if field.Anonymous && i == 0 && t.parent != nil {
 			entries = t.resolvedParent().appendAttributeValues(c, entries, &sf)
 		} else {
-			entries = append(entries, WrapHashEntry2(FieldName(&field), wrap(c, sf)))
+			if sf.IsValid() {
+				switch sf.Kind() {
+				case reflect.Slice, reflect.Map, reflect.Interface, reflect.Ptr:
+					if sf.IsNil() {
+						continue
+					}
+				}
+				entries = append(entries, WrapHashEntry2(FieldName(&field), wrap(c, sf)))
+			}
 		}
 	}
 	return entries
