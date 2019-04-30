@@ -21,7 +21,7 @@ const NsFunction = Namespace(`function`)
 const NsInterface = Namespace(`interface`)
 
 // NsDefinition denotes an entity that describes something that is provided by a remote service. Examples
-// of such entities are callable API's and activities that can participate in a workflow.
+// of such entities are callable API's and steps that can participate in a workflow.
 const NsDefinition = Namespace(`definition`)
 
 // NsHandler denotes a handler for a state in a workflow
@@ -30,8 +30,8 @@ const NsHandler = Namespace(`handler`)
 // NsService denotes a remote service
 const NsService = Namespace(`service`)
 
-// NsActivity denotes a Puppet DSL specific activity (not to be confused with a Definition of an activity)
-const NsActivity = Namespace(`activity`)
+// NsStep denotes a Puppet DSL specific step (not to be confused with a Definition of an step)
+const NsStep = Namespace(`step`)
 
 // Here in case of future Bolt integration with the Evaluator
 const NsPlan = Namespace(`plan`)
