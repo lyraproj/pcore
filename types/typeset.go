@@ -655,27 +655,9 @@ func (t *typeSet) resolveDeferred(c px.Context, lh px.OrderedMap) *Hash {
 		types.EachPair(func(typeName string, value interface{}) {
 			fullName := fmt.Sprintf(`%s::%s`, t.name, typeName)
 			var tp px.Type
-			switch value := value.(type) {
-			case *DeferredType:
-				if len(value.params) == 1 {
-					if ih, ok := value.params[0].(px.OrderedMap); ok {
-						name := value.Name()
-						if !(name == `Object` || name == `TypeSet`) {
-							// the name `parent` is not allowed here
-							if pn, ok := ih.Get4(keyParent); ok {
-								if name != pn.String() {
-									panic(px.Error(px.DuplicateKey, issue.H{`key`: keyParent}))
-								}
-							} else {
-								value.params[0] = ih.Merge(singletonMap(keyParent, WrapString(name)))
-							}
-						}
-					}
-				}
-				tp = NamedType(nameAuth, fullName, value)
-			case px.Type:
-				tp = value
-			default:
+			if tv, ok := value.(px.Type); ok {
+				tp = tv
+			} else {
 				tp = NamedType(nameAuth, fullName, value.(px.Value))
 			}
 			es = append(es, WrapHashEntry2(typeName, tp))
