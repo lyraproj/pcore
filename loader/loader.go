@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"bytes"
 	"sort"
 	"sync"
 
@@ -116,15 +117,32 @@ func (l *basicLoader) HasEntry(name px.TypedName) bool {
 
 func (l *basicLoader) SetEntry(name px.TypedName, entry px.LoaderEntry) px.LoaderEntry {
 	l.lock.Lock()
-	if old, ok := l.namedEntries[name.MapKey()]; ok && old.Value() != nil {
-		l.lock.Unlock()
-		if old.Value() == entry.Value() {
+	defer l.lock.Unlock()
+
+	if old, ok := l.namedEntries[name.MapKey()]; ok {
+		ov := old.Value()
+		if ov == nil {
+			*old.(*loaderEntry) = *entry.(*loaderEntry)
 			return old
+		}
+		nv := entry.Value()
+		if ov == nv {
+			return old
+		}
+		if ea, ok := ov.(px.Equality); ok && ea.Equals(nv, nil) {
+			return old
+		}
+
+		if lt, ok := old.Value().(px.Type); ok {
+			ob := bytes.NewBufferString(``)
+			lt.ToString(ob, px.PrettyExpanded, nil)
+			nb := bytes.NewBufferString(``)
+			nv.(px.Type).ToString(nb, px.PrettyExpanded, nil)
+			panic(px.Error(px.AttemptToRedefineType, issue.H{`name`: name, `old`: ob.String(), `new`: nb.String()}))
 		}
 		panic(px.Error(px.AttemptToRedefine, issue.H{`name`: name}))
 	}
 	l.namedEntries[name.MapKey()] = entry
-	l.lock.Unlock()
 	return entry
 }
 
