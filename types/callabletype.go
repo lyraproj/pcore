@@ -60,9 +60,9 @@ func newCallableType3(args px.List) *CallableType {
 		var returnType px.Type
 		var blockType px.Type
 		if argc > 1 {
-			returnType, ok = args.At(1).(px.Type)
+			blockType, ok = args.At(1).(px.Type)
 			if argc > 2 {
-				blockType, ok = args.At(2).(px.Type)
+				returnType, ok = args.At(2).(px.Type)
 			}
 		}
 		if ok {

@@ -155,21 +155,22 @@ func (ds *dsContext) convertOther(hash px.OrderedMap, typeValue px.Value) px.Val
 func (ds *dsContext) pcoreTypeHashToValue(typ px.Type, key, value px.Value) px.Value {
 	var ov px.Value
 	if hash, ok := value.(*types.Hash); ok {
+		args := ds.convert(hash)
+
 		if ov, ok = ds.allocate(typ); ok {
 			ds.converted[key] = ov
-			ov.(px.Object).InitFromHash(ds.context, ds.convert(hash).(*types.Hash))
+			ov.(px.Object).InitFromHash(ds.context, args.(*types.Hash))
 			return ov
 		}
 
-		hash = ds.convert(hash).(*types.Hash)
 		if ot, ok := typ.(px.ObjectType); ok {
 			if ot.HasHashConstructor() {
-				ov = px.New(ds.context, typ, hash)
+				ov = px.New(ds.context, typ, args)
 			} else {
-				ov = px.New(ds.context, typ, ot.AttributesInfo().PositionalFromHash(hash)...)
+				ov = px.New(ds.context, typ, ot.AttributesInfo().PositionalFromHash(args.(*types.Hash))...)
 			}
 		} else {
-			ov = px.New(ds.context, typ, hash)
+			ov = px.New(ds.context, typ, args)
 		}
 	} else {
 		if str, ok := value.(px.StringValue); ok {

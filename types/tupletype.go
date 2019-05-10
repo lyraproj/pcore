@@ -76,6 +76,7 @@ func tupleFromArgs(callable bool, args px.List) *TupleType {
 				tupleArgs = append(tupleArgs, args.At(1).(*IntegerType).Parameters()...)
 			}
 			args = WrapValues(tupleArgs)
+			argc = len(tupleArgs)
 		}
 	}
 
