@@ -114,13 +114,23 @@ type Context interface {
 func AddTypes(c Context, types ...Type) {
 	l := c.DefiningLoader()
 	rts := make([]ResolvableType, 0, len(types))
+	tss := make([]TypeSet, 0, 4)
 	for _, t := range types {
-		l.SetEntry(NewTypedName(NsType, t.Name()), NewLoaderEntry(t, nil))
+		// A TypeSet should not be added until it is resolved since it uses its own
+		// loader for the resolution.
+		if ts, ok := t.(TypeSet); ok {
+			tss = append(tss, ts)
+		} else {
+			l.SetEntry(NewTypedName(NsType, t.Name()), NewLoaderEntry(t, nil))
+		}
 		if rt, ok := t.(ResolvableType); ok {
 			rts = append(rts, rt)
 		}
 	}
 	ResolveTypes(c, rts...)
+	for _, ts := range tss {
+		l.SetEntry(NewTypedName(NsType, ts.Name()), NewLoaderEntry(ts, nil))
+	}
 }
 
 // Call calls a function known to the loader of the Context with arguments and an optional block.

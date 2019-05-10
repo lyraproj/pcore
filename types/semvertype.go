@@ -273,6 +273,9 @@ func (v *SemVer) SerializationString() string {
 }
 
 func (v *SemVer) String() string {
+	if v.vRange == nil || v.vRange.StartVersion() == nil {
+		return `0.0.0-`
+	}
 	return v.Version().String()
 }
 
