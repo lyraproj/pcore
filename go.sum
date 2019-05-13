@@ -4,8 +4,8 @@ github.com/golang/protobuf v1.2.0 h1:P3YflyNX/ehuJFLhxviNdFxQPkGK5cDcApsge1SqnvM
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/lyraproj/data-protobuf v0.0.0-20190329160005-a909d9e1f93b h1:qGgMkFUQVnT5qjIKV4MB0j6RkRBVSZvhuD35vsnvglI=
 github.com/lyraproj/data-protobuf v0.0.0-20190329160005-a909d9e1f93b/go.mod h1:oQIFBu0fmkiSpSRROEgK5gnjQ/ZDrx3UdpRpT3791Gg=
-github.com/lyraproj/issue v0.0.0-20190329160035-8bc10230f995 h1:vAlBUcYalN98yypS75/zwFciwS6WFYGnizRBJdN320o=
-github.com/lyraproj/issue v0.0.0-20190329160035-8bc10230f995/go.mod h1:F3Zu9SjR6zROUIVdxgxuX0/Mi4npwgDRalQCNzCyzU0=
+github.com/lyraproj/issue v0.0.0-20190513084509-faf9b542f594 h1:IcsHRQ3xzCIcK0eXpot8IYgEyUQPEFHmFErZwJcsDqk=
+github.com/lyraproj/issue v0.0.0-20190513084509-faf9b542f594/go.mod h1:jqRRmAiVqjTehhncbKJPoC2AFoxxkritzzlfWioTa00=
 github.com/lyraproj/semver v0.0.0-20181213164306-02ecea2cd6a2 h1:vb4PbiMtIXdhsOUinkkcqZiASDIZzXRhSG4yvNfE0tg=
 github.com/lyraproj/semver v0.0.0-20181213164306-02ecea2cd6a2/go.mod h1:KOdZKnEBdDb2iGPUnHiKpk3M5cvv949xMyj8XPqaMF0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
