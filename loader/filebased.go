@@ -25,7 +25,7 @@ type (
 		path       string
 		moduleName string
 		paths      map[px.Namespace][]SmartPath
-		index      map[string][]string
+		index      map[string]map[string][]string
 		locks      map[string]*sync.Mutex
 		locksLock  sync.Mutex
 	}
@@ -209,8 +209,8 @@ func (l *fileBasedLoader) findExistingPath(name px.TypedName) (origins []string,
 
 	if paths, ok := l.paths[name.Namespace()]; ok {
 		for _, sm := range paths {
-			l.ensureIndexed(sm)
-			if paths, ok := l.index[name.MapKey()]; ok {
+			index := l.ensureIndexed(sm)
+			if paths, ok := index[name.MapKey()]; ok {
 				return paths, sm
 			}
 		}
@@ -229,11 +229,12 @@ func (l *fileBasedLoader) ensureAllIndexed() {
 	}
 }
 
-func (l *fileBasedLoader) ensureIndexed(sp SmartPath) {
+func (l *fileBasedLoader) ensureIndexed(sp SmartPath) map[string][]string {
 	if !sp.Indexed() {
 		sp.SetIndexed()
 		l.addToIndex(sp)
 	}
+	return l.index[sp.Extension()]
 }
 
 func (l *fileBasedLoader) instantiate(c px.Context, smartPath SmartPath, name px.TypedName, origins []string) px.LoaderEntry {
@@ -276,12 +277,14 @@ func (l *fileBasedLoader) Discover(c px.Context, predicate func(px.TypedName) bo
 	l.ensureAllIndexed()
 	found := l.parent.Discover(c, predicate)
 	added := false
-	for k := range l.index {
-		tn := px.TypedNameFromMapKey(k)
-		if !l.parent.HasEntry(tn) {
-			if predicate(tn) {
-				found = append(found, tn)
-				added = true
+	for _, index := range l.index {
+		for k := range index {
+			tn := px.TypedNameFromMapKey(k)
+			if !l.parent.HasEntry(tn) {
+				if predicate(tn) {
+					found = append(found, tn)
+					added = true
+				}
 			}
 		}
 	}
@@ -306,8 +309,8 @@ func (l *fileBasedLoader) HasEntry(name px.TypedName) bool {
 
 	if paths, ok := l.paths[name.Namespace()]; ok {
 		for _, sm := range paths {
-			l.ensureIndexed(sm)
-			if _, ok := l.index[name.MapKey()]; ok {
+			index := l.ensureIndexed(sm)
+			if _, ok := index[name.MapKey()]; ok {
 				return true
 			}
 		}
@@ -317,11 +320,16 @@ func (l *fileBasedLoader) HasEntry(name px.TypedName) bool {
 
 func (l *fileBasedLoader) addToIndex(smartPath SmartPath) {
 	if l.index == nil {
-		l.index = make(map[string][]string, 64)
+		l.index = make(map[string]map[string][]string)
 	}
 	ext := smartPath.Extension()
 	noExtension := ext == ``
 
+	index, ok := l.index[ext]
+	if !ok {
+		index = make(map[string][]string)
+		l.index[ext] = index
+	}
 	generic := smartPath.GenericPath()
 	err := filepath.Walk(generic, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -336,10 +344,10 @@ func (l *fileBasedLoader) addToIndex(smartPath SmartPath) {
 				rel, err := filepath.Rel(generic, path)
 				if err == nil {
 					for _, tn := range smartPath.TypedNames(l.NameAuthority(), rel) {
-						if paths, ok := l.index[tn.MapKey()]; ok {
-							l.index[tn.MapKey()] = append(paths, path)
+						if paths, ok := index[tn.MapKey()]; ok {
+							index[tn.MapKey()] = append(paths, path)
 						} else {
-							l.index[tn.MapKey()] = []string{path}
+							index[tn.MapKey()] = []string{path}
 						}
 					}
 				}
