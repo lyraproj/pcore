@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"math"
@@ -569,6 +570,13 @@ func (he *HashEntry) Value() px.Value {
 
 func (he *HashEntry) String() string {
 	return px.ToString2(he, None)
+}
+
+func (he *HashEntry) ToKey(b *bytes.Buffer) {
+	b.WriteByte(0)
+	b.WriteByte(HkEntry)
+	appendKey(b, he.key)
+	appendKey(b, he.value)
 }
 
 func (he *HashEntry) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
@@ -1167,6 +1175,14 @@ func (hv *Hash) Sort(comparator px.Comparator) px.List {
 
 func (hv *Hash) String() string {
 	return px.ToString2(hv, None)
+}
+
+func (hv *Hash) ToKey(b *bytes.Buffer) {
+	b.WriteByte(0)
+	b.WriteByte(HkHash)
+	for _, e := range hv.entries {
+		e.ToKey(b)
+	}
 }
 
 func (hv *Hash) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {

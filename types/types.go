@@ -22,10 +22,13 @@ import (
 const (
 	NoString = "\x00"
 
+	HkArray        = byte('A')
 	HkBinary       = byte('B')
 	HkBoolean      = byte('b')
 	HkDefault      = byte('d')
+	HkEntry        = byte('E')
 	HkFloat        = byte('f')
+	HkHash         = byte('H')
 	HkInteger      = byte('i')
 	HkRegexp       = byte('r')
 	HkTimespan     = byte('D')
@@ -564,7 +567,7 @@ func appendKey(b *bytes.Buffer, v px.Value) {
 	} else if hk, ok := v.(px.HashKeyValue); ok {
 		b.Write([]byte(hk.ToKey()))
 	} else {
-		panic(illegalArgumentType(`ToKey`, 0, `value used as hash key`, v))
+		panic(px.Error(px.InvalidHashKey, issue.H{`type`: v.PType()}))
 	}
 }
 

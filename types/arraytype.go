@@ -570,6 +570,14 @@ func (av *Array) String() string {
 	return px.ToString2(av, None)
 }
 
+func (av *Array) ToKey(b *bytes.Buffer) {
+	b.WriteByte(0)
+	b.WriteByte(HkArray)
+	for _, e := range av.elements {
+		appendKey(b, e)
+	}
+}
+
 func (av *Array) ToString(b io.Writer, s px.FormatContext, g px.RDetect) {
 	av.ToString2(b, s, px.GetFormat(s.FormatMap(), av.PType()), '[', g)
 }

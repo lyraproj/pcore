@@ -35,6 +35,7 @@ const (
 	InstanceDoesNotRespond                = `PCORE_INSTANCE_DOES_NOT_RESPOND`
 	ImpossibleOptional                    = `PCORE_IMPOSSIBLE_OPTIONAL`
 	InvalidCharactersInName               = `PCORE_INVALID_CHARACTERS_IN_NAME`
+	InvalidHashKey                        = `PCORE_INVALID_MAP_KEY`
 	InvalidJson                           = `PCORE_INVALID_JSON`
 	InvalidRegexp                         = `PCORE_INVALID_REGEXP`
 	InvalidSourceForGet                   = `PCORE_INVALID_SOURCE_FOR_GET`
@@ -173,6 +174,8 @@ func init() {
 	issue.Hard(InvalidCharactersInName, `Name '%{name} contains invalid characters. Must start with letter and only contain letters, digits, and underscore'`)
 
 	issue.Hard(InvalidJson, `Unable to parse JSON from '%{path}': %{detail}`)
+
+	issue.Hard2(InvalidHashKey, `%{type} values cannot be used as a keys in a Hash`, issue.HF{`type`: issue.UcAnOrA})
 
 	issue.Hard(InvalidRegexp, `Cannot compile regular expression '%{pattern}': %{detail}`)
 
