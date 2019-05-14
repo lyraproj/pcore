@@ -824,6 +824,13 @@ func wrapReflectedType(c px.Context, vt reflect.Type) (pt px.Type, err error) {
 		if t, err = wrapReflectedType(c, vt.Elem()); err == nil {
 			pt = NewOptionalType(t)
 		}
+	case reflect.Interface:
+		vn := vt.Name()
+		if vn == `` {
+			pt = DefaultAnyType()
+		} else {
+			err = px.Error(px.UnreflectableType, issue.H{`type`: vn})
+		}
 	default:
 		pt, ok = primitivePTypes[vt.Kind()]
 		if !ok {

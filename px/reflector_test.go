@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/lyraproj/pcore/pcore"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
@@ -120,6 +122,44 @@ func TestReflectorAndImplRepo(t *testing.T) {
 		if tss != exp {
 			t.Errorf("Expected %s, got %s\n", exp, tss)
 		}
+	})
+}
+
+func TestReflector_reflectValue(t *testing.T) {
+	pcore.Do(func(c px.Context) {
+		oi := c.Reflector().InitializerFromTagged(`A`, nil, px.NewAnnotatedType(reflect.TypeOf(struct{ A px.Value }{}), nil, nil))
+		v, ok := oi.Get4(`attributes`)
+		require.True(t, ok)
+		require.IsType(t, px.EmptyMap, v)
+		v, ok = v.(px.OrderedMap).Get4(`a`)
+		require.True(t, ok)
+		require.IsType(t, px.EmptyMap, v)
+		x, ok := v.(px.OrderedMap).Get4(`type`)
+		require.True(t, ok)
+		require.Equal(t, types.DefaultAnyType(), x)
+		_, ok = v.(px.OrderedMap).Get4(`value`)
+		require.False(t, ok)
+		_, ok = v.(px.OrderedMap).Get4(`has_value`)
+		require.False(t, ok)
+	})
+}
+
+func TestReflector_reflectGoInterface(t *testing.T) {
+	pcore.Do(func(c px.Context) {
+		oi := c.Reflector().InitializerFromTagged(`A`, nil, px.NewAnnotatedType(reflect.TypeOf(struct{ A interface{} }{}), nil, nil))
+		v, ok := oi.Get4(`attributes`)
+		require.True(t, ok)
+		require.IsType(t, px.EmptyMap, v)
+		v, ok = v.(px.OrderedMap).Get4(`a`)
+		require.True(t, ok)
+		require.IsType(t, px.EmptyMap, v)
+		x, ok := v.(px.OrderedMap).Get4(`type`)
+		require.True(t, ok)
+		require.Equal(t, types.DefaultAnyType(), x)
+		_, ok = v.(px.OrderedMap).Get4(`value`)
+		require.False(t, ok)
+		_, ok = v.(px.OrderedMap).Get4(`has_value`)
+		require.False(t, ok)
 	})
 }
 

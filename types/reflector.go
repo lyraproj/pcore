@@ -366,7 +366,7 @@ func (r *reflector) ReflectFieldTags(f *reflect.StructField, fh px.OrderedMap, o
 		}
 	}
 
-	optional := typ.IsInstance(px.Undef, nil)
+	_, optional := typ.(*OptionalType)
 	if optional {
 		if val == nil {
 			// If no value is declared and the type is declared as optional, then
