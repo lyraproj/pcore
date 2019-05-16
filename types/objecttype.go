@@ -1335,12 +1335,18 @@ func resolveTypeRefs(c px.Context, v interface{}) px.Value {
 	}
 }
 
-func newObjectType(name, typeDecl string, creators ...px.DispatchFunction) px.ObjectType {
-	ta, err := Parse(typeDecl)
-	if err != nil {
-		_, fileName, fileLine, _ := runtime.Caller(1)
-		panic(convertReported(err, fileName, fileLine))
-	}
+func parseObjectType(name, typeDecl string, creators []px.DispatchFunction) px.ObjectType {
+	_, fileName, line, _ := runtime.Caller(2)
+	defer func() {
+		if r := recover(); r != nil {
+			if re, ok := r.(issue.Reported); ok && re.Code() == ParseError {
+				panic(re.OffsetByLocation(issue.NewLocation(fileName, line, re.Location().Pos())))
+			}
+			panic(r)
+		}
+	}()
+
+	ta := ParseFile(fileName, typeDecl)
 	if h, ok := ta.(*Hash); ok {
 		// "type = {}"
 		return MakeObjectType(name, nil, h, true, creators...)
@@ -1400,8 +1406,12 @@ func MakeObjectType(name string, parent px.Type, initHash px.OrderedMap, registe
 	return obj
 }
 
+func newObjectType(name, typeDecl string, creators ...px.DispatchFunction) px.ObjectType {
+	return parseObjectType(name, typeDecl, creators)
+}
+
 func newGoObjectType(name string, rType reflect.Type, typeDecl string, creators ...px.DispatchFunction) px.ObjectType {
-	t := newObjectType(name, typeDecl, creators...)
+	t := parseObjectType(name, typeDecl, creators)
 	registerMapping(t, rType)
 	return t
 }

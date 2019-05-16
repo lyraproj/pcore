@@ -12,10 +12,7 @@ import (
 // the types.Parse() function.
 func InstantiatePuppetType(ctx px.Context, loader ContentProvidingLoader, tn px.TypedName, sources []string) {
 	content := string(loader.GetContent(ctx, sources[0]))
-	dt, err := types.Parse(content)
-	if err != nil {
-		panic(err)
-	}
+	dt := types.ParseFile(sources[0], content)
 	if nt, ok := dt.(px.Type); ok {
 		if !strings.EqualFold(tn.Name(), nt.Name()) {
 			panic(px.Error(px.WrongDefinition, issue.H{`source`: sources[0], `type`: px.NsType, `expected`: tn.Name(), `actual`: nt.Name()}))

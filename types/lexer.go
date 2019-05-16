@@ -87,149 +87,100 @@ func badToken(r rune) error {
 	return fmt.Errorf("unexpected character '%c'", r)
 }
 
-func scan(sr *utils.StringReader, tf func(t token) error) (err error) {
-	buf := bytes.NewBufferString(``)
+func nextToken(sr *utils.StringReader) (t *token) {
 	for {
 		r := sr.Next()
 		if r == utf8.RuneError {
-			return errors.New("unicode error")
+			panic(errors.New("unicode error"))
 		}
 		if r == 0 {
-			break
+			return &token{``, end}
 		}
 
 		switch r {
 		case ' ', '\t', '\n':
-		case '\'', '"':
-			if err = consumeString(sr, r, buf); err != nil {
-				return err
-			}
-			if err = tf(token{buf.String(), stringLiteral}); err != nil {
-				return err
-			}
-			buf.Reset()
-		case '/':
-			if err = consumeRegexp(sr, buf); err != nil {
-				return err
-			}
-			if err = tf(token{buf.String(), regexpLiteral}); err != nil {
-				return err
-			}
-			buf.Reset()
+			continue
 		case '#':
-			if err = consumeLineComment(sr); err != nil {
-				return err
-			}
+			consumeLineComment(sr)
+			continue
+		case '\'', '"':
+			t = &token{consumeString(sr, r), stringLiteral}
+		case '/':
+			t = &token{consumeRegexp(sr), regexpLiteral}
 		case '{':
-			if err = tf(token{string(r), leftCurlyBrace}); err != nil {
-				return err
-			}
+			t = &token{`{`, leftCurlyBrace}
 		case '}':
-			if err = tf(token{string(r), rightCurlyBrace}); err != nil {
-				return err
-			}
+			t = &token{`}`, rightCurlyBrace}
 		case '[':
-			if err = tf(token{string(r), leftBracket}); err != nil {
-				return err
-			}
+			t = &token{`[`, leftBracket}
 		case ']':
-			if err = tf(token{string(r), rightBracket}); err != nil {
-				return err
-			}
+			t = &token{`]`, rightBracket}
 		case '(':
-			if err = tf(token{string(r), leftParen}); err != nil {
-				return err
-			}
+			t = &token{`(`, leftParen}
 		case ')':
-			if err = tf(token{string(r), rightParen}); err != nil {
-				return err
-			}
+			t = &token{`)`, rightParen}
 		case ',':
-			if err = tf(token{string(r), comma}); err != nil {
-				return err
-			}
+			t = &token{`,`, comma}
 		case '.':
-			if err = tf(token{string(r), dot}); err != nil {
-				return err
-			}
+			t = &token{`.`, dot}
 		case '=':
 			r = sr.Peek()
 			if r == '>' {
 				sr.Next()
-				if err = tf(token{`=>`, rocket}); err != nil {
-					return err
-				}
+				t = &token{`=>`, rocket}
 			} else {
-				if err = tf(token{string(r), equal}); err != nil {
-					return err
-				}
+				t = &token{`=`, equal}
 			}
-			continue
 		case '-', '+':
 			n := sr.Next()
-			if n >= '0' && n <= '9' {
-				var tkn tokenType
-				buf.WriteRune(r)
-				tkn, err = consumeNumber(sr, n, buf, integer)
-				if err != nil {
-					return err
-				}
-				if err = tf(token{buf.String(), tkn}); err != nil {
-					return err
-				}
-				buf.Reset()
-				continue
+			if n < '0' || n > '9' {
+				panic(badToken(r))
 			}
-			return badToken(r)
+			buf := bytes.NewBufferString(string(r))
+			tkn := consumeNumber(sr, n, buf, integer)
+			t = &token{buf.String(), tkn}
 		default:
 			var tkn tokenType
+			buf := bytes.NewBufferString(``)
 			if r >= '0' && r <= '9' {
-				tkn, err = consumeNumber(sr, r, buf, integer)
+				tkn = consumeNumber(sr, r, buf, integer)
 			} else if r >= 'A' && r <= 'Z' {
-				err = consumeTypeName(sr, r, buf)
+				consumeTypeName(sr, r, buf)
 				tkn = name
 			} else if r >= 'a' && r <= 'z' {
-				err = consumeIdentifier(sr, r, buf)
+				consumeIdentifier(sr, r, buf)
 				tkn = identifier
 			} else {
-				return badToken(r)
+				panic(badToken(r))
 			}
-			if err != nil {
-				return err
-			}
-			if err = tf(token{buf.String(), tkn}); err != nil {
-				return err
-			}
-			buf.Reset()
+			t = &token{buf.String(), tkn}
 		}
+		break
 	}
-	if err = tf(token{``, end}); err != nil {
-		return err
-	}
-	return nil
+
+	return t
 }
 
-func consumeLineComment(sr *utils.StringReader) error {
+func consumeLineComment(sr *utils.StringReader) {
 	for {
 		switch sr.Next() {
 		case 0, '\n':
-			return nil
+			return
 		case utf8.RuneError:
-			return errors.New("unicode error")
+			panic(errors.New("unicode error"))
 		}
 	}
 }
 
-func consumeUnsignedInteger(sr *utils.StringReader, buf *bytes.Buffer) error {
+func consumeUnsignedInteger(sr *utils.StringReader, buf *bytes.Buffer) {
 	for {
 		r := sr.Peek()
 		switch r {
 		case utf8.RuneError:
-			return errors.New("unicode error")
+			panic(errors.New("unicode error"))
 		case 0:
-			return nil
 		case '.':
-			return badToken(r)
+			panic(badToken(r))
 		default:
 			if r >= '0' && r <= '9' {
 				sr.Next()
@@ -238,19 +189,19 @@ func consumeUnsignedInteger(sr *utils.StringReader, buf *bytes.Buffer) error {
 			}
 			if unicode.IsLetter(r) {
 				sr.Next()
-				return badToken(r)
+				panic(badToken(r))
 			}
-			return nil
+			return
 		}
 	}
 }
 
-func consumeExponent(sr *utils.StringReader, buf *bytes.Buffer) error {
+func consumeExponent(sr *utils.StringReader, buf *bytes.Buffer) {
 	for {
 		r := sr.Next()
 		switch r {
 		case 0:
-			return errors.New("unexpected end")
+			panic(errors.New("unexpected end"))
 		case '+', '-':
 			buf.WriteRune(r)
 			r = sr.Next()
@@ -258,38 +209,39 @@ func consumeExponent(sr *utils.StringReader, buf *bytes.Buffer) error {
 		default:
 			if r >= '0' && r <= '9' {
 				buf.WriteRune(r)
-				return consumeUnsignedInteger(sr, buf)
+				consumeUnsignedInteger(sr, buf)
+				return
 			}
-			return badToken(r)
+			panic(badToken(r))
 		}
 	}
 }
 
-func consumeHexInteger(sr *utils.StringReader, buf *bytes.Buffer) error {
+func consumeHexInteger(sr *utils.StringReader, buf *bytes.Buffer) {
 	for {
 		r := sr.Peek()
 		switch r {
 		case 0:
-			return nil
+			return
 		default:
 			if r >= '0' && r <= '9' || r >= 'A' && r <= 'F' || r >= 'a' && r <= 'f' {
 				sr.Next()
 				buf.WriteRune(r)
 				continue
 			}
-			return nil
+			return
 		}
 	}
 }
 
-func consumeNumber(sr *utils.StringReader, start rune, buf *bytes.Buffer, t tokenType) (tokenType, error) {
+func consumeNumber(sr *utils.StringReader, start rune, buf *bytes.Buffer, t tokenType) tokenType {
 	buf.WriteRune(start)
 	firstZero := t != float && start == '0'
 	for {
 		r := sr.Peek()
 		switch r {
 		case 0:
-			return 0, nil
+			return 0
 		case '0':
 			sr.Next()
 			buf.WriteRune(r)
@@ -297,8 +249,8 @@ func consumeNumber(sr *utils.StringReader, start rune, buf *bytes.Buffer, t toke
 		case 'e', 'E':
 			sr.Next()
 			buf.WriteRune(r)
-			err := consumeExponent(sr, buf)
-			return float, err
+			consumeExponent(sr, buf)
+			return float
 		case 'x', 'X':
 			if firstZero {
 				sr.Next()
@@ -306,14 +258,14 @@ func consumeNumber(sr *utils.StringReader, start rune, buf *bytes.Buffer, t toke
 				r = sr.Next()
 				if r >= '0' && r <= '9' || r >= 'A' && r <= 'F' || r >= 'a' && r <= 'f' {
 					buf.WriteRune(r)
-					err := consumeHexInteger(sr, buf)
-					return t, err
+					consumeHexInteger(sr, buf)
+					return t
 				}
 			}
-			return t, badToken(r)
+			panic(badToken(r))
 		case '.':
 			if t == float {
-				return t, badToken(r)
+				panic(badToken(r))
 			}
 			sr.Next()
 			buf.WriteRune(r)
@@ -321,64 +273,66 @@ func consumeNumber(sr *utils.StringReader, start rune, buf *bytes.Buffer, t toke
 			if r >= '0' && r <= '9' {
 				return consumeNumber(sr, r, buf, float)
 			}
-			return t, badToken(r)
+			panic(badToken(r))
 		default:
 			if r >= '0' && r <= '9' {
 				sr.Next()
 				buf.WriteRune(r)
 				continue
 			}
-			return t, nil
+			return t
 		}
 	}
 }
 
-func consumeRegexp(sr *utils.StringReader, buf *bytes.Buffer) error {
+func consumeRegexp(sr *utils.StringReader) string {
+	buf := bytes.NewBufferString(``)
 	for {
 		r := sr.Next()
 		switch r {
 		case utf8.RuneError:
-			return badToken(r)
+			panic(badToken(r))
 		case '/':
-			return nil
+			return buf.String()
 		case '\\':
 			r = sr.Next()
 			switch r {
 			case 0:
-				return errors.New("unterminated regexp")
+				panic(errors.New("unterminated regexp"))
 			case utf8.RuneError:
-				return badToken(r)
+				panic(badToken(r))
 			case '/': // Escape is removed
 			default:
 				buf.WriteByte('\\')
 			}
 			buf.WriteRune(r)
 		case 0, '\n':
-			return errors.New("unterminated regexp")
+			panic(errors.New("unterminated regexp"))
 		default:
 			buf.WriteRune(r)
 		}
 	}
 }
 
-func consumeString(sr *utils.StringReader, end rune, buf *bytes.Buffer) error {
+func consumeString(sr *utils.StringReader, end rune) string {
+	buf := bytes.NewBufferString(``)
 	for {
 		r := sr.Next()
 		if r == end {
-			return nil
+			return buf.String()
 		}
 		switch r {
 		case 0:
-			return errors.New("unterminated string")
+			panic(errors.New("unterminated string"))
 		case utf8.RuneError:
-			return badToken(r)
+			panic(badToken(r))
 		case '\\':
 			r := sr.Next()
 			switch r {
 			case 0:
-				return errors.New("unterminated string")
+				panic(errors.New("unterminated string"))
 			case utf8.RuneError:
-				return badToken(r)
+				panic(badToken(r))
 			case 'n':
 				r = '\n'
 			case 'r':
@@ -388,25 +342,25 @@ func consumeString(sr *utils.StringReader, end rune, buf *bytes.Buffer) error {
 			case '\\':
 			default:
 				if r != end {
-					return fmt.Errorf("illegal escape '\\%c'", r)
+					panic(fmt.Errorf("illegal escape '\\%c'", r))
 				}
 			}
 			buf.WriteRune(r)
 		case '\n':
-			return errors.New("unterminated string")
+			panic(errors.New("unterminated string"))
 		default:
 			buf.WriteRune(r)
 		}
 	}
 }
 
-func consumeIdentifier(sr *utils.StringReader, start rune, buf *bytes.Buffer) error {
+func consumeIdentifier(sr *utils.StringReader, start rune, buf *bytes.Buffer) {
 	buf.WriteRune(start)
 	for {
 		r := sr.Peek()
 		switch r {
 		case 0:
-			return nil
+			return
 		case ':':
 			sr.Next()
 			buf.WriteRune(r)
@@ -419,25 +373,25 @@ func consumeIdentifier(sr *utils.StringReader, start rune, buf *bytes.Buffer) er
 					continue
 				}
 			}
-			return badToken(r)
+			panic(badToken(r))
 		default:
 			if r == '_' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' {
 				sr.Next()
 				buf.WriteRune(r)
 				continue
 			}
-			return nil
+			return
 		}
 	}
 }
 
-func consumeTypeName(sr *utils.StringReader, start rune, buf *bytes.Buffer) error {
+func consumeTypeName(sr *utils.StringReader, start rune, buf *bytes.Buffer) {
 	buf.WriteRune(start)
 	for {
 		r := sr.Peek()
 		switch r {
 		case 0:
-			return nil
+			return
 		case ':':
 			sr.Next()
 			buf.WriteRune(r)
@@ -450,14 +404,14 @@ func consumeTypeName(sr *utils.StringReader, start rune, buf *bytes.Buffer) erro
 					continue
 				}
 			}
-			return badToken(r)
+			panic(badToken(r))
 		default:
 			if r == '_' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' {
 				sr.Next()
 				buf.WriteRune(r)
 				continue
 			}
-			return nil
+			return
 		}
 	}
 }

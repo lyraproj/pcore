@@ -154,10 +154,7 @@ func (fb *functionBuilder) Resolve(c px.Context) px.Function {
 			te := make([]px.Type, 0, tl)
 			for _, td := range fb.localTypeBuilder.localTypes {
 				if td.tp == nil {
-					v, err := types.Parse(td.decl)
-					if err != nil {
-						panic(err)
-					}
+					v := types.Parse(td.decl)
 					if dt, ok := v.(*types.DeferredType); ok {
 						te = append(te, types.NamedType(px.RuntimeNameAuthority, td.name, dt))
 					}

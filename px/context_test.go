@@ -47,5 +47,5 @@ func ExampleContext_ParseType_error() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	// Output: expected one of ',' or ']', got 'EOF' (line: 1, column: 9)
+	// Output: expected one of ',' or ']', got 'EOF' (file: <pcore type expression>, line: 1, column: 9)
 }

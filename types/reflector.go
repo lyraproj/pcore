@@ -155,10 +155,8 @@ func TagHash(f *reflect.StructField) (px.OrderedMap, bool) {
 
 func ParseTagHash(tag string) (px.OrderedMap, bool) {
 	if tag != `` {
-		tagExpr, err := Parse(`{` + tag + `}`)
-		if err == nil {
-			return tagExpr.(px.OrderedMap), true
-		}
+		tagExpr := Parse(`{` + tag + `}`)
+		return tagExpr.(px.OrderedMap), true
 	}
 	return nil, false
 }

@@ -2,10 +2,11 @@ package types
 
 import (
 	"fmt"
+
 	"github.com/lyraproj/pcore/utils"
 )
 
-func Example_scan() {
+func Example_nextToken() {
 	const src = `# This is scanned code.
   constants => {
     first => 0,
@@ -19,13 +20,13 @@ func Example_scan() {
     array => [a, b, c],
     call => Boo::Bar(x, 3)
   }`
-	tf := func(t token) error {
-		fmt.Println(t)
-		return nil
-	}
-	err := scan(utils.NewStringReader(src), tf)
-	if err != nil {
-		fmt.Println(err)
+	sr := utils.NewStringReader(src)
+	for {
+		tf := nextToken(sr)
+		if tf.i == end {
+			break
+		}
+		fmt.Println(tf)
 	}
 	// Output:
 	//identifier: 'constants'
@@ -83,5 +84,4 @@ func Example_scan() {
 	//integer: '3'
 	//rightParen: ')'
 	//rightCurlyBrace: '}'
-	//end: ''
 }

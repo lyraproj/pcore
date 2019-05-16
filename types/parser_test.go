@@ -3,19 +3,18 @@ package types_test
 import (
 	"fmt"
 	"os"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 )
 
 func ExampleParse_qName() {
-	t, err := types.Parse(`Foo::Bar`)
-	if err == nil {
-		t.ToString(os.Stdout, px.PrettyExpanded, nil)
-		fmt.Println()
-	} else {
-		fmt.Println(err)
-	}
+	t := types.Parse(`Foo::Bar`)
+	t.ToString(os.Stdout, px.PrettyExpanded, nil)
+	fmt.Println()
 	// Output: DeferredType(Foo::Bar)
 }
 
@@ -34,13 +33,9 @@ func ExampleParse_entry() {
       call => Boo::Bar("with", "args")
     }
   `
-	v, err := types.Parse(src)
-	if err == nil {
-		v.ToString(os.Stdout, px.PrettyExpanded, nil)
-		fmt.Println()
-	} else {
-		fmt.Println(err)
-	}
+	v := types.Parse(src)
+	v.ToString(os.Stdout, px.PrettyExpanded, nil)
+	fmt.Println()
 	// Output:
 	// {
 	//   'constants' => {
@@ -63,11 +58,27 @@ func ExampleParse_entry() {
 }
 
 func ExampleParse_hash() {
-	v, err := types.Parse(`{value=>-1}`)
-	if err == nil {
-		fmt.Println(v)
-	} else {
-		fmt.Println(err)
-	}
+	v := types.Parse(`{value=>-1}`)
+	fmt.Println(v)
 	// Output: {'value' => -1}
+}
+
+func TestParse_emptyTypeArgs(t *testing.T) {
+	requireError(t, `expected a literal, got ']' (file: <pcore type expression>, line: 1, column: 7)`, func() { types.Parse(`String[]`) })
+}
+
+func requireError(t *testing.T, msg string, f func()) {
+	t.Helper()
+	defer func() {
+		t.Helper()
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				require.Equal(t, msg, err.Error())
+			} else {
+				panic(r)
+			}
+		}
+	}()
+	f()
+	require.Fail(t, `expected panic didn't happen`)
 }

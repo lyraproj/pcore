@@ -7,7 +7,6 @@ import (
 	"io"
 	"reflect"
 	"regexp"
-	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -855,12 +854,7 @@ func interfaceOrNil(vr reflect.Value) interface{} {
 }
 
 func newNamedType(name, typeDecl string) px.Type {
-	dt, err := Parse(typeDecl)
-	if err != nil {
-		_, fileName, fileLine, _ := runtime.Caller(1)
-		err = convertReported(err, fileName, fileLine)
-		panic(err)
-	}
+	dt := Parse(typeDecl)
 	return NamedType(px.RuntimeNameAuthority, name, dt)
 }
 

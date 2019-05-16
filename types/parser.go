@@ -1,7 +1,6 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -17,16 +16,17 @@ const (
 	exKey         = 2 // Expect exKey or end of hash
 	exValue       = 3 // Expect value
 	exEntryValue  = 4 // Expect value
-	exPEntryValue = 5
-	exRocket      = 6 // Expect rocket
-	exListComma   = 7 // Expect comma or end of array
-	exParamsComma = 8 // Expect comma or end of parameter list
-	exHashComma   = 9 // Expect comma or end of hash
+	exRocket      = 5 // Expect rocket
+	exListComma   = 6 // Expect comma or end of array
+	exParamsComma = 7 // Expect comma or end of parameter list
+	exHashComma   = 8 // Expect comma or end of hash
+	exName        = 9
+	exEqual       = 10
+	exListFirst   = 11
+	exHashFirst   = 12
+	exParamsFirst = 13
+	exEnd         = 14
 )
-
-var breakCollection = errors.New(`bc`)
-
-var breakScan = errors.New(`b`)
 
 const ParseError = `PARSE_ERROR`
 
@@ -37,11 +37,11 @@ func init() {
 func expect(state int) (s string) {
 	switch state {
 	case exElement, exParam:
-		s = `literal`
+		s = `a literal`
 	case exKey:
-		s = `entry key`
+		s = `a hash key`
 	case exValue, exEntryValue:
-		s = `entry value`
+		s = `a hash value`
 	case exRocket:
 		s = `'=>'`
 	case exListComma:
@@ -50,319 +50,308 @@ func expect(state int) (s string) {
 		s = `one of ',' or ')'`
 	case exHashComma:
 		s = `one of ',' or '}'`
+	case exName:
+		s = `a type name`
+	case exEqual:
+		s = `'='`
+	case exListFirst:
+		s = `']' or a literal`
+	case exParamsFirst:
+		s = `')' or a literal`
+	case exHashFirst:
+		s = `'}' or a hash key`
+	case exEnd:
+		s = `end of expression`
 	}
 	return
 }
 
-func Parse(s string) (px.Value, error) {
+func badSyntax(t *token, state int) error {
+	var ts string
+	if t.i == 0 {
+		ts = `EOF`
+	} else {
+		ts = t.s
+	}
+	return fmt.Errorf(`expected %s, got '%s'`, expect(state), ts)
+}
+
+// Parse calls ParseFile with the string "<pcore type expression>" as the fileName
+func Parse(content string) px.Value {
+	return ParseFile(`<pcore type expression>`, content)
+}
+
+// ParseFile parses the given content into a px.Value. The content must be a string representation
+// of a Puppet literal or a type assignment expression. Valid literals are float, integer, string,
+// boolean, undef, array, hash, parameter lists, and type expressions.
+//
+// Double quoted strings containing interpolation expressions will be parsed into a string verbatim
+// without resolving the interpolations.
+func ParseFile(fileName, content string) px.Value {
 	d := NewCollector()
+	sr := utils.NewStringReader(content)
+	p := &parser{d, sr, nil, nil}
 
-	sr := utils.NewStringReader(s)
-	var sf func(t token) error
-	var tp px.Value
-	state := exElement
-	arrayHash := false
-
-	badSyntax := func(t token) error {
-		var ts string
-		if t.i == 0 {
-			ts = `EOF`
-		} else {
-			ts = t.s
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				panic(issue.NewReported(ParseError, issue.SeverityError, issue.H{`message`: err.Error()}, p.location(fileName)))
+			}
+			panic(r)
 		}
-		return fmt.Errorf(`expected %s, got '%s'`, expect(state), ts)
-	}
+	}()
 
-	sf = func(t token) (err error) {
-		if tp != nil {
-			if t.i == leftBracket || t.i == leftParen || t.i == leftCurlyBrace {
-				// Revert state to previous
-				if state == exListComma {
-					state = exElement
-				} else if state == exParamsComma {
-					state = exParam
-				} else if state == exHashComma {
-					state = exValue
-				} else if state == exRocket {
-					state = exKey
-				}
-			} else {
-				d.Add(tp)
-				tp = nil
-			}
-		}
-		switch t.i {
-		case end:
-			if state != exListComma {
-				err = errors.New(`unexpected end of input`)
-			}
-			if arrayHash {
-				he := d.PopLast().(px.MapEntry)
-				d.Add(singleMap(he.Key(), he.Value()))
-			}
-		case rightCurlyBrace:
-			if state != exHashComma && state != exKey {
-				err = badSyntax(t)
-			} else {
-				err = breakCollection
-			}
-		case rightBracket:
-			if state != exListComma && state != exElement {
-				err = badSyntax(t)
-			} else {
-				err = breakCollection
-			}
-		case rightParen:
-			if state != exParamsComma && state != exElement {
-				err = badSyntax(t)
-			} else {
-				err = breakCollection
-			}
-		case rocket:
-			if state == exRocket {
-				state = exValue
-			} else if state == exListComma {
-				// Entry
-				state = exEntryValue
-				arrayHash = true
-			} else if state == exParamsComma {
-				// Entry
-				state = exPEntryValue
-				arrayHash = true
-			} else {
-				err = badSyntax(t)
-			}
-		case comma:
-			if state == exListComma {
-				state = exElement
-			} else if state == exParamsComma {
-				state = exParam
-			} else if state == exHashComma {
-				state = exKey
-			} else {
-				err = badSyntax(t)
-			}
-		default:
-			entry := state == exEntryValue || state == exPEntryValue
-			switch state {
-			case exElement, exEntryValue:
-				state = exListComma
-			case exParam, exPEntryValue:
-				state = exParamsComma
-			case exKey:
-				state = exRocket
-			case exValue:
-				state = exHashComma
-			default:
-				err = badSyntax(t)
-			}
-			switch t.i {
-			case leftCurlyBrace:
-				stp := tp
-				sv := state
-				state = exKey
-				tp = nil
-				d.AddHash(0, func() { err = scan(sr, sf) })
-				if err != breakCollection {
-					break
-				}
-				err = nil
-				state = sv
-				if stp == nil {
-					break
-				}
-				ps := []px.Value{d.PopLast()}
-				if he, ok := stp.(*HashEntry); ok {
-					he.Value().(*DeferredType).params = ps
-				} else {
-					stp.(*DeferredType).params = ps
-				}
-				d.Add(stp)
-			case leftBracket:
-				stp := tp
-				saveSt := state
-				saveAh := arrayHash
-				arrayHash = false
-				state = exElement
-				tp = nil
-				d.AddArray(0, func() { err = scan(sr, sf) })
-				if arrayHash {
-					d.Add(fixArrayHash(d.PopLast().(*Array)))
-				}
-				arrayHash = saveAh
-				if err != breakCollection {
-					if err == nil {
-						state = exListComma
-						return badSyntax(token{i: end})
-					}
-					break
-				}
-				err = nil
-				state = saveSt
-				if stp == nil {
-					break
-				}
-				ll := d.PopLast().(*Array)
-				var dp *DeferredType
-				if he, ok := stp.(*HashEntry); ok {
-					dp = he.Value().(*DeferredType)
-				} else {
-					dp = stp.(*DeferredType)
-				}
-				dp.params = ll.AppendTo(make([]px.Value, 0, ll.Len()))
-				d.Add(stp)
-			case leftParen:
-				stp := tp
-				sv := state
-				saveAh := arrayHash
-				arrayHash = false
-				state = exParam
-				tp = nil
-				d.AddArray(0, func() { err = scan(sr, sf) })
-				if arrayHash {
-					d.Add(fixArrayHash(d.PopLast().(*Array)))
-				}
-				arrayHash = saveAh
-				if err != breakCollection {
-					if err == nil {
-						state = exParamsComma
-						return badSyntax(token{i: end})
-					}
-					break
-				}
-				err = nil
-				state = sv
-				if stp == nil {
-					break
-				}
-				ll := d.PopLast().(*Array)
-				if he, ok := stp.(*HashEntry); ok {
-					dt := he.Value().(*DeferredType).tn
-					if dt != `Deferred` {
-						params := append(make([]px.Value, 0, ll.Len()+1), WrapString(dt))
-						stp = WrapHashEntry(he.Key(), NewDeferred(`new`, ll.AppendTo(params)...))
-					} else {
-						params := ll.Slice(1, ll.Len()).AppendTo(make([]px.Value, 0, ll.Len()-1))
-						stp = WrapHashEntry(he.Key(), NewDeferred(ll.At(0).String(), params...))
-					}
-				} else {
-					dt := stp.(*DeferredType).tn
-					if dt != `Deferred` {
-						params := append(make([]px.Value, 0, ll.Len()+1), WrapString(dt))
-						stp = NewDeferred(`new`, ll.AppendTo(params)...)
-					} else {
-						params := ll.Slice(1, ll.Len()).AppendTo(make([]px.Value, 0, ll.Len()-1))
-						stp = NewDeferred(ll.At(0).String(), params...)
-					}
-				}
-				d.Add(stp)
-			case integer:
-				var i int64
-				i, err = strconv.ParseInt(t.s, 0, 64)
-				if err == nil {
-					d.Add(WrapInteger(i))
-				}
-			case float:
-				var f float64
-				f, err = strconv.ParseFloat(t.s, 64)
-				if err == nil {
-					d.Add(WrapFloat(f))
-				}
-			case identifier:
-				switch t.s {
-				case `true`:
-					d.Add(BooleanTrue)
-				case `false`:
-					d.Add(BooleanFalse)
-				case `default`:
-					d.Add(WrapDefault())
-				case `undef`:
-					d.Add(undef)
-				default:
-					d.Add(WrapString(t.s))
-				}
-			case stringLiteral:
-				d.Add(WrapString(t.s))
-			case regexpLiteral:
-				d.Add(WrapRegexp(t.s))
-			case name:
-				tp = &DeferredType{tn: t.s}
-			}
-			if err == nil && entry {
-				// Concatenate last two values to a HashEntry
-				if tp != nil {
-					tp = WrapHashEntry(d.PopLast(), tp)
-				} else {
-					v := d.PopLast()
-					d.Add(WrapHashEntry(d.PopLast(), v))
-				}
-			}
-		}
-		return err
-	}
-
-	// Initial lex receiver deals with alias syntax "type X = <the rest>"
+	// deal with alias syntax "type X = <the rest>"
 	typeName := ``
-	initial := func(t token) (err error) {
-		if t.i == identifier && t.s == `type` {
-			err = scan(sr, func(t token) (err error) {
-				switch t.i {
-				case name:
-					typeName = t.s
-					err = scan(sr, func(t token) (err error) {
-						if t.i == equal {
-							err = scan(sr, sf)
-							if err == nil {
-								err = breakScan
-							}
-						} else {
-							err = badSyntax(t)
-						}
-						return
-					})
-				case comma:
-					state = exElement
-					d.Add(WrapString(`type`))
-					err = scan(sr, sf)
-				case rocket:
-					state = exEntryValue
-					d.Add(WrapString(`type`))
-					err = scan(sr, sf)
-				default:
-					err = badSyntax(t)
-				}
-				if err == nil {
-					err = breakScan
-				}
-				return
-			})
-		} else {
-			err = sf(t)
-			if err == nil && state != end {
-				err = scan(sr, sf)
+	t := p.nextToken()
+	if t.i == identifier && t.s == `type` {
+		t = p.nextToken()
+		switch t.i {
+		case name:
+			typeName = t.s
+			t = p.nextToken()
+			if t.i != equal {
+				panic(badSyntax(t, exEqual))
 			}
+			p.parse(p.nextToken())
+		case rocket:
+			// allow type => <something> as top level expression
+			p.parse(p.nextToken())
+			d.Add(singletonMap(`type`, d.PopLast()))
+		default:
+			panic(badSyntax(t, exName))
 		}
-		if err == nil {
-			err = breakScan
-		}
-		return
+	} else {
+		p.parse(t)
 	}
 
-	err := scan(sr, initial)
-	if err != nil && err != breakScan {
-		return nil, px.Error2(issue.NewLocation(``, sr.Line(), sr.Column()), ParseError, issue.H{`message`: err.Error()})
-	}
 	dv := d.Value()
 	if typeName != `` {
 		dv = NamedType(px.RuntimeNameAuthority, typeName, dv)
 	}
-	return dv, nil
+	return dv
 }
 
-func fixArrayHash(av *Array) *Array {
+type parser struct {
+	d  px.Collector
+	sr *utils.StringReader
+	v  *DeferredType
+	lt *token
+}
+
+func (p *parser) location(fileName string) issue.Location {
+	return issue.NewLocation(fileName, p.sr.Line(), p.sr.Column()-len(p.lt.s))
+}
+
+func (p *parser) nextToken() *token {
+	t := nextToken(p.sr)
+	p.lt = t
+	return t
+}
+
+func (p *parser) parse(t *token) {
+	tk := p.element(t)
+	if tk != nil {
+		if tk.i != end {
+			panic(badSyntax(tk, exListComma))
+		}
+		p.d.Add(undef)
+	} else {
+		tk = p.handleTypeArgs()
+		if tk.i == rocket {
+			// Accept top level x => y expression as a singleton hash
+			key := p.d.PopLast()
+			tk = p.element(p.nextToken())
+			if tk == nil {
+				tk = p.handleTypeArgs()
+				if tk.i == end {
+					p.d.Add(singleMap(key, p.d.PopLast()))
+				}
+			}
+		}
+		if tk.i != end {
+			panic(badSyntax(tk, exEnd))
+		}
+	}
+}
+
+func (p *parser) array() {
+	arrayHash := false
+	d := p.d
+	d.AddArray(0, func() {
+		var tk *token
+		var rockLhs px.Value
+		for {
+			tk = p.element(p.nextToken())
+			if tk != nil {
+				// Right bracket instead of element indicates an empty array or an extraneous comma. Both are OK
+				if tk.i == rightBracket {
+					return
+				}
+				panic(badSyntax(tk, exListFirst))
+			}
+			tk = p.handleTypeArgs()
+
+			if rockLhs != nil {
+				// Last two elements is a hash entry
+				d.Add(WrapHashEntry(rockLhs, d.PopLast()))
+				rockLhs = nil
+				arrayHash = true
+			}
+
+			// Comma, rocket, or right bracket must follow element
+			switch tk.i {
+			case rightBracket:
+				return
+			case comma:
+				continue
+			case rocket:
+				rockLhs = d.PopLast()
+			default:
+				panic(badSyntax(tk, exListComma))
+			}
+		}
+	})
+
+	if arrayHash {
+		// there's at least one hash entry in the array
+		d.Add(convertHashEntries(d.PopLast().(*Array)))
+	}
+}
+
+// params is like array but using () instead of []
+func (p *parser) params() {
+	arrayHash := false
+	d := p.d
+	d.AddArray(0, func() {
+		var tk *token
+		var rockLhs px.Value
+		for {
+			tk = p.element(p.nextToken())
+			if tk != nil {
+				// Right parenthesis instead of element indicates an empty parameter list or an extraneous comma. Both are OK
+				if tk.i == rightParen {
+					return
+				}
+				panic(badSyntax(tk, exParamsFirst))
+			}
+			tk = p.handleTypeArgs()
+
+			if rockLhs != nil {
+				// Last two elements is a hash entry
+				d.Add(WrapHashEntry(rockLhs, d.PopLast()))
+				rockLhs = nil
+				arrayHash = true
+			}
+
+			// Comma, rocket, or right bracket must follow element
+			switch tk.i {
+			case rightParen:
+				return
+			case comma:
+				continue
+			case rocket:
+				rockLhs = d.PopLast()
+			default:
+				panic(badSyntax(tk, exParamsComma))
+			}
+		}
+	})
+
+	if arrayHash {
+		// there's at least one hash entry in the array
+		d.Add(convertHashEntries(d.PopLast().(*Array)))
+	}
+}
+
+func (p *parser) hash() {
+	p.d.AddHash(0, func() {
+		var tk *token
+		for {
+			tk = p.element(p.nextToken())
+			if tk != nil {
+				// Right curly brace instead of element indicates an empty hash or an extraneous comma. Both are OK
+				if tk.i == rightCurlyBrace {
+					return
+				}
+				panic(badSyntax(tk, exHashFirst))
+			}
+			tk = p.handleTypeArgs()
+
+			// rocket must follow key
+			if tk.i != rocket {
+				panic(badSyntax(tk, exRocket))
+			}
+
+			tk = p.element(p.nextToken())
+			if tk != nil {
+				panic(badSyntax(tk, exValue))
+			}
+			tk = p.handleTypeArgs()
+
+			// Comma or right curly brace must follow value
+			switch tk.i {
+			case rightCurlyBrace:
+				return
+			case comma:
+				continue
+			default:
+				panic(badSyntax(tk, exHashComma))
+			}
+		}
+	})
+}
+
+func (p *parser) element(t *token) (tk *token) {
+	switch t.i {
+	case leftCurlyBrace:
+		p.hash()
+	case leftBracket:
+		p.array()
+	case leftParen:
+		p.params()
+	case integer:
+		i, err := strconv.ParseInt(t.s, 0, 64)
+		if err != nil {
+			panic(err)
+		}
+		p.d.Add(WrapInteger(i))
+	case float:
+		f, err := strconv.ParseFloat(t.s, 64)
+		if err != nil {
+			panic(err)
+		}
+		p.d.Add(WrapFloat(f))
+	case identifier:
+		switch t.s {
+		case `true`:
+			p.d.Add(BooleanTrue)
+		case `false`:
+			p.d.Add(BooleanFalse)
+		case `default`:
+			p.d.Add(WrapDefault())
+		case `undef`:
+			p.d.Add(undef)
+		default:
+			p.d.Add(WrapString(t.s))
+		}
+	case stringLiteral:
+		p.d.Add(WrapString(t.s))
+	case regexpLiteral:
+		p.d.Add(WrapRegexp(t.s))
+	case name:
+		p.v = &DeferredType{tn: t.s}
+	default:
+		tk = t
+	}
+	return
+}
+
+// convertHashEntries converts consecutive HashEntry elements found in an array to a Hash. This is
+// to permit the x => y notation inside an array.
+func convertHashEntries(av *Array) *Array {
 	es := make([]px.Value, 0, av.Len())
 
-	// Array may contain hash entries that must be concatenated into a single hash
 	var en []*HashEntry
 	av.Each(func(v px.Value) {
 		if he, ok := v.(*HashEntry); ok {
@@ -383,4 +372,47 @@ func fixArrayHash(av *Array) *Array {
 		es = append(es, WrapHash(en))
 	}
 	return WrapValues(es)
+}
+
+// handleTypeArgs deals with type names that are followed by an array, a hash, or a parameter list,
+// e.g. Integer[0,8], Person{...}, Point(23, 14).
+func (p *parser) handleTypeArgs() *token {
+	tk := p.nextToken()
+	if p.v == nil {
+		return tk
+	}
+
+	sv := p.v
+	p.v = nil
+	switch tk.i {
+	case leftBracket:
+		p.array()
+		ll := p.d.PopLast().(*Array)
+		n := ll.Len()
+		if n == 0 {
+			// Empty type parameter list is not permitted
+			panic(badSyntax(&token{i: rightBracket, s: `]`}, exElement))
+		}
+		sv.params = ll.AppendTo(make([]px.Value, 0, n))
+		p.d.Add(sv)
+	case leftCurlyBrace:
+		p.hash()
+		sv.params = []px.Value{p.d.PopLast()}
+		p.d.Add(sv)
+	case leftParen:
+		p.params()
+		ll := p.d.PopLast().(*Array)
+		dt := sv.tn
+		if dt != `Deferred` {
+			params := append(make([]px.Value, 0, ll.Len()+1), WrapString(dt))
+			p.d.Add(NewDeferred(`new`, ll.AppendTo(params)...))
+		} else {
+			params := ll.Slice(1, ll.Len()).AppendTo(make([]px.Value, 0, ll.Len()-1))
+			p.d.Add(NewDeferred(ll.At(0).String(), params...))
+		}
+	default:
+		p.d.Add(sv)
+		return tk
+	}
+	return p.nextToken()
 }
