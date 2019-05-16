@@ -858,13 +858,6 @@ func newNamedType(name, typeDecl string) px.Type {
 	return NamedType(px.RuntimeNameAuthority, name, dt)
 }
 
-func convertReported(err error, fileName string, lineOffset int) error {
-	if ri, ok := err.(issue.Reported); ok {
-		return ri.OffsetByLocation(issue.NewLocation(fileName, lineOffset, 0))
-	}
-	return err
-}
-
 func NamedType(na px.URI, name string, value px.Value) px.Type {
 	var ta px.Type
 	if na == `` {
