@@ -6,5 +6,5 @@ require (
 	github.com/lyraproj/semver v0.0.0-20181213164306-02ecea2cd6a2
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6 // indirect
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v3 v3.0.0-20190502103701-55513cacd4ae
 )

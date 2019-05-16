@@ -4,11 +4,11 @@ import (
 	"github.com/lyraproj/issue/issue"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
-	ym "gopkg.in/yaml.v2"
+	ym "gopkg.in/yaml.v3"
 )
 
 func Unmarshal(c px.Context, data []byte) px.Value {
-	ms := make(ym.MapSlice, 0)
+	var ms ym.Node
 	err := ym.Unmarshal([]byte(data), &ms)
 	if err != nil {
 		var itm interface{}
@@ -18,21 +18,43 @@ func Unmarshal(c px.Context, data []byte) px.Value {
 		}
 		return wrapValue(c, itm)
 	}
-	return wrapSlice(c, ms)
+	return wrapNode(c, &ms)
 }
 
-func wrapSlice(c px.Context, ms ym.MapSlice) px.Value {
-	es := make([]*types.HashEntry, len(ms))
-	for i, me := range ms {
-		es[i] = types.WrapHashEntry(wrapValue(c, me.Key), wrapValue(c, me.Value))
+func wrapNode(c px.Context, n *ym.Node) px.Value {
+	switch n.Kind {
+	case ym.DocumentNode:
+		return wrapNode(c, n.Content[0])
+	case ym.SequenceNode:
+		ms := n.Content
+		es := make([]px.Value, len(ms))
+		for i, me := range ms {
+			es[i] = wrapNode(c, me)
+		}
+		return types.WrapValues(es)
+	case ym.MappingNode:
+		ms := n.Content
+		top := len(ms)
+		es := make([]*types.HashEntry, top/2)
+		for i := 0; i < top; i += 2 {
+			es[i/2] = types.WrapHashEntry(wrapNode(c, ms[i]), wrapNode(c, ms[i+1]))
+		}
+		return types.WrapHash(es)
+	case ym.ScalarNode:
+		var v interface{}
+		err := n.Decode(&v)
+		if err != nil {
+			panic(err)
+		}
+		return px.Wrap(c, v)
 	}
-	return types.WrapHash(es)
+	return px.Undef
 }
 
 func wrapValue(c px.Context, v interface{}) px.Value {
 	switch v := v.(type) {
-	case ym.MapSlice:
-		return wrapSlice(c, v)
+	case *ym.Node:
+		return wrapNode(c, v)
 	case []interface{}:
 		vs := make([]px.Value, len(v))
 		for i, y := range v {
