@@ -154,10 +154,7 @@ func (c *pxContext) ParseTypeValue(typeString px.Value) px.Type {
 }
 
 func (c *pxContext) ParseType(str string) px.Type {
-	t, err := types.Parse(str)
-	if err != nil {
-		panic(err)
-	}
+	t := types.Parse(str)
 	if pt, ok := t.(px.ResolvableType); ok {
 		return pt.Resolve(c)
 	}

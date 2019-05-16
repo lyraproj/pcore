@@ -7,7 +7,6 @@ import (
 	"io"
 	"reflect"
 	"regexp"
-	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -855,20 +854,8 @@ func interfaceOrNil(vr reflect.Value) interface{} {
 }
 
 func newNamedType(name, typeDecl string) px.Type {
-	dt, err := Parse(typeDecl)
-	if err != nil {
-		_, fileName, fileLine, _ := runtime.Caller(1)
-		err = convertReported(err, fileName, fileLine)
-		panic(err)
-	}
+	dt := Parse(typeDecl)
 	return NamedType(px.RuntimeNameAuthority, name, dt)
-}
-
-func convertReported(err error, fileName string, lineOffset int) error {
-	if ri, ok := err.(issue.Reported); ok {
-		return ri.OffsetByLocation(issue.NewLocation(fileName, lineOffset, 0))
-	}
-	return err
 }
 
 func NamedType(na px.URI, name string, value px.Value) px.Type {

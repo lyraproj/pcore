@@ -28,7 +28,7 @@ func (r *StringReader) Next() rune {
 		r.p++
 		if c == '\n' {
 			r.l++
-			r.c = 1
+			r.c = 0
 		}
 		r.c++
 	} else {
@@ -68,5 +68,5 @@ func (r *StringReader) Pos() int {
 func (r *StringReader) Rewind() {
 	r.p = 0
 	r.l = 1
-	r.c = 1
+	r.c = 0
 }

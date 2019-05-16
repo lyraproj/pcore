@@ -29,24 +29,18 @@ func ExampleImplementationRegistry() {
 		Active  bool
 	}
 
-	address, err := types.Parse(`
+	address := types.Parse(`
     attributes => {
       street => String,
       zip => String,
     }`)
-	if err != nil {
-		panic(err)
-	}
-	person, err := types.Parse(`
+	person := types.Parse(`
 		attributes => {
       name => String,
       age => Integer,
       address => My::Address,
       active => Boolean,
 		}`)
-	if err != nil {
-		panic(err)
-	}
 
 	pcore.Do(func(c px.Context) {
 		px.AddTypes(c, types.NamedType(``, `My::Address`, address), types.NamedType(``, `My::Person`, person))
@@ -74,13 +68,13 @@ func ExampleImplementationRegistry_tags() {
 		Active  bool `puppet:"name=>enabled"`
 	}
 
-	address, _ := types.Parse(`
+	address := types.Parse(`
     attributes => {
       street => String,
       zip_code => Optional[String],
     }`)
 
-	person, _ := types.Parse(`
+	person := types.Parse(`
 		attributes => {
       name => String,
       age => Integer,
