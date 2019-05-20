@@ -18,6 +18,13 @@ func ExampleParse_qName() {
 	// Output: DeferredType(Foo::Bar)
 }
 
+func ExampleParse_int() {
+	t := types.Parse(`23`)
+	t.ToString(os.Stdout, px.PrettyExpanded, nil)
+	fmt.Println()
+	// Output: 23
+}
+
 func ExampleParse_entry() {
 	const src = `# This is scanned code.
     constants => {
