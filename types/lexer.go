@@ -241,7 +241,7 @@ func consumeNumber(sr *utils.StringReader, start rune, buf *bytes.Buffer, t toke
 		r := sr.Peek()
 		switch r {
 		case 0:
-			return 0
+			return t
 		case '0':
 			sr.Next()
 			buf.WriteRune(r)

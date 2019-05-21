@@ -337,6 +337,7 @@ func (t *HashType) ReflectType(c px.Context) (reflect.Type, bool) {
 		if vt, ok := ReflectType(c, t.valueType); ok {
 			return reflect.MapOf(kt, vt), true
 		}
+		return reflect.MapOf(kt, reflect.TypeOf((*interface{})(nil)).Elem()), true
 	}
 	return nil, false
 }
