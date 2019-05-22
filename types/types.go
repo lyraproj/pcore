@@ -324,16 +324,7 @@ var dataTypeDefault = &TypeAliasType{name: `Data`, resolvedType: &VariantType{[]
 var richKeyTypeDefault = &VariantType{[]px.Type{stringTypeDefault, numericTypeDefault}}
 var richDataArrayTypeDefault = &ArrayType{IntegerTypePositive, &TypeReferenceType{`RichData`}}
 var richDataHashTypeDefault = &HashType{IntegerTypePositive, richKeyTypeDefault, &TypeReferenceType{`RichData`}}
-var richDataTypeDefault = &TypeAliasType{`RichData`, nil, &VariantType{
-	[]px.Type{scalarTypeDefault,
-		binaryTypeDefault,
-		defaultTypeDefault,
-		objectTypeDefault,
-		typeTypeDefault,
-		typeSetTypeDefault,
-		undefTypeDefault,
-		richDataArrayTypeDefault,
-		richDataHashTypeDefault}}, nil}
+var richDataTypeDefault *TypeAliasType
 
 type Mapping struct {
 	T px.Type
@@ -354,6 +345,18 @@ var constructorsDecls = make([]*BuildFunctionArgs, 0, 16)
 
 func init() {
 	// "resolve" the dataType and richDataType
+	richDataTypeDefault = &TypeAliasType{`RichData`, nil, &VariantType{
+		[]px.Type{scalarTypeDefault,
+			binaryTypeDefault,
+			defaultTypeDefault,
+			objectTypeDefault,
+			typeTypeDefault,
+			typeSetTypeDefault,
+			DeferredMetaType,
+			undefTypeDefault,
+			richDataArrayTypeDefault,
+			richDataHashTypeDefault}}, nil}
+
 	dataArrayTypeDefault.typ = dataTypeDefault
 	dataHashTypeDefault.valueType = dataTypeDefault
 	richDataArrayTypeDefault.typ = richDataTypeDefault
