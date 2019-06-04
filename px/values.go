@@ -238,6 +238,9 @@ func ToPrettyString(t Value) string {
 }
 
 func ToString2(t Value, format FormatContext) string {
+	if t == nil {
+		return `undef`
+	}
 	bld := bytes.NewBufferString(``)
 	t.ToString(bld, format, nil)
 	return bld.String()
@@ -248,7 +251,11 @@ func ToString3(t Value, writer io.Writer) {
 }
 
 func ToString4(t Value, format FormatContext, writer io.Writer) {
-	t.ToString(writer, format, nil)
+	if t == nil {
+		_, _ = io.WriteString(writer, `undef`)
+	} else {
+		t.ToString(writer, format, nil)
+	}
 }
 
 func CopyValues(src []Value) []Value {
