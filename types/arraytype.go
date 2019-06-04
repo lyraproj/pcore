@@ -392,6 +392,27 @@ func (av *Array) DetailedType() px.Type {
 	return av.privateDetailedType()
 }
 
+func (av *Array) Dig(into px.Value) px.Value {
+	return av.Reduce2(into, func(d, k px.Value) px.Value {
+		if px.Undef.Equals(k, nil) {
+			return px.Undef
+		}
+		switch d := d.(type) {
+		case *UndefValue:
+			return px.Undef
+		case *Hash:
+			return d.Get2(k, px.Undef)
+		case *Array:
+			if idx, ok := k.(px.Integer); ok {
+				return d.At(int(idx.Int()))
+			}
+			return px.Undef
+		default:
+			return px.Undef
+		}
+	})
+}
+
 func (av *Array) Each(consumer px.Consumer) {
 	for _, e := range av.elements {
 		consumer(e)
