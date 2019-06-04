@@ -112,8 +112,10 @@ func (e *deferred) InitHash() px.OrderedMap {
 func (e *deferred) Resolve(c px.Context, scope px.Keyed) px.Value {
 	fn := e.Name()
 	da := e.Arguments()
+	if da.Len() > 0 {
+		da = ResolveDeferred(c, da, scope).(*Array)
+	}
 
-	var args []px.Value
 	if fn[0] == '$' {
 		vn := fn[1:]
 		vv, ok := scope.Get(stringValue(vn))
@@ -124,16 +126,9 @@ func (e *deferred) Resolve(c px.Context, scope px.Keyed) px.Value {
 			// No point digging with zero arguments
 			return vv
 		}
-		fn = `dig`
-		args = append(make([]px.Value, 0, 1+da.Len()), vv)
-	} else {
-		args = make([]px.Value, 0, da.Len())
+		return da.Dig(vv)
 	}
-	args = da.AppendTo(args)
-	for i, a := range args {
-		args[i] = ResolveDeferred(c, a, scope)
-	}
-	return px.Call(c, fn, args, nil)
+	return px.Call(c, fn, da.AppendTo(make([]px.Value, 0, da.Len())), nil)
 }
 
 // ResolveDeferred will resolve all occurrences of a DeferredValue in its
