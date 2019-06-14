@@ -9,12 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/lyraproj/pcore/pcore"
 	"github.com/lyraproj/pcore/px"
 	"github.com/lyraproj/pcore/types"
 	"github.com/lyraproj/semver/semver"
+	"github.com/stretchr/testify/require"
 )
 
 func ExampleImplementationRegistry() {
@@ -636,6 +635,47 @@ func ExampleReflector_TypeFromReflect_twoValueReturnErrorFail() {
 	}
 	// Output:
 	// Go function ReturnTwoAndErrorFail returned error 'bad things happened'
+}
+
+type ctxParam struct {
+}
+
+func (t *ctxParam) FuncWithContext(c px.Context) string {
+	v, _ := c.Get(`testValue`)
+	return v.(string)
+}
+
+func (t *ctxParam) FuncWithContextAndParam(c px.Context, other string) string {
+	v, _ := c.Get(`testValue`)
+	return v.(string) + other
+}
+
+func ExampleReflector_funcWithContext() {
+	pcore.Do(func(c px.Context) {
+		gv := &ctxParam{}
+		api := c.Reflector().TypeFromReflect(`A::B`, nil, reflect.TypeOf(gv))
+		px.AddTypes(c, api)
+		v := px.Wrap(c, gv)
+		r, _ := api.Member(`funcWithContext`)
+		c.Set(`testValue`, `hello world`)
+		fmt.Println(px.ToPrettyString(r.Call(c, v, nil, px.EmptyValues)))
+	})
+	// Output:
+	// 'hello world'
+}
+
+func ExampleReflector_funcWithContextAndParam() {
+	pcore.Do(func(c px.Context) {
+		gv := &ctxParam{}
+		api := c.Reflector().TypeFromReflect(`A::B`, nil, reflect.TypeOf(gv))
+		px.AddTypes(c, api)
+		v := px.Wrap(c, gv)
+		r, _ := api.Member(`funcWithContextAndParam`)
+		c.Set(`testValue`, `hello world`)
+		fmt.Println(px.ToPrettyString(r.Call(c, v, nil, []px.Value{types.WrapString(`, what's up?`)})))
+	})
+	// Output:
+	// 'hello world, what\'s up?'
 }
 
 type valueStruct struct {

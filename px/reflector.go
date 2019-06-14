@@ -1,6 +1,7 @@
 package px
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/lyraproj/semver/semver"
@@ -123,3 +124,5 @@ type Reflector interface {
 	// Methods returns all methods of the given reflected type or an empty slice if no methods exists.
 	Methods(ptr reflect.Type) []reflect.Method
 }
+
+var ContextType = reflect.TypeOf((*context.Context)(nil)).Elem()

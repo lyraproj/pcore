@@ -165,6 +165,7 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 func (r *reflector) FunctionDeclFromReflect(name string, mt reflect.Type, withReceiver bool) px.OrderedMap {
 	returnsError := false
+	takesContext := false
 	var rt px.Type
 	var err error
 	oc := mt.NumOut()
@@ -224,30 +225,39 @@ func (r *reflector) FunctionDeclFromReflect(name string, mt reflect.Type, withRe
 	if pc == ix {
 		pt = EmptyTupleType()
 	} else {
-		ps := make([]px.Type, pc-ix)
-		for p := ix; p < pc; p++ {
-			ps[p-ix], err = wrapReflectedType(r.c, mt.In(p))
-			if err != nil {
-				panic(err)
+		if mt.In(ix).AssignableTo(px.ContextType) {
+			// First parameter is context. It should not be included
+			takesContext = true
+			ix++
+			if pc == ix {
+				pt = EmptyTupleType()
 			}
 		}
-		var sz *IntegerType
-		if mt.IsVariadic() {
-			last := pc - ix - 1
-			ps[last] = ps[last].(*ArrayType).ElementType()
-			sz = NewIntegerType(int64(last), math.MaxInt64)
+		if pt == nil {
+			ps := make([]px.Type, pc-ix)
+			for p := ix; p < pc; p++ {
+				ps[p-ix], err = wrapReflectedType(r.c, mt.In(p))
+				if err != nil {
+					panic(err)
+				}
+			}
+			var sz *IntegerType
+			if mt.IsVariadic() {
+				last := pc - ix - 1
+				ps[last] = ps[last].(*ArrayType).ElementType()
+				sz = NewIntegerType(int64(last), math.MaxInt64)
+			}
+			pt = NewTupleType(ps, sz)
 		}
-		pt = NewTupleType(ps, sz)
 	}
-	ne := 2
+	ds := make([]*HashEntry, 0, 4)
+	ds = append(ds, WrapHashEntry2(keyType, NewCallableType(pt, rt, nil)))
+	ds = append(ds, WrapHashEntry2(KeyGoName, stringValue(name)))
 	if returnsError {
-		ne++
+		ds = append(ds, WrapHashEntry2(keyReturnsError, BooleanTrue))
 	}
-	ds := make([]*HashEntry, ne)
-	ds[0] = WrapHashEntry2(keyType, NewCallableType(pt, rt, nil))
-	ds[1] = WrapHashEntry2(KeyGoName, stringValue(name))
-	if returnsError {
-		ds[2] = WrapHashEntry2(keyReturnsError, BooleanTrue)
+	if takesContext {
+		ds = append(ds, WrapHashEntry2(keyTakesContext, BooleanTrue))
 	}
 	return WrapHash(ds)
 }

@@ -188,15 +188,21 @@ func (o *reflectedObject) Call(c px.Context, method px.ObjFunc, args []px.Value,
 	rf := c.Reflector()
 	var vat reflect.Type
 
-	// argc, the number of arguments + the mandatory call receiver
-	argc := len(args) + 1
+	// argc, the number of arguments
+	add := 1 // for the mandatory call receiver
+	argc := len(args)
 
 	// number of expected arguments
 	top := mt.NumIn()
 	last := top - 1
 
+	if method.TakesContext() {
+		add++
+	}
+	rfArgc := argc + add
+
 	if mt.IsVariadic() {
-		if argc < last {
+		if rfArgc < last {
 			// Must be at least expected number of arguments minus one (variadic can have a zero count)
 			panic(fmt.Errorf("argument count error. Expected at least %d, got %d", last, argc))
 		}
@@ -204,16 +210,19 @@ func (o *reflectedObject) Call(c px.Context, method px.ObjFunc, args []px.Value,
 		// Slice big enough to hold all variadics
 		vat = mt.In(last).Elem()
 	} else {
-		if top != argc {
+		if top != rfArgc {
 			panic(fmt.Errorf("argument count error. Expected %d, got %d", top, argc))
 		}
 	}
 
-	rfArgs := make([]reflect.Value, argc)
+	rfArgs := make([]reflect.Value, rfArgc)
 	rfArgs[0] = o.value
+	if method.TakesContext() {
+		rfArgs[1] = reflect.ValueOf(c)
+	}
 
 	for i, arg := range args {
-		pn := i + 1
+		pn := i + add
 		var tp reflect.Type
 		if pn >= last && vat != nil {
 			tp = vat
@@ -395,17 +404,26 @@ type reflectedFunc struct {
 func (o *reflectedFunc) Call(c px.Context, method px.ObjFunc, args []px.Value, block px.Lambda) (result px.Value, ok bool) {
 	mt := o.function.Type()
 	rf := c.Reflector()
-	rfArgs := make([]reflect.Value, len(args))
-	for i, arg := range args {
-		av := reflect.New(mt.In(i)).Elem()
-		rf.ReflectTo(arg, av)
-		rfArgs[i] = av
+	add := 0
+	if method.TakesContext() {
+		add++
 	}
+	rfArgc := len(args) + add
 
 	pc := mt.NumIn()
-	if pc != len(args) {
+	if pc != rfArgc {
 		panic(px.Error(px.TypeMismatch, issue.H{`detail`: px.DescribeSignatures(
 			[]px.Signature{method.CallableType().(*CallableType)}, NewTupleType([]px.Type{}, NewIntegerType(int64(pc-1), int64(pc-1))), nil)}))
+	}
+
+	rfArgs := make([]reflect.Value, rfArgc)
+	if method.TakesContext() {
+		rfArgs[0] = reflect.ValueOf(c)
+	}
+	for i, arg := range args {
+		av := reflect.New(mt.In(i + add)).Elem()
+		rf.ReflectTo(arg, av)
+		rfArgs[i+add] = av
 	}
 	rr := o.function.Call(rfArgs)
 
