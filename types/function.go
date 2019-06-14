@@ -11,6 +11,7 @@ import (
 var typeFunctionType = NewTypeType(DefaultCallableType())
 
 const keyReturnsError = `returns_error`
+const keyTakesContext = `takes_context`
 
 var typeFunction = NewStructType([]*StructElement{
 	newStructElement2(keyType, typeFunctionType),
@@ -19,11 +20,13 @@ var typeFunction = NewStructType([]*StructElement{
 	NewStructElement(newOptionalType3(keyAnnotations), typeAnnotations),
 	NewStructElement(newOptionalType3(KeyGoName), DefaultStringType()),
 	NewStructElement(newOptionalType3(keyReturnsError), NewBooleanType(true)),
+	NewStructElement(newOptionalType3(keyTakesContext), NewBooleanType(true)),
 })
 
 type function struct {
 	annotatedMember
 	returnsError bool
+	takesContext bool
 	goName       string
 }
 
@@ -41,6 +44,9 @@ func (f *function) initialize(c px.Context, name string, container *objectType, 
 	}
 	if re, ok := initHash.Get4(keyReturnsError); ok {
 		f.returnsError = re.(booleanValue).Bool()
+	}
+	if re, ok := initHash.Get4(keyTakesContext); ok {
+		f.takesContext = re.(booleanValue).Bool()
 	}
 }
 
@@ -63,10 +69,18 @@ func (f *function) Call(c px.Context, receiver px.Value, block px.Lambda, args [
 }
 
 func (f *function) CallGo(c px.Context, receiver interface{}, args ...interface{}) []interface{} {
-	rfArgs := make([]reflect.Value, 1+len(args))
+	add := 1 // receiver
+	if f.takesContext {
+		add++
+	}
+
+	rfArgs := make([]reflect.Value, add+len(args))
 	rfArgs[0] = reflect.ValueOf(receiver)
+	if f.takesContext {
+		rfArgs[1] = reflect.ValueOf(c)
+	}
 	for i, arg := range args {
-		rfArgs[i+1] = reflect.ValueOf(arg)
+		rfArgs[i+add] = reflect.ValueOf(arg)
 	}
 	result := f.CallGoReflected(c, rfArgs)
 	rs := make([]interface{}, len(result))
@@ -114,6 +128,10 @@ func (f *function) GoName() string {
 
 func (f *function) ReturnsError() bool {
 	return f.returnsError
+}
+
+func (f *function) TakesContext() bool {
+	return f.takesContext
 }
 
 func (f *function) Equals(other interface{}, g px.Guard) bool {

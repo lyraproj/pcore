@@ -166,6 +166,10 @@ type (
 		// ReturnsError returns true if the underlying method returns an error instance in case of
 		// failure. Such errors must be converted to panics by the caller
 		ReturnsError() bool
+
+		// TakesContext returns true if the first argument of the actual Go function
+		// is a context.Context
+		TakesContext() bool
 	}
 
 	AttributesInfo interface {
