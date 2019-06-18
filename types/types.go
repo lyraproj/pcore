@@ -835,7 +835,11 @@ func wrapReflectedType(c px.Context, vt reflect.Type) (pt px.Type, err error) {
 		}
 	case reflect.Struct:
 		// Wrap to anonymous object
-		pt = c.Reflector().TypeFromReflect(``, nil, vt)
+		if vt.Name() == `` {
+			pt = c.Reflector().TypeFromReflect(``, nil, vt)
+		} else {
+			err = px.Error(px.UnreflectableType, issue.H{`type`: vt.String()})
+		}
 	default:
 		pt, ok = primitivePTypes[vt.Kind()]
 		if !ok {
