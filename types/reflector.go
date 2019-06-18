@@ -326,7 +326,7 @@ func (r *reflector) InitializerFromTagged(typeName string, parent px.Type, tg px
 }
 
 func (r *reflector) TypeFromReflect(typeName string, parent px.Type, rf reflect.Type) px.ObjectType {
-	return r.TypeFromTagged(typeName, parent, px.NewTaggedType(rf, nil), nil)
+	return r.TypeFromTagged(typeName, parent, newTaggedType(rf, nil), nil)
 }
 
 func (r *reflector) TypeFromTagged(typeName string, parent px.Type, tg px.AnnotatedType, rcFunc px.Doer) px.ObjectType {

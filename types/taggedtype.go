@@ -19,17 +19,9 @@ type taggedType struct {
 var TagsAnnotationType px.ObjectType
 
 func init() {
-	px.NewTaggedType = func(typ reflect.Type, puppetTags map[string]string) px.AnnotatedType {
-		tt := &taggedType{typ: typ, puppetTags: puppetTags, annotations: emptyMap}
-		tt.initTags()
-		return tt
-	}
+	px.NewTaggedType = newTaggedType
 
-	px.NewAnnotatedType = func(typ reflect.Type, puppetTags map[string]string, annotations px.OrderedMap) px.AnnotatedType {
-		tt := &taggedType{typ: typ, puppetTags: puppetTags, annotations: annotations}
-		tt.initTags()
-		return tt
-	}
+	px.NewAnnotatedType = newAnnotatedType
 
 	TagsAnnotationType = newGoObjectType(`TagsAnnotation`, reflect.TypeOf((*px.TagsAnnotation)(nil)).Elem(), `Annotation{
     attributes => {
@@ -45,6 +37,18 @@ func init() {
 			return NewTagsAnnotation(h.Get5(`tags`, px.EmptyMap).(px.OrderedMap))
 		},
 	)
+}
+
+func newAnnotatedType(typ reflect.Type, puppetTags map[string]string, annotations px.OrderedMap) px.AnnotatedType {
+	tt := &taggedType{typ: typ, puppetTags: puppetTags, annotations: annotations}
+	tt.initTags()
+	return tt
+}
+
+func newTaggedType(typ reflect.Type, puppetTags map[string]string) px.AnnotatedType {
+	tt := &taggedType{typ: typ, puppetTags: puppetTags, annotations: emptyMap}
+	tt.initTags()
+	return tt
 }
 
 type tagsAnnotation struct {

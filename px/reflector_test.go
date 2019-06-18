@@ -1324,3 +1324,34 @@ func ExampleReflector_TypeFromReflect_nestedSliceToInterface() {
 	//     }]
 	// )
 }
+
+type AnonSlice []*struct {
+	Name *string
+}
+
+type AnonTest struct {
+	Slices AnonSlice
+}
+
+func TestReflector_anonymousStructInSlice(t *testing.T) {
+	require.NoError(t, pcore.Try(func(c px.Context) error {
+		bt := c.Reflector().TypeFromReflect(`X`, nil, reflect.TypeOf(&AnonTest{}))
+		px.AddTypes(c, bt)
+		require.True(t, types.DefaultObjectType().IsAssignable(bt, nil))
+		at, ok := bt.Member(`slices`)
+		require.True(t, ok)
+		tx := at.(px.Attribute).Type()
+		require.True(t, types.DefaultArrayType().IsAssignable(tx, nil))
+		tx = tx.(*types.ArrayType).ElementType()
+		require.True(t, types.DefaultOptionalType().IsAssignable(tx, nil))
+		tx = tx.(*types.OptionalType).ContainedType()
+		require.True(t, types.DefaultObjectType().IsAssignable(tx, nil))
+		at, ok = tx.(px.ObjectType).Member(`name`)
+		require.True(t, ok)
+		tx = at.(px.Attribute).Type()
+		require.True(t, types.DefaultOptionalType().IsAssignable(tx, nil))
+		tx = tx.(*types.OptionalType).ContainedType()
+		require.True(t, types.DefaultStringType().IsAssignable(tx, nil))
+		return nil
+	}))
+}
