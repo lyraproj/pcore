@@ -113,7 +113,7 @@ func (a *attribute) HasValue() bool {
 	return a.value != nil
 }
 
-func (a *attribute) initHash() *hash.StringHash {
+func (a *attribute) initHash() hash.StringHash {
 	h := a.annotatedMember.initHash()
 	if a.kind != defaultKind {
 		h.Put(keyKind, stringValue(string(a.kind)))

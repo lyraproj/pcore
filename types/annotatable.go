@@ -47,7 +47,7 @@ func (a *annotatable) initialize(initHash *Hash) {
 	a.annotations = hashArg(initHash, keyAnnotations)
 }
 
-func (a *annotatable) initHash() *hash.StringHash {
+func (a *annotatable) initHash() hash.StringHash {
 	h := hash.NewStringHash(5)
 	if a.annotations.Len() > 0 {
 		h.Put(keyAnnotations, a.annotations)

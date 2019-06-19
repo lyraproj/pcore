@@ -1,4 +1,4 @@
-package pximpl
+package internal
 
 import (
 	"bytes"

@@ -90,9 +90,9 @@ type objectType struct {
 	name                string
 	parent              px.Type
 	creators            []px.DispatchFunction
-	parameters          *hash.StringHash // map doesn't preserve order
-	attributes          *hash.StringHash
-	functions           *hash.StringHash
+	parameters          hash.StringHash // map doesn't preserve order
+	attributes          hash.StringHash
+	functions           hash.StringHash
 	equality            []string
 	equalityIncludeType bool
 	serialization       []string
@@ -212,7 +212,7 @@ func (t *objectType) EachAttribute(includeParent bool, consumer func(attr px.Att
 	t.attributes.EachValue(func(a interface{}) { consumer(a.(px.Attribute)) })
 }
 
-func (t *objectType) EqualityAttributes() *hash.StringHash {
+func (t *objectType) EqualityAttributes() hash.StringHash {
 	eqa := make([]string, 0, 8)
 	tp := t
 	for tp != nil {
@@ -293,25 +293,23 @@ func (t *objectType) Get(key string) (value px.Value, ok bool) {
 }
 
 func (t *objectType) GetAttribute(name string) px.Attribute {
-	a, _ := t.attributes.Get2(name, func() interface{} {
-		p := t.resolvedParent()
-		if p != nil {
-			return p.GetAttribute(name)
-		}
-		return nil
-	}).(px.Attribute)
-	return a
+	if a, ok := t.attributes.Get(name); ok {
+		return a.(px.Attribute)
+	}
+	if p := t.resolvedParent(); p != nil {
+		return p.GetAttribute(name)
+	}
+	return nil
 }
 
 func (t *objectType) GetFunction(name string) px.Function {
-	f, _ := t.functions.Get2(name, func() interface{} {
-		p := t.resolvedParent()
-		if p != nil {
-			return p.GetFunction(name)
-		}
-		return nil
-	}).(px.Function)
-	return f
+	if f, ok := t.functions.Get(name); ok {
+		return f.(px.Function)
+	}
+	if p := t.resolvedParent(); p != nil {
+		return p.GetFunction(name)
+	}
+	return nil
 }
 
 func (t *objectType) GetValue(key string, o px.Value) (value px.Value, ok bool) {
@@ -445,7 +443,7 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 		})
 	}
 
-	if !attrSpecs.IsEmpty() {
+	if !attrSpecs.Empty() {
 		ah := hash.NewStringHash(attrSpecs.Len())
 		attrSpecs.EachPair(func(key string, ifv interface{}) {
 			value := ifv.(px.Value)
@@ -473,9 +471,9 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 		ah.Freeze()
 		t.attributes = ah
 	}
-	isInterface := t.attributes.IsEmpty() && (parentObjectType == nil || parentObjectType.isInterface)
+	isInterface := t.attributes.Empty() && (parentObjectType == nil || parentObjectType.isInterface)
 
-	if t.goType != nil && t.attributes.IsEmpty() {
+	if t.goType != nil && t.attributes.Empty() {
 		if pt, ok := PrimitivePType(t.goType.Type()); ok {
 			t.isInterface = false
 
@@ -534,11 +532,13 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 		equality = nil
 	}
 	for _, attrName := range equality {
-		mbr := t.attributes.Get2(attrName, func() interface{} {
-			return t.functions.Get2(attrName, func() interface{} {
-				return parentMembers.Get(attrName, nil)
-			})
-		})
+		mbr, ok := t.attributes.Get(attrName)
+		if !ok {
+			mbr, ok = t.functions.Get(attrName)
+			if !ok {
+				mbr = parentMembers.GetOrDefault(attrName, nil)
+			}
+		}
 		attr, ok := mbr.(px.Attribute)
 
 		if !ok {
@@ -564,11 +564,13 @@ func (t *objectType) InitFromHash(c px.Context, initHash px.OrderedMap) {
 		var optFound px.Attribute
 		se.EachWithIndex(func(elem px.Value, i int) {
 			attrName := elem.String()
-			mbr := t.attributes.Get2(attrName, func() interface{} {
-				return t.functions.Get2(attrName, func() interface{} {
-					return parentMembers.Get(attrName, nil)
-				})
-			})
+			mbr, ok := t.attributes.Get(attrName)
+			if !ok {
+				mbr, ok = t.functions.Get(attrName)
+				if !ok {
+					mbr = parentMembers.GetOrDefault(attrName, nil)
+				}
+			}
 			attr, ok := mbr.(px.Attribute)
 
 			if !ok {
@@ -661,7 +663,7 @@ func (t *objectType) IsInstance(o px.Value, g px.Guard) bool {
 }
 
 func (t *objectType) IsParameterized() bool {
-	if !t.parameters.IsEmpty() {
+	if !t.parameters.Empty() {
 		return true
 	}
 	p := t.resolvedParent()
@@ -683,16 +685,16 @@ func (t *objectType) Label() string {
 }
 
 func (t *objectType) Member(name string) (px.CallableMember, bool) {
-	mbr := t.attributes.Get2(name, func() interface{} {
-		return t.functions.Get2(name, func() interface{} {
-			if t.parent == nil {
-				return nil
+	mbr, ok := t.attributes.Get(name)
+	if !ok {
+		mbr, ok = t.functions.Get(name)
+		if !ok {
+			if t.parent != nil {
+				mbr, ok = t.resolvedParent().Member(name)
 			}
-			pm, _ := t.resolvedParent().Member(name)
-			return pm
-		})
-	})
-	if mbr == nil {
+		}
+	}
+	if !ok {
 		return nil, false
 	}
 	return mbr.(px.CallableMember), true
@@ -869,7 +871,7 @@ func (t *objectType) basicTypeToString(b io.Writer, f px.Format, s px.FormatCont
 			continue
 		}
 
-		value := ih.Get(key, nil).(px.Value)
+		value := ih.GetOrDefault(key, nil).(px.Value)
 		if first2 {
 			first2 = false
 		} else {
@@ -969,7 +971,7 @@ func (t *objectType) checkSelfRecursion(c px.Context, originator *objectType) {
 	}
 }
 
-func (t *objectType) collectAttributes(includeParent bool, collector *hash.StringHash) {
+func (t *objectType) collectAttributes(includeParent bool, collector hash.StringHash) {
 	if includeParent && t.parent != nil {
 		t.resolvedParent().collectAttributes(true, collector)
 	}
@@ -987,14 +989,14 @@ func (t *objectType) Functions(includeParent bool) []px.ObjFunc {
 	return fs
 }
 
-func (t *objectType) collectFunctions(includeParent bool, collector *hash.StringHash) {
+func (t *objectType) collectFunctions(includeParent bool, collector hash.StringHash) {
 	if includeParent && t.parent != nil {
 		t.resolvedParent().collectFunctions(true, collector)
 	}
 	collector.PutAll(t.functions)
 }
 
-func (t *objectType) collectMembers(includeParent bool, collector *hash.StringHash) {
+func (t *objectType) collectMembers(includeParent bool, collector hash.StringHash) {
 	if includeParent && t.parent != nil {
 		t.resolvedParent().collectMembers(true, collector)
 	}
@@ -1002,7 +1004,7 @@ func (t *objectType) collectMembers(includeParent bool, collector *hash.StringHa
 	collector.PutAll(t.functions)
 }
 
-func (t *objectType) collectParameters(includeParent bool, collector *hash.StringHash) {
+func (t *objectType) collectParameters(includeParent bool, collector hash.StringHash) {
 	if includeParent && t.parent != nil {
 		t.resolvedParent().collectParameters(true, collector)
 	}
@@ -1033,7 +1035,8 @@ func (t *objectType) createAttributesInfo() *attributesInfo {
 		atMap := hash.NewStringHash(15)
 		t.collectAttributes(true, atMap)
 		for _, key := range t.serialization {
-			attr := atMap.Get(key, nil).(px.Attribute)
+			av, _ := atMap.Get(key)
+			attr := av.(px.Attribute)
 			if attr.HasValue() {
 				nonOptSize++
 			}
@@ -1204,7 +1207,7 @@ func (t *objectType) findEqualityDefiner(attrName string) *objectType {
 	return nil
 }
 
-func (t *objectType) initHash(includeName bool) *hash.StringHash {
+func (t *objectType) initHash(includeName bool) hash.StringHash {
 	h := t.annotatable.initHash()
 	if includeName && t.name != `` && t.name != `Object` {
 		h.Put(keyName, stringValue(t.name))
@@ -1212,10 +1215,10 @@ func (t *objectType) initHash(includeName bool) *hash.StringHash {
 	if t.parent != nil {
 		h.Put(keyParent, t.parent)
 	}
-	if !t.parameters.IsEmpty() {
+	if !t.parameters.Empty() {
 		h.Put(keyTypeParameters, compressedMembersHash(t.parameters))
 	}
-	if !t.attributes.IsEmpty() {
+	if !t.attributes.Empty() {
 		// Divide attributes into constants and others
 		constants := make([]*HashEntry, 0)
 		others := hash.NewStringHash(5)
@@ -1226,15 +1229,15 @@ func (t *objectType) initHash(includeName bool) *hash.StringHash {
 			} else {
 				others.Put(key, a)
 			}
-			if !others.IsEmpty() {
-				h.Put(keyAttributes, compressedMembersHash(others))
-			}
-			if len(constants) > 0 {
-				h.Put(keyConstants, WrapHash(constants))
-			}
 		})
+		if !others.Empty() {
+			h.Put(keyAttributes, compressedMembersHash(others))
+		}
+		if len(constants) > 0 {
+			h.Put(keyConstants, WrapHash(constants))
+		}
 	}
-	if !t.functions.IsEmpty() {
+	if !t.functions.Empty() {
 		h.Put(keyFunctions, compressedMembersHash(t.functions))
 	}
 	if t.equality != nil {
@@ -1259,7 +1262,7 @@ func (t *objectType) initHash(includeName bool) *hash.StringHash {
 	return h
 }
 
-func (t *objectType) members(includeParent bool) *hash.StringHash {
+func (t *objectType) members(includeParent bool) hash.StringHash {
 	collector := hash.NewStringHash(7)
 	t.collectMembers(includeParent, collector)
 	return collector
@@ -1287,13 +1290,13 @@ func (t *objectType) setCreators(creators ...px.DispatchFunction) {
 	t.creators = creators
 }
 
-func (t *objectType) typeParameters(includeParent bool) *hash.StringHash {
+func (t *objectType) typeParameters(includeParent bool) hash.StringHash {
 	c := hash.NewStringHash(5)
 	t.collectParameters(includeParent, c)
 	return c
 }
 
-func compressedMembersHash(mh *hash.StringHash) *Hash {
+func compressedMembersHash(mh hash.StringHash) *Hash {
 	he := make([]*HashEntry, 0, mh.Len())
 	mh.EachPair(func(key string, value interface{}) {
 		fh := value.(px.AnnotatedMember).InitHash()

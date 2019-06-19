@@ -14,10 +14,10 @@ var TypeTypeParameter = NewStructType([]*StructElement{
 	NewStructElement(newOptionalType3(keyAnnotations), typeAnnotations),
 })
 
-func (t *typeParameter) initHash() *hash.StringHash {
+func (t *typeParameter) initHash() hash.StringHash {
 	h := t.attribute.initHash()
-	h.Put(keyType, h.Get(keyType, nil).(*TypeType).PType())
-	if v, ok := h.Get3(keyValue); ok && v.(px.Value).Equals(undef, nil) {
+	h.Put(keyType, h.GetOrDefault(keyType, nil).(*TypeType).PType())
+	if v, ok := h.Get(keyValue); ok && v.(px.Value).Equals(undef, nil) {
 		h.Delete(keyValue)
 	}
 	return h
