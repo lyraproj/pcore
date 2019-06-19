@@ -56,7 +56,7 @@ func (a *annotatedMember) Override() bool {
 	return a.override
 }
 
-func (a *annotatedMember) initHash() *hash.StringHash {
+func (a *annotatedMember) initHash() hash.StringHash {
 	h := a.annotatable.initHash()
 	h.Put(keyType, a.typ)
 	if a.final {
@@ -74,14 +74,13 @@ func (a *annotatedMember) Final() bool {
 
 // Checks if the this _member_ overrides an inherited member, and if so, that this member is declared with
 // override = true and that the inherited member accepts to be overridden by this member.
-func assertOverride(a px.AnnotatedMember, parentMembers *hash.StringHash) {
-	parentMember, _ := parentMembers.Get(a.Name(), nil).(px.AnnotatedMember)
-	if parentMember == nil {
+func assertOverride(a px.AnnotatedMember, parentMembers hash.StringHash) {
+	if parentMember, ok := parentMembers.Get(a.Name()); ok {
+		assertCanBeOverridden(parentMember.(px.AnnotatedMember), a)
+	} else {
 		if a.Override() {
 			panic(px.Error(px.OverriddenNotFound, issue.H{`label`: a.Label(), `feature_type`: a.FeatureType()}))
 		}
-	} else {
-		assertCanBeOverridden(parentMember, a)
 	}
 }
 

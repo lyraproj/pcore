@@ -100,7 +100,7 @@ func newTypeSetReference(t *typeSet, ref *Hash) *typeSetReference {
 	return r
 }
 
-func (r *typeSetReference) initHash() *hash.StringHash {
+func (r *typeSetReference) initHash() hash.StringHash {
 	h := r.annotatable.initHash()
 	if r.nameAuthority != r.owner.nameAuthority {
 		h.Put(KeyNameAuthority, stringValue(string(r.nameAuthority)))
@@ -564,7 +564,7 @@ func (t *typeSet) basicTypeToString(b io.Writer, f px.Format, s px.FormatContext
 	utils.WriteString(b, "}]")
 }
 
-func (t *typeSet) initHash() *hash.StringHash {
+func (t *typeSet) initHash() hash.StringHash {
 	h := t.annotatable.initHash()
 	if t.pcoreURI != `` {
 		h.Put(px.KeyPcoreUri, WrapURI2(string(t.pcoreURI)))
@@ -650,7 +650,7 @@ func (t *typeSet) resolveDeferred(c px.Context, lh px.OrderedMap) *Hash {
 
 	result := WrapHash(entries)
 	nameAuth := t.resolveNameAuthority(result, c, nil)
-	if !types.IsEmpty() {
+	if !types.Empty() {
 		es := make([]*HashEntry, 0, types.Len())
 		types.EachPair(func(typeName string, value interface{}) {
 			fullName := fmt.Sprintf(`%s::%s`, t.name, typeName)

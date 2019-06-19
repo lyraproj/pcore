@@ -12,7 +12,7 @@ import (
 
 type objectTypeExtension struct {
 	baseType   *objectType
-	parameters *hash.StringHash
+	parameters hash.StringHash
 }
 
 var ObjectTypeExtensionMetaType px.ObjectType
@@ -127,7 +127,7 @@ func (te *objectTypeExtension) Parameters() []px.Value {
 	top := 0
 	idx := 0
 	pts.EachKey(func(k string) {
-		v, ok := te.parameters.Get3(k)
+		v, ok := te.parameters.Get(k)
 		if ok {
 			top = idx + 1
 		} else {
@@ -166,7 +166,7 @@ func (te *objectTypeExtension) PType() px.Type {
 func (te *objectTypeExtension) initialize(c px.Context, baseType *objectType, initParameters []px.Value) {
 	pts := baseType.typeParameters(true)
 	pvs := pts.Values()
-	if pts.IsEmpty() {
+	if pts.Empty() {
 		panic(px.Error(px.NotParameterizedType, issue.H{`type`: baseType.Label()}))
 	}
 	te.baseType = baseType
@@ -188,8 +188,8 @@ func (te *objectTypeExtension) initialize(c px.Context, baseType *objectType, in
 		h := initParameters[0].(*Hash)
 		h.EachPair(func(k, pv px.Value) {
 			pn := k.String()
-			tp := pts.Get(pn, nil)
-			if tp == nil {
+			tp, ok := pts.Get(pn)
+			if !ok {
 				panic(px.Error(px.MissingTypeParameter, issue.H{`name`: pn, `label`: baseType.Label()}))
 			}
 			if !pv.Equals(WrapDefault(), nil) {
@@ -207,7 +207,7 @@ func (te *objectTypeExtension) initialize(c px.Context, baseType *objectType, in
 			}
 		}
 	}
-	if byName.IsEmpty() {
+	if byName.Empty() {
 		panic(px.Error(px.EmptyTypeParameterList, issue.H{`label`: baseType.Label()}))
 	}
 	te.parameters = byName
@@ -223,12 +223,12 @@ func (te *objectTypeExtension) AttributesInfo() px.AttributesInfo {
 //
 // This method is only called when a given type is found to be assignable to the base type of
 // this extension.
-func (te *objectTypeExtension) testAssignable(paramValues *hash.StringHash, g px.Guard) bool {
+func (te *objectTypeExtension) testAssignable(paramValues hash.StringHash, g px.Guard) bool {
 	// Default implementation performs case expression style matching of all parameter values
 	// provided that the value exist (this should always be the case, since all defaults have
 	// been assigned at this point)
 	return te.parameters.AllPair(func(key string, v1 interface{}) bool {
-		if v2, ok := paramValues.Get3(key); ok {
+		if v2, ok := paramValues.Get(key); ok {
 			a := v2.(px.Value)
 			b := v1.(px.Value)
 			if px.PuppetMatch(a, b) {

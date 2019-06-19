@@ -655,7 +655,7 @@ func sortedMap(hvEntries []*HashEntry) *Hash {
 	return &Hash{entries: hvEntries}
 }
 
-func WrapStringPValue(hash *hash.StringHash) *Hash {
+func WrapStringPValue(hash hash.StringHash) *Hash {
 	hvEntries := make([]*HashEntry, hash.Len())
 	i := 0
 	hash.EachPair(func(k string, v interface{}) {
