@@ -170,6 +170,10 @@ type (
 
 		Merge(OrderedMap) OrderedMap
 
+		// ToStringMap returns a copy of this map in the form of a Go map where all keys have been
+		// converted into strings
+		ToStringMap() map[string]Value
+
 		Values() List
 		SelectPairs(BiPredicate) OrderedMap
 		RejectPairs(BiPredicate) OrderedMap
