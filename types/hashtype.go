@@ -1284,6 +1284,14 @@ func (hv *Hash) ToString2(b io.Writer, s px.FormatContext, f px.Format, delim by
 	delete(g, hv)
 }
 
+func (hv *Hash) ToStringMap() map[string]px.Value {
+	m := make(map[string]px.Value, len(hv.entries))
+	for _, entry := range hv.entries {
+		m[entry.key.String()] = entry.value
+	}
+	return m
+}
+
 func (hv *Hash) PType() px.Type {
 	return hv.privateReducedType()
 }

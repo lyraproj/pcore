@@ -2,6 +2,7 @@ package types
 
 import (
 	"io"
+	"reflect"
 
 	"github.com/lyraproj/pcore/utils"
 
@@ -16,7 +17,7 @@ type (
 	}
 
 	Sensitive struct {
-		value px.Value
+		Value px.Value
 	}
 )
 
@@ -127,6 +128,10 @@ func (t *SensitiveType) Resolve(c px.Context) px.Type {
 	return t
 }
 
+func (t *SensitiveType) ReflectType(c px.Context) (reflect.Type, bool) {
+	return reflect.TypeOf(&Sensitive{}), true
+}
+
 func (t *SensitiveType) CanSerializeAsString() bool {
 	return canSerializeAsString(t.typ)
 }
@@ -155,6 +160,14 @@ func (s *Sensitive) Equals(o interface{}, g px.Guard) bool {
 	return false
 }
 
+func (s *Sensitive) Reflect(c px.Context) reflect.Value {
+	return reflect.ValueOf(s)
+}
+
+func (s *Sensitive) ReflectTo(c px.Context, value reflect.Value) {
+	value.Set(reflect.ValueOf(s))
+}
+
 func (s *Sensitive) String() string {
 	return px.ToString2(s, None)
 }
@@ -168,5 +181,5 @@ func (s *Sensitive) PType() px.Type {
 }
 
 func (s *Sensitive) Unwrap() px.Value {
-	return s.value
+	return s.Value
 }
