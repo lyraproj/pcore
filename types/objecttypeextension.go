@@ -79,6 +79,10 @@ func (te *objectTypeExtension) Implements(ifd px.ObjectType, g px.Guard) bool {
 	return te.baseType.Implements(ifd, g)
 }
 
+func (te *objectTypeExtension) InstanceHash(o px.Value) px.OrderedMap {
+	return te.baseType.InstanceHash(o)
+}
+
 func (te *objectTypeExtension) IsInterface() bool {
 	return false
 }

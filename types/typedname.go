@@ -17,7 +17,7 @@ type typedName struct {
 	parts     []string
 }
 
-var TypedNameMetaType px.Type
+var TypedNameMetaType px.ObjectType
 
 func init() {
 	TypedNameMetaType = newObjectType(`TypedName`, `{
@@ -105,13 +105,7 @@ func (t *typedName) Get(key string) (value px.Value, ok bool) {
 }
 
 func (t *typedName) InitHash() px.OrderedMap {
-	es := make([]*HashEntry, 0, 3)
-	es = append(es, WrapHashEntry2(`namespace`, stringValue(string(t.Namespace()))))
-	es = append(es, WrapHashEntry2(`name`, stringValue(t.Name())))
-	if t.authority != px.RuntimeNameAuthority {
-		es = append(es, WrapHashEntry2(`authority`, WrapURI2(string(t.authority))))
-	}
-	return WrapHash(es)
+	return TypedNameMetaType.InstanceHash(t)
 }
 
 func NewTypedName(namespace px.Namespace, name string) px.TypedName {
