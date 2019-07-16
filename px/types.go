@@ -322,16 +322,44 @@ func NewWithBlock(c Context, receiver Value, args []Value, block Lambda) Value {
 
 var DescribeSignatures func(signatures []Signature, argsTuple Type, block Lambda) string
 
+// DescribeMismatch returns a string that describes a mismatch between the expected and actual Type. The
+// string is prefixed with the given pfx
 var DescribeMismatch func(pfx string, expected Type, actual Type) string
 
+// NewGoType will infer the Pcore type from the public attributes and functions of the provided
+// zeroValue which must be a struct or a pointer to a struct.
 var NewGoType func(name string, zeroValue interface{}) ObjectType
 
+// NewGoObjectType is like NewObjectType but it is intended for Go types that do not implement the
+// PuppetObject interface. Instead, the reflect.Type of the null value of a go instance is passed and later
+// registered with the ImplementationRegistry. This helps Pcore to correctly compute the pcore Type of the go
+// instance.
 var NewGoObjectType func(name string, rType reflect.Type, typeDecl string, creators ...DispatchFunction) ObjectType
 
+// NewNamedType should be used to register an alias for another type.
 var NewNamedType func(name, typeDecl string) Type
 
+// NewObjectType creates a new ObjectType with the given name by parsing the provided pcore type definition.
+//
+// When no creators are given, two constructor functions will be generated based on the attributes given in the
+// type definition. The instance created by those functions will always be a struct types.attributeSlice.
+//
+// Creators:
+// A creator is responsible for creating an instance of the new type. The instance must implement the
+// PuppetObject interface and its PType() function must return the type that is created by this function.
+//
+// If one creator is given, then this creator can either be nil to prevent the construction of the default
+// creators, or a creator that expects the args passed to be positional arguments for creating an instance.
+//
+// If two creators are given, then the first creator must be a positional argument creator and the second a
+// named argument creator. The named argument creator will always receive exactly one argument of type
+// OrderedMap.
+//
+// A special creator, the types.NoPositionalCreator can be used as the first creator when only a named argument
+// creator is desired.
 var NewObjectType func(name, typeDecl string, creators ...DispatchFunction) ObjectType
 
+// WrapReflectedType returns the pcore Type for a reflect.Type
 var WrapReflectedType func(c Context, rt reflect.Type) (Type, error)
 
 func getPrefix(pfx interface{}) string {

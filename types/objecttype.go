@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -1104,6 +1105,12 @@ func (t *objectType) createInitType() *StructType {
 	return t.initType
 }
 
+var NoPositionalConstructor = func(c px.Context, args []px.Value) px.Value {
+	panic(errors.New(`internal error: call to NoPositionalConstructor`))
+}
+
+var nopCtorPtr = reflect.ValueOf(NoPositionalConstructor).Pointer()
+
 func (t *objectType) createNewFunction(c px.Context) {
 	pi := t.AttributesInfo()
 
@@ -1152,39 +1159,41 @@ func (t *objectType) createNewFunction(c px.Context) {
 			}}
 	}
 
-	paCreator := func(d px.Dispatch) {
-		for i, attr := range pi.Attributes() {
-			at := attr.Type()
-			if ot, ok := at.(px.ObjectType); ok {
-				at = typeAndInit(ot)
-			}
-			switch attr.Kind() {
-			case constant, derived:
-			case givenOrDerived:
-				d.OptionalParam2(at)
-			default:
-				if i >= pi.RequiredCount() {
-					d.OptionalParam2(at)
-				} else {
-					d.Param2(at)
-				}
-			}
-		}
-		d.Function(functions[0])
-	}
-
 	var creators []px.DispatchCreator
 	if len(functions) > 1 {
 		// A named argument constructor exists. Place it first.
 		creators = []px.DispatchCreator{func(d px.Dispatch) {
 			d.Param2(t.createInitType())
 			d.Function(functions[1])
-		}, paCreator}
-	} else {
-		creators = []px.DispatchCreator{paCreator}
+		}}
 	}
 
-	t.ctor = px.MakeGoConstructor(t.name, creators...).Resolve(c)
+	if reflect.ValueOf(functions[0]).Pointer() != nopCtorPtr {
+		// Add positional argument creator
+		creators = append(creators, func(d px.Dispatch) {
+			for i, attr := range pi.Attributes() {
+				at := attr.Type()
+				if ot, ok := at.(px.ObjectType); ok {
+					at = typeAndInit(ot)
+				}
+				switch attr.Kind() {
+				case constant, derived:
+				case givenOrDerived:
+					d.OptionalParam2(at)
+				default:
+					if i >= pi.RequiredCount() {
+						d.OptionalParam2(at)
+					} else {
+						d.Param2(at)
+					}
+				}
+			}
+			d.Function(functions[0])
+		})
+	}
+	if len(creators) > 0 {
+		t.ctor = px.MakeGoConstructor(t.name, creators...).Resolve(c)
+	}
 }
 
 func typeAndInit(t px.Type) px.Type {
