@@ -623,6 +623,33 @@ func (t *objectType) InitHash() px.OrderedMap {
 	return WrapStringPValue(t.initHash(true))
 }
 
+func (t *objectType) InstanceHash(o px.Value) px.OrderedMap {
+	if pu, ok := o.(px.PuppetObject); ok {
+		pi := t.AttributesInfo()
+		at := pi.Attributes()
+		nc := len(at)
+		if nc == 0 {
+			return px.EmptyMap
+		}
+
+		entries := make([]*HashEntry, 0, nc)
+		for _, attr := range pi.Attributes() {
+			switch attr.Kind() {
+			case constant, derived:
+				continue
+			}
+			if v, ok := pu.Get(attr.Name()); ok {
+				if attr.HasValue() && attr.Value().Equals(v, nil) {
+					continue
+				}
+				entries = append(entries, WrapHashEntry2(attr.Name(), v))
+			}
+		}
+		return WrapHash(entries)
+	}
+	return emptyMap
+}
+
 func (t *objectType) IsInterface() bool {
 	return t.isInterface
 }

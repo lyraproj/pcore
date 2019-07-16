@@ -198,6 +198,9 @@ type (
 		//
 		GoType() reflect.Type
 
+		// InstanceHash returns the InitHash for the given instance. The instance must be of this type
+		InstanceHash(o Value) OrderedMap
+
 		// IsInterface returns true for non parameterized types that contains only methods
 		IsInterface() bool
 

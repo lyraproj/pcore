@@ -106,7 +106,7 @@ func (e *deferred) Get(key string) (value px.Value, ok bool) {
 }
 
 func (e *deferred) InitHash() px.OrderedMap {
-	return WrapHash([]*HashEntry{WrapHashEntry2(`name`, stringValue(e.name)), WrapHashEntry2(`arguments`, e.arguments)})
+	return DeferredMetaType.InstanceHash(e)
 }
 
 func (e *deferred) Resolve(c px.Context, scope px.Keyed) px.Value {
