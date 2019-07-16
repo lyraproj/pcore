@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -17,8 +16,6 @@ type Indenter struct {
 
 // An Indentable can create build a string representation of itself using an Indenter
 type Indentable interface {
-	fmt.Stringer
-
 	// AppendTo appends a string representation of the Node to the Indenter
 	AppendTo(w *Indenter)
 }
