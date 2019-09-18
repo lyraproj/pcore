@@ -49,7 +49,7 @@ const (
 	CRIT    = LogLevel(`crit`)
 	DEBUG   = LogLevel(`debug`)
 	EMERG   = LogLevel(`emerg`)
-	ERR     = LogLevel(`err`)
+	ERR     = LogLevel(`error`)
 	INFO    = LogLevel(`info`)
 	NOTICE  = LogLevel(`notice`)
 	WARNING = LogLevel(`warning`)
