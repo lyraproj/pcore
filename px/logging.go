@@ -154,6 +154,16 @@ func (re *ReportedEntry) Issue() issue.Reported {
 	return re.issue
 }
 
+func LogLevelFromString(s string) LogLevel {
+	for i := range LogLevels {
+		ll := LogLevels[i]
+		if s == string(ll) {
+			return ll
+		}
+	}
+	panic(fmt.Errorf(`no such log level '%s'`, s))
+}
+
 func LogLevelFromSeverity(severity issue.Severity) LogLevel {
 	switch severity {
 	case issue.SeverityError:
