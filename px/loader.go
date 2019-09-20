@@ -16,6 +16,10 @@ type (
 	}
 
 	Loader interface {
+		// GetEntry returns the requested entry from the internal cache of this loader
+		// without consulting parent loaders, or nil if no such entry can be found
+		GetEntry(name TypedName) LoaderEntry
+
 		// LoadEntry returns the requested entry or nil if no such entry can be found
 		LoadEntry(c Context, name TypedName) LoaderEntry
 
