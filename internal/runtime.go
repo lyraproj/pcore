@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -260,9 +261,12 @@ func (p *rt) Try(actor func(px.Context) error) (err error) {
 func (p *rt) TryWithParent(parentCtx context.Context, actor func(px.Context) error) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			if ri, ok := r.(error); ok {
-				err = ri
-			} else {
+			switch r := r.(type) {
+			case error:
+				err = r
+			case string:
+				err = errors.New(r)
+			default:
 				panic(r)
 			}
 		}
