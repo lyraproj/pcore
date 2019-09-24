@@ -65,6 +65,7 @@ func init() {
 		tp.ParseFormat(`%FT%T.%N %Z`),
 		tp.ParseFormat(`%FT%T %Z`),
 		tp.ParseFormat(`%F %T.%N %Z`),
+		&TimestampFormat{layout: time.RFC3339Nano},
 		&TimestampFormat{layout: time.RFC3339},
 		tp.ParseFormat(`%F %T %Z`),
 		tp.ParseFormat(`%F %Z`),
