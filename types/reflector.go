@@ -96,10 +96,16 @@ func (r *reflector) Reflect(src px.Value) reflect.Value {
 }
 
 func (r *reflector) Reflect2(src px.Value, rt reflect.Type) reflect.Value {
-	if rt != nil && rt.Kind() == reflect.Interface && rt.AssignableTo(pValueType) {
-		sv := reflect.ValueOf(src)
-		if sv.Type().AssignableTo(rt) {
-			return sv
+	if rt.Kind() == reflect.Interface {
+		if rt.Name() == `` {
+			// Destination type is interface{}, derive type from source
+			return r.Reflect(src)
+		}
+		if rt.AssignableTo(pValueType) {
+			sv := reflect.ValueOf(src)
+			if sv.Type().AssignableTo(rt) {
+				return sv
+			}
 		}
 	}
 	v := reflect.New(rt).Elem()
@@ -469,4 +475,9 @@ func assertSettable(value *reflect.Value) {
 	if !value.CanSet() {
 		panic(px.Error(px.AttemptToSetUnsettable, issue.H{`kind`: value.Type().String()}))
 	}
+}
+
+// isNilAndUnknown returns true if rt is reflect.Type((*interface{}(nil)).Elem()
+func isNilAndUnknown(rt reflect.Type) bool {
+	return rt.Kind() == reflect.Interface && rt.Name() == ``
 }

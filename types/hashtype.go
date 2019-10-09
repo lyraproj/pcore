@@ -931,7 +931,14 @@ func (hv *Hash) Reflect(c px.Context) reflect.Value {
 	m := reflect.MakeMapWithSize(ht, hv.Len())
 	rf := c.Reflector()
 	for _, e := range hv.entries {
-		m.SetMapIndex(rf.Reflect2(e.key, keyType), rf.Reflect2(e.value, valueType))
+		var rv reflect.Value
+		if e.value == undef && isNilAndUnknown(valueType) {
+			// Putting nil into map causes reflect.SetMapIndex to delete the entry.
+			rv = reflect.ValueOf(undef)
+		} else {
+			rv = rf.Reflect2(e.value, valueType)
+		}
+		m.SetMapIndex(rf.Reflect2(e.key, keyType), rv)
 	}
 	return m
 }
@@ -953,7 +960,14 @@ func (hv *Hash) ReflectTo(c px.Context, value reflect.Value) {
 	m := reflect.MakeMapWithSize(ht, hv.Len())
 	rf := c.Reflector()
 	for _, e := range hv.entries {
-		m.SetMapIndex(rf.Reflect2(e.key, keyType), rf.Reflect2(e.value, valueType))
+		var rv reflect.Value
+		if e.value == undef && isNilAndUnknown(valueType) {
+			// Putting nil into map causes reflect.SetMapIndex to delete the entry.
+			rv = reflect.ValueOf(undef)
+		} else {
+			rv = rf.Reflect2(e.value, valueType)
+		}
+		m.SetMapIndex(rf.Reflect2(e.key, keyType), rv)
 	}
 	if ptr {
 		// The created map cannot be addressed. A pointer to it is necessary

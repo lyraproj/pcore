@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"io"
 
 	"github.com/lyraproj/pcore/utils"
@@ -59,10 +60,6 @@ func (t *UndefType) Name() string {
 	return `Undef`
 }
 
-func (t *UndefType) ReflectType(c px.Context) (reflect.Type, bool) {
-	return reflect.Value{}.Type(), true
-}
-
 func (t *UndefType) CanSerializeAsString() bool {
 	return true
 }
@@ -101,6 +98,14 @@ func (uv *UndefValue) ReflectTo(c px.Context, value reflect.Value) {
 		panic(px.Error(px.AttemptToSetUnsettable, issue.H{`kind`: value.Kind().String()}))
 	}
 	value.Set(reflect.Zero(value.Type()))
+}
+
+func (uv *UndefValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(nil)
+}
+
+func (uv *UndefValue) MarshalYAML() (interface{}, error) {
+	return nil, nil
 }
 
 func (uv *UndefValue) String() string {
