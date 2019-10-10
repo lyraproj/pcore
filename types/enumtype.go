@@ -156,6 +156,10 @@ func (t *EnumType) IsAssignable(o px.Type, g px.Guard) bool {
 	return false
 }
 
+func (t *EnumType) IsCaseInsensitive() bool {
+	return t.caseInsensitive
+}
+
 func (t *EnumType) IsInstance(o px.Value, g px.Guard) bool {
 	if str, ok := o.(stringValue); ok {
 		if len(t.values) == 0 {
@@ -188,6 +192,10 @@ func (t *EnumType) ReflectType(c px.Context) (reflect.Type, bool) {
 
 func (t *EnumType) String() string {
 	return px.ToString2(t, None)
+}
+
+func (t *EnumType) Strings() []string {
+	return t.values
 }
 
 func (t *EnumType) Parameters() []px.Value {
