@@ -104,7 +104,15 @@ func newRuntimeType2(args ...px.Value) *RuntimeType {
 // A Go interface must be registered by passing a Pointer to a nil of the interface so to
 // create an Runtime for the interface Foo, use NewGoRuntimeType((*Foo)(nil))
 func NewGoRuntimeType(value interface{}) *RuntimeType {
-	goType := reflect.TypeOf(value)
+	var goType reflect.Type
+	switch value := value.(type) {
+	case reflect.Type:
+		goType = value
+	case reflect.Value:
+		goType = value.Type()
+	default:
+		goType = reflect.TypeOf(value)
+	}
 	if goType.Kind() == reflect.Ptr && goType.Elem().Kind() == reflect.Interface {
 		goType = goType.Elem()
 	}
