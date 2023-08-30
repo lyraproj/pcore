@@ -8,7 +8,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20190905181640-827449938966
+	gopkg.in/yaml.v3 v3.0.0
 )
 
 go 1.13
